@@ -9,6 +9,7 @@
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { Icon } from "./Icon";
 
 export type ToastTone = "info" | "error";
 
@@ -44,6 +45,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <div className="toast-region" role="status" aria-live="polite">
         {toasts.map((toast) => (
           <div key={toast.id} className={toast.tone === "error" ? "toast toast--error" : "toast"}>
+            <Icon name={toast.tone === "error" ? "alert" : "in"} />
             {toast.message}
           </div>
         ))}

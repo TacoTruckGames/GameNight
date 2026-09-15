@@ -60,12 +60,15 @@ a {
   flex-direction: column;
 }
 
+/* Dark brand band: the one place the page is not the content's background, so
+   "where am I" is answerable at a glance while the list below stays plain. */
 .shell__header {
   position: sticky;
   top: 0;
   z-index: 2;
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
+  background: var(--brand-glow-gradient), var(--brand-gradient);
+  color: var(--brand-text);
+  border-bottom: 0;
   padding-top: env(safe-area-inset-top);
 }
 
@@ -79,7 +82,12 @@ a {
   gap: var(--space-3);
 }
 
-.shell__brand {
+/* Logo + wordmark lockup: header, identity screen and the boot screens all show
+   the same thing, so they share one class. */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-size: var(--font-size-lg);
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -94,7 +102,7 @@ a {
 
 .shell__identity-name {
   font-size: var(--font-size-sm);
-  color: var(--color-muted);
+  color: var(--brand-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -106,7 +114,9 @@ a {
   width: 100%;
   max-width: var(--page-max);
   margin: 0 auto;
-  padding: var(--space-4) var(--space-4) calc(var(--tap-target) + var(--space-5) * 2);
+  /* Deep enough that the last card's action row scrolls clear of both the tab
+     bar and a toast sitting above it. */
+  padding: var(--space-4) var(--space-4) calc(var(--tap-target) + var(--space-5) * 3);
 }
 
 .shell__tabs {
@@ -143,15 +153,16 @@ a {
   color: var(--color-accent);
 }
 
-.tab__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: var(--radius-pill);
-  background: transparent;
-}
+/* ------------------------------------------------------------------ icons -- */
 
-.tab[aria-current="page"] .tab__dot {
-  background: var(--color-accent);
+/* Icons are single-colour PNG masks, not images: they take `currentColor`, so
+   one file works on a light card, the dark header and an active tab. */
+.icon {
+  display: inline-block;
+  flex: none;
+  background-color: currentColor;
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  mask: var(--icon) center / contain no-repeat;
 }
 
 /* ---------------------------------------------------------------- buttons -- */
@@ -172,8 +183,11 @@ a {
   cursor: pointer;
 }
 
+/* Dimmed enough to read as unavailable, but the label ("Full") is still the
+   answer to "why can't I press this?" — at 0.55 it dropped under 4.5:1 on the
+   light surface. */
 .btn:disabled {
-  opacity: 0.55;
+  opacity: 0.65;
   cursor: not-allowed;
 }
 
@@ -194,6 +208,13 @@ a {
   color: var(--color-accent);
   border-color: transparent;
   padding-inline: var(--space-2);
+}
+
+/* On the brand band the accent is too dim to read, so the ghost button becomes
+   an outlined white one. */
+.shell__header .btn--ghost {
+  color: var(--brand-text);
+  border-color: var(--brand-line);
 }
 
 .btn--block {
@@ -284,6 +305,7 @@ a {
 .seat-chip {
   display: inline-flex;
   align-items: center;
+  gap: var(--space-1);
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-pill);
   font-size: var(--font-size-sm);
@@ -295,7 +317,7 @@ a {
 
 .seat-chip--open {
   background: var(--color-accent-soft);
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
 }
 
 .seat-chip--full {
@@ -317,17 +339,13 @@ a {
   margin-bottom: var(--space-4);
 }
 
+/* Wraps rather than scrolls: seven chips fit in two rows on a phone, and a
+   hidden horizontal scroll hid half of them. */
 .chip-row {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
-  overflow-x: auto;
-  padding-bottom: var(--space-1);
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-}
-
-.chip-row::-webkit-scrollbar {
-  display: none;
+  overflow: visible;
 }
 
 .chip {
@@ -390,6 +408,20 @@ a {
   position: relative;
 }
 
+.search__icon {
+  display: flex;
+  position: absolute;
+  left: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-muted);
+  pointer-events: none;
+}
+
+.search .input {
+  padding-left: calc(var(--space-3) * 2 + 20px);
+}
+
 /* ---------------------------------------------------------------- states -- */
 
 .skeleton {
@@ -445,6 +477,9 @@ a {
 }
 
 .banner__text {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-size: var(--font-size-sm);
   font-weight: 600;
 }
@@ -465,6 +500,9 @@ a {
 }
 
 .toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius);
   background: var(--color-text);
@@ -487,12 +525,49 @@ a {
   gap: var(--space-4);
 }
 
+/* The first screen is the brand band full-bleed: the gradient carries the
+   contrast, the photo only sits on top of it at low opacity, so nothing here
+   depends on the image having loaded. */
 .who--full {
+  position: relative;
+  isolation: isolate;
   min-height: 100dvh;
   justify-content: center;
-  max-width: var(--page-max);
-  margin: 0 auto;
-  padding: var(--space-5) var(--space-4);
+  background: var(--brand-glow-gradient), var(--brand-gradient);
+  background-attachment: fixed;
+  color: var(--brand-text);
+  padding-block: var(--space-5);
+  padding-inline: max(var(--space-4), calc((100% - var(--page-max)) / 2));
+}
+
+.who--full::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: url(/brand/bg-tabletop.webp);
+  background-size: cover;
+  background-position: center;
+  opacity: 0.35;
+}
+
+.who--full .page-subtitle,
+.who--full .who__group-title {
+  color: var(--brand-muted);
+}
+
+.who--full .empty {
+  color: var(--brand-muted);
+  border-color: var(--brand-line);
+}
+
+.who--full .empty__title {
+  color: var(--brand-text);
+}
+
+.who__mark {
+  display: block;
+  margin-bottom: var(--space-3);
 }
 
 .who__group-title {

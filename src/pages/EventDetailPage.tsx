@@ -70,9 +70,6 @@ export function EventDetailPage() {
               joined={joined}
             />
           </div>
-          <p className="text-sm muted">
-            {detail.attendeeCount} of {detail.capacity} seats taken
-          </p>
         </div>
         {isPlayer ? (
           <RsvpButton

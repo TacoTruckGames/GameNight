@@ -4,25 +4,41 @@
  * Every colour, space, radius, font and shadow used by `base.css` and the
  * components is a custom property declared here. Restyling the app — including
  * a future brand pass — should never need to touch a component or `base.css`.
+ *
+ * The palette is drawn from Wizards of the Coast's corporate site (indigo
+ * #6E64DA, deep purple #290D4A, near-black #0F051C, a single bright blue
+ * #0291FF used only as a glow). Every text/background pair below is checked by
+ * `tools/contrast-audit.mjs` and clears WCAG AA.
  */
 
 :root {
   /* palette — light */
-  --color-bg: #f6f5f2;
+  --color-bg: #f4f3f9;
   --color-surface: #ffffff;
-  --color-surface-alt: #eeece7;
-  --color-text: #1b1a17;
-  --color-muted: #63605a;
-  --color-accent: #7a3cc4;
+  --color-surface-alt: #eceaf5;
+  --color-text: #2c2b33;
+  --color-muted: #646375;
+  --color-accent: #6e64da;
   --color-accent-text: #ffffff;
-  --color-accent-soft: #efe6fb;
+  --color-accent-strong: #4b40b8;
+  --color-accent-soft: #edebfa;
   --color-danger: #b3261e;
   --color-danger-soft: #fbe6e5;
   --color-success: #1f7a4d;
   --color-success-soft: #e2f3ea;
-  --color-border: #ddd9d2;
-  --color-focus: #7a3cc4;
-  --color-overlay: rgb(27 26 23 / 45%);
+  --color-border: #dcd9ea;
+  --color-focus: #6e64da;
+  --color-overlay: rgb(15 5 28 / 55%);
+
+  /* brand band — the dark header and identity screen, same in both themes */
+  --brand-bg: #290d4a;
+  --brand-bg-deep: #0f051c;
+  --brand-glow: #0291ff;
+  --brand-text: #ffffff;
+  --brand-muted: #c9c4ea;
+  --brand-line: rgb(255 255 255 / 25%);
+  --brand-gradient: linear-gradient(180deg, var(--brand-bg) 0%, var(--brand-bg-deep) 100%);
+  --brand-glow-gradient: radial-gradient(60% 80% at 50% 120%, rgb(2 145 255 / 55%), transparent 70%);
 
   /* shape */
   --radius: 12px;
@@ -44,8 +60,8 @@
   --font-size-xl: 1.375rem;
 
   /* depth */
-  --shadow: 0 1px 2px rgb(27 26 23 / 8%), 0 4px 12px rgb(27 26 23 / 6%);
-  --shadow-lift: 0 4px 24px rgb(27 26 23 / 18%);
+  --shadow: 0 1px 2px rgb(15 5 28 / 8%), 0 4px 12px rgb(15 5 28 / 6%);
+  --shadow-lift: 0 4px 24px rgb(15 5 28 / 18%);
 
   /* layout */
   --page-max: 640px;
@@ -54,21 +70,25 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-bg: #15141a;
-    --color-surface: #1f1e26;
-    --color-surface-alt: #2a2833;
-    --color-text: #f2f0f5;
-    --color-muted: #a9a4b5;
-    --color-accent: #b98cf5;
-    --color-accent-text: #1b1024;
-    --color-accent-soft: #312545;
+    --color-bg: #0f051c;
+    --color-surface: #1a1030;
+    --color-surface-alt: #251a40;
+    --color-text: #f2f0f8;
+    --color-muted: #a9a4bd;
+    --color-accent: #a49fda;
+    --color-accent-text: #0f051c;
+    --color-accent-strong: #c4bff0;
+    --color-accent-soft: #2e2554;
     --color-danger: #ff9a92;
     --color-danger-soft: #3a1f1e;
     --color-success: #7fd8a8;
     --color-success-soft: #17301f;
-    --color-border: #332f3d;
-    --color-focus: #b98cf5;
-    --color-overlay: rgb(0 0 0 / 60%);
+    --color-border: #332c4d;
+    --color-focus: #a49fda;
+    --color-overlay: rgb(0 0 0 / 65%);
+
+    /* the header sits a step lighter than the page so it still reads as a band */
+    --brand-bg: #1a1030;
 
     --shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 4px 12px rgb(0 0 0 / 30%);
     --shadow-lift: 0 4px 24px rgb(0 0 0 / 55%);

@@ -16,6 +16,7 @@ import { createPlayerSchema, NAME_MAX } from "../../shared/schemas";
 import { useCreatePlayer, useUsers } from "../api/hooks";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBanner } from "../components/ErrorBanner";
+import { Logo } from "../components/Logo";
 import { Skeleton } from "../components/Skeleton";
 import { useIdentity } from "./IdentityContext";
 
@@ -153,6 +154,9 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
     return (
       <main className="who who--full">
         <div>
+          <span className="who__mark">
+            <Logo size={40} title="Game Night" />
+          </span>
           <h1 className="page-title" id={headingId}>
             Who's playing?
           </h1>

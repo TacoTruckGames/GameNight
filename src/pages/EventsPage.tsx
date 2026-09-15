@@ -13,6 +13,7 @@ import { useEvents, useMyRsvpIds } from "../api/hooks";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { EventCard } from "../components/EventCard";
+import { Icon } from "../components/Icon";
 import { GameTypeFilter } from "../components/GameTypeFilter";
 import { EventListSkeleton } from "../components/Skeleton";
 import { useIdentity } from "../identity/IdentityContext";
@@ -46,6 +47,9 @@ export function EventsPage() {
           <label className="visually-hidden" htmlFor={searchId}>
             Search events by title or location
           </label>
+          <span className="search__icon">
+            <Icon name="search" />
+          </span>
           <input
             id={searchId}
             className="input"

@@ -8,6 +8,7 @@
 
 import { AppRoutes } from "./routes";
 import { ErrorBanner } from "./components/ErrorBanner";
+import { Logo } from "./components/Logo";
 import { Skeleton } from "./components/Skeleton";
 import { NetworkError } from "./api/client";
 import { useIdentity } from "./identity/IdentityContext";
@@ -19,7 +20,10 @@ export function App() {
   if (status === "loading") {
     return (
       <main className="who who--full" role="status" aria-busy="true" aria-label="Starting Game Night">
-        <Skeleton width="60%" height={28} />
+        <p className="brand">
+          <Logo />
+          Game Night
+        </p>
         <Skeleton height={56} />
         <Skeleton height={56} />
       </main>
@@ -29,7 +33,10 @@ export function App() {
   if (status === "error") {
     return (
       <main className="who who--full">
-        <h1 className="page-title">Game Night</h1>
+        <h1 className="brand page-title">
+          <Logo size={32} />
+          Game Night
+        </h1>
         <ErrorBanner error={new NetworkError("Couldn't reach the server to check who you are.")} onRetry={retry} />
       </main>
     );

@@ -8,6 +8,7 @@
  */
 
 import { ApiError, NetworkError } from "../api/client";
+import { Icon } from "./Icon";
 
 export function errorMessage(error: unknown): string {
   if (error instanceof ApiError) return error.message;
@@ -18,7 +19,10 @@ export function errorMessage(error: unknown): string {
 export function ErrorBanner({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   return (
     <div className="banner" role="alert">
-      <span className="banner__text">{errorMessage(error)}</span>
+      <span className="banner__text">
+        <Icon name="alert" />
+        {errorMessage(error)}
+      </span>
       {onRetry ? (
         <button type="button" className="btn btn--sm btn--secondary" onClick={onRetry}>
           Retry

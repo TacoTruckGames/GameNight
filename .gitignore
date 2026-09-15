@@ -9,6 +9,11 @@ dist/
 !.env.example
 .dev.vars
 
+# generated art: the script is committed, its venv and raw output are not
+tools/artgen/.venv/
+tools/artgen/out/
+__pycache__/
+
 # misc
 *.log
 .DS_Store
