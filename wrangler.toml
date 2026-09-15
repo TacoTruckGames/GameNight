@@ -1,0 +1,30 @@
+name = "gamenight"
+main = "./worker/index.ts"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+[assets]                       # the vite plugin fills in `directory` at build time
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "gamenight"
+database_id = "4e6260e4-e638-4417-8369-8c145bced4ad"
+migrations_dir = "migrations"
+
+[[durable_objects.bindings]]
+name = "EVENT_ROOM"
+class_name = "EventRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["EventRoom"]
+
+[[routes]]
+pattern = "gamenight.tacotruckgames.com"
+custom_domain = true
+
+[observability]
+enabled = true

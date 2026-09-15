@@ -1,0 +1,76 @@
+/**
+ * The whole visual identity of the app, in one file.
+ *
+ * Every colour, space, radius, font and shadow used by `base.css` and the
+ * components is a custom property declared here. Restyling the app — including
+ * a future brand pass — should never need to touch a component or `base.css`.
+ */
+
+:root {
+  /* palette — light */
+  --color-bg: #f6f5f2;
+  --color-surface: #ffffff;
+  --color-surface-alt: #eeece7;
+  --color-text: #1b1a17;
+  --color-muted: #63605a;
+  --color-accent: #7a3cc4;
+  --color-accent-text: #ffffff;
+  --color-accent-soft: #efe6fb;
+  --color-danger: #b3261e;
+  --color-danger-soft: #fbe6e5;
+  --color-success: #1f7a4d;
+  --color-success-soft: #e2f3ea;
+  --color-border: #ddd9d2;
+  --color-focus: #7a3cc4;
+  --color-overlay: rgb(27 26 23 / 45%);
+
+  /* shape */
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-pill: 999px;
+
+  /* spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+
+  /* type */
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-size-sm: 0.8125rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.375rem;
+
+  /* depth */
+  --shadow: 0 1px 2px rgb(27 26 23 / 8%), 0 4px 12px rgb(27 26 23 / 6%);
+  --shadow-lift: 0 4px 24px rgb(27 26 23 / 18%);
+
+  /* layout */
+  --page-max: 640px;
+  --tap-target: 44px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #15141a;
+    --color-surface: #1f1e26;
+    --color-surface-alt: #2a2833;
+    --color-text: #f2f0f5;
+    --color-muted: #a9a4b5;
+    --color-accent: #b98cf5;
+    --color-accent-text: #1b1024;
+    --color-accent-soft: #312545;
+    --color-danger: #ff9a92;
+    --color-danger-soft: #3a1f1e;
+    --color-success: #7fd8a8;
+    --color-success-soft: #17301f;
+    --color-border: #332f3d;
+    --color-focus: #b98cf5;
+    --color-overlay: rgb(0 0 0 / 60%);
+
+    --shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 4px 12px rgb(0 0 0 / 30%);
+    --shadow-lift: 0 4px 24px rgb(0 0 0 / 55%);
+  }
+}

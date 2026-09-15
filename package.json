@@ -1,0 +1,43 @@
+{
+  "name": "gamenight",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.1.2",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "predev": "node scripts/db-reset-local.mjs",
+    "dev": "vite dev",
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.worker.json --noEmit && tsc -p test/tsconfig.json --noEmit",
+    "test": "vitest run",
+    "stress": "node scripts/stress.ts",
+    "cf-typegen": "wrangler types --env-file ./scripts/empty.env",
+    "db:reset:local": "node scripts/db-reset-local.mjs",
+    "db:migrate:remote": "wrangler d1 migrations apply gamenight --remote",
+    "db:seed:remote": "wrangler d1 execute gamenight --remote --file=./seed/seed.sql",
+    "deploy": "node scripts/deploy.mjs"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "5.102.8",
+    "hono": "4.13.8",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-router": "7.18.4",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.54.10",
+    "@cloudflare/vitest-plugin": "1.1.10",
+    "@types/node": "^24.13.5",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "6.1.1",
+    "typescript": "5.9.3",
+    "vite": "8.3.0",
+    "vitest": "4.1.11",
+    "wrangler": "4.132.0"
+  }
+}

@@ -1,0 +1,328 @@
+import { describe, expect, it } from "vitest";
+
+import type { ApiErrorBody, AttendeesResponse, EventDetail, EventSummary } from "../../shared/api-types";
+import { api, inDays, seedEvent, seedUser, seedUsers } from "../helpers";
+
+/** The list is shared across tests, so always look for *our* event in it. */
+function find(list: EventSummary[], id: string): EventSummary | undefined {
+  return list.find((event) => event.id === id);
+}
+
+describe("GET /api/events", () => {
+  it("lists upcoming events and hides past ones", async () => {
+    const upcoming = await seedEvent({ startsAt: inDays(2) });
+    const past = await seedEvent({ startsAt: inDays(-3) });
+
+    const { status, body } = await api<EventSummary[]>("/api/events");
+
+    expect(status).toBe(200);
+    expect(find(body, upcoming.id)).toBeDefined();
+    expect(find(body, past.id)).toBeUndefined();
+  });
+
+  it("orders by start time, soonest first", async () => {
+    const later = await seedEvent({ startsAt: inDays(40) });
+    const sooner = await seedEvent({ startsAt: inDays(39) });
+
+    const { body } = await api<EventSummary[]>("/api/events");
+    const ids = body.map((event) => event.id);
+
+    expect(ids.indexOf(sooner.id)).toBeGreaterThanOrEqual(0);
+    expect(ids.indexOf(sooner.id)).toBeLessThan(ids.indexOf(later.id));
+    // …and the whole list is sorted, not just our two.
+    const startTimes = body.map((event) => event.startsAt);
+    expect(startTimes).toEqual([...startTimes].sort());
+  });
+
+  it("derives attendeeCount, seatsLeft and isFull from rsvp_count", async () => {
+    const players = await seedUsers(3);
+    const partial = await seedEvent({ capacity: 5, rsvpPlayerIds: players.map((p) => p.id) });
+    const full = await seedEvent({ capacity: 3, rsvpPlayerIds: players.map((p) => p.id) });
+    const empty = await seedEvent({ capacity: 2 });
+
+    const { body } = await api<EventSummary[]>("/api/events");
+
+    expect(find(body, partial.id)).toMatchObject({ attendeeCount: 3, capacity: 5, seatsLeft: 2, isFull: false });
+    expect(find(body, full.id)).toMatchObject({ attendeeCount: 3, capacity: 3, seatsLeft: 0, isFull: true });
+    expect(find(body, empty.id)).toMatchObject({ attendeeCount: 0, seatsLeft: 2, isFull: false });
+  });
+
+  it("includes the organizer's name", async () => {
+    const organizer = await seedUser({ role: "organizer", name: "Cardboard Castle Games" });
+    const event = await seedEvent({ organizer });
+
+    const { body } = await api<EventSummary[]>("/api/events");
+    expect(find(body, event.id)?.organizerName).toBe("Cardboard Castle Games");
+  });
+
+  it("filters by gameType", async () => {
+    const warhammer = await seedEvent({ gameType: "warhammer" });
+    const dnd = await seedEvent({ gameType: "dnd" });
+
+    const { body } = await api<EventSummary[]>("/api/events?gameType=warhammer");
+
+    expect(find(body, warhammer.id)).toBeDefined();
+    expect(find(body, dnd.id)).toBeUndefined();
+    expect(body.every((event) => event.gameType === "warhammer")).toBe(true);
+  });
+
+  it("400s on an unknown gameType", async () => {
+    const { status, body } = await api<ApiErrorBody>("/api/events?gameType=chess");
+    expect(status).toBe(400);
+    expect(body.error.code).toBe("VALIDATION_FAILED");
+    expect(body.error.details?.[0]?.path).toBe("gameType");
+  });
+
+  it("searches the title and the location", async () => {
+    const token = crypto.randomUUID().slice(0, 8);
+    const byTitle = await seedEvent({ title: `Zephyr ${token} Night`, location: "Somewhere Else" });
+    const byLocation = await seedEvent({ title: "Unrelated", location: `Basement of ${token}` });
+    const neither = await seedEvent({ title: "Unrelated", location: "Somewhere Else" });
+
+    const { body } = await api<EventSummary[]>(`/api/events?q=${token}`);
+
+    expect(find(body, byTitle.id)).toBeDefined();
+    expect(find(body, byLocation.id)).toBeDefined();
+    expect(find(body, neither.id)).toBeUndefined();
+  });
+
+  it("treats % and _ in a search as literals, not wildcards", async () => {
+    const token = crypto.randomUUID().slice(0, 8);
+    const literal = await seedEvent({ title: `100% ${token} off` });
+    const decoy = await seedEvent({ title: `100 percent ${token} off` });
+
+    // If `%` were passed through unescaped, `%100%%` would match the decoy too.
+    const { body } = await api<EventSummary[]>(`/api/events?q=${encodeURIComponent(`100% ${token}`)}`);
+
+    expect(find(body, literal.id)).toBeDefined();
+    expect(find(body, decoy.id)).toBeUndefined();
+
+    // Same story for `_`, SQL's single-character wildcard.
+    const underscored = await seedEvent({ title: `a_b ${token}` });
+    const notUnderscored = await seedEvent({ title: `axb ${token}` });
+    const underscore = await api<EventSummary[]>(`/api/events?q=${encodeURIComponent(`a_b ${token}`)}`);
+
+    expect(find(underscore.body, underscored.id)).toBeDefined();
+    expect(find(underscore.body, notUnderscored.id)).toBeUndefined();
+  });
+
+  it("ignores blank filters", async () => {
+    const event = await seedEvent();
+    const { status, body } = await api<EventSummary[]>("/api/events?q=&gameType=");
+    expect(status).toBe(200);
+    expect(find(body, event.id)).toBeDefined();
+  });
+
+  it("does not leak a per-caller field (the list is edge-cacheable by design)", async () => {
+    const player = await seedUser();
+    const event = await seedEvent({ rsvpPlayerIds: [player.id] });
+
+    const { body } = await api<EventSummary[]>("/api/events", { as: player.id });
+    expect(find(body, event.id)).not.toHaveProperty("myRsvp");
+  });
+});
+
+describe("GET /api/events/:id", () => {
+  it("404s for an unknown id", async () => {
+    const { status, body } = await api<ApiErrorBody>(`/api/events/evt_${crypto.randomUUID()}`);
+    expect(status).toBe(404);
+    expect(body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("returns myRsvp = null when nobody is signed in", async () => {
+    const event = await seedEvent();
+    const { status, body } = await api<EventDetail>(`/api/events/${event.id}`);
+    expect(status).toBe(200);
+    expect(body.myRsvp).toBeNull();
+    expect(body.id).toBe(event.id);
+  });
+
+  it("returns myRsvp true/false for a player", async () => {
+    const attending = await seedUser();
+    const other = await seedUser();
+    const event = await seedEvent({ rsvpPlayerIds: [attending.id] });
+
+    expect((await api<EventDetail>(`/api/events/${event.id}`, { as: attending.id })).body.myRsvp).toBe(true);
+    expect((await api<EventDetail>(`/api/events/${event.id}`, { as: other.id })).body.myRsvp).toBe(false);
+  });
+
+  it("returns a past event by id (only the list hides them)", async () => {
+    const event = await seedEvent({ startsAt: inDays(-1) });
+    const { status } = await api<EventDetail>(`/api/events/${event.id}`);
+    expect(status).toBe(200);
+  });
+});
+
+describe("POST /api/events", () => {
+  function payload(overrides: Record<string, unknown> = {}) {
+    return {
+      title: "New Event",
+      gameType: "commander",
+      startsAt: inDays(5),
+      location: "Somewhere",
+      capacity: 6,
+      ...overrides,
+    };
+  }
+
+  it("401s without an identity", async () => {
+    const { status, body } = await api<ApiErrorBody>("/api/events", { method: "POST", body: payload() });
+    expect(status).toBe(401);
+    expect(body.error.code).toBe("AUTH_REQUIRED");
+  });
+
+  it("403s for a player", async () => {
+    const player = await seedUser();
+    const { status, body } = await api<ApiErrorBody>("/api/events", {
+      method: "POST",
+      as: player.id,
+      body: payload(),
+    });
+    expect(status).toBe(403);
+    expect(body.error.code).toBe("FORBIDDEN");
+  });
+
+  it("creates an event with rsvp_count 0 and returns it", async () => {
+    const organizer = await seedUser({ role: "organizer", name: "Metro Meetup Crew" });
+    const { status, body } = await api<EventSummary>("/api/events", {
+      method: "POST",
+      as: organizer.id,
+      body: payload({ title: "  Padded Title  ", capacity: 7 }),
+    });
+
+    expect(status).toBe(201);
+    expect(body).toMatchObject({
+      title: "Padded Title",
+      gameType: "commander",
+      capacity: 7,
+      attendeeCount: 0,
+      seatsLeft: 7,
+      isFull: false,
+      organizerName: "Metro Meetup Crew",
+    });
+    expect(body.startsAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
+
+    // It is really in the board.
+    const list = await api<EventSummary[]>("/api/events");
+    expect(find(list.body, body.id)).toBeDefined();
+  });
+
+  it("normalises a non-UTC start time to UTC seconds", async () => {
+    const organizer = await seedUser({ role: "organizer" });
+    const { body } = await api<EventSummary>("/api/events", {
+      method: "POST",
+      as: organizer.id,
+      body: payload({ startsAt: "2099-03-01T12:30:00-08:00" }),
+    });
+    expect(body.startsAt).toBe("2099-03-01T20:30:00Z");
+  });
+
+  it.each([
+    ["capacity 0", { capacity: 0 }, "capacity"],
+    ["capacity 501", { capacity: 501 }, "capacity"],
+    ["capacity as a string", { capacity: "8" }, "capacity"],
+    ["a fractional capacity", { capacity: 1.5 }, "capacity"],
+    ["a past start time", { startsAt: inDays(-1) }, "startsAt"],
+    ["an unparseable start time", { startsAt: "not-a-date" }, "startsAt"],
+    ["a blank title", { title: "   " }, "title"],
+    ["a blank location", { location: "" }, "location"],
+    ["an unknown gameType", { gameType: "chess" }, "gameType"],
+  ])("400s on %s with a details path", async (_label, overrides, path) => {
+    const organizer = await seedUser({ role: "organizer" });
+    const { status, body } = await api<ApiErrorBody>("/api/events", {
+      method: "POST",
+      as: organizer.id,
+      body: payload(overrides),
+    });
+
+    expect(status).toBe(400);
+    expect(body.error.code).toBe("VALIDATION_FAILED");
+    expect(body.error.details?.map((detail) => detail.path)).toContain(path);
+  });
+
+  it("reports every invalid field in one response", async () => {
+    const organizer = await seedUser({ role: "organizer" });
+    const { status, body } = await api<ApiErrorBody>("/api/events", {
+      method: "POST",
+      as: organizer.id,
+      body: payload({ capacity: 0, startsAt: inDays(-2) }),
+    });
+
+    expect(status).toBe(400);
+    expect(body.error.details?.map((detail) => detail.path).sort()).toEqual(["capacity", "startsAt"]);
+  });
+});
+
+describe("GET /api/events/:id/attendees", () => {
+  it("returns the event and its attendees in RSVP order to the owning organizer", async () => {
+    const organizer = await seedUser({ role: "organizer" });
+    const [first, second, third] = await seedUsers(3);
+    const event = await seedEvent({
+      organizer,
+      capacity: 5,
+      rsvpPlayerIds: [first!.id, second!.id, third!.id],
+    });
+
+    const { status, body } = await api<AttendeesResponse>(`/api/events/${event.id}/attendees`, { as: organizer.id });
+
+    expect(status).toBe(200);
+    expect(body.event.id).toBe(event.id);
+    expect(body.attendees.map((attendee) => attendee.playerId)).toEqual([first!.id, second!.id, third!.id]);
+    expect(body.attendees[0]).toMatchObject({ name: first!.name });
+    expect(body.attendees[0]?.rsvpAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
+  });
+
+  it("403s for a different organizer", async () => {
+    const owner = await seedUser({ role: "organizer" });
+    const stranger = await seedUser({ role: "organizer" });
+    const event = await seedEvent({ organizer: owner });
+
+    const { status, body } = await api<ApiErrorBody>(`/api/events/${event.id}/attendees`, { as: stranger.id });
+    expect(status).toBe(403);
+    expect(body.error.code).toBe("FORBIDDEN");
+  });
+
+  it("403s for a player, even one who is attending", async () => {
+    const player = await seedUser();
+    const event = await seedEvent({ rsvpPlayerIds: [player.id] });
+
+    const { status } = await api<ApiErrorBody>(`/api/events/${event.id}/attendees`, { as: player.id });
+    expect(status).toBe(403);
+  });
+
+  it("401s when signed out", async () => {
+    const event = await seedEvent();
+    const { status } = await api<ApiErrorBody>(`/api/events/${event.id}/attendees`);
+    expect(status).toBe(401);
+  });
+
+  it("404s for an unknown event", async () => {
+    const organizer = await seedUser({ role: "organizer" });
+    const { status } = await api<ApiErrorBody>(`/api/events/evt_${crypto.randomUUID()}/attendees`, {
+      as: organizer.id,
+    });
+    expect(status).toBe(404);
+  });
+});
+
+describe("GET /api/me/hosted", () => {
+  it("returns only the caller's own upcoming events", async () => {
+    const organizer = await seedUser({ role: "organizer" });
+    const mine = await seedEvent({ organizer, startsAt: inDays(4) });
+    const minePast = await seedEvent({ organizer, startsAt: inDays(-4) });
+    const theirs = await seedEvent();
+
+    const { status, body } = await api<EventSummary[]>("/api/me/hosted", { as: organizer.id });
+
+    expect(status).toBe(200);
+    expect(body.map((event) => event.id)).toEqual([mine.id]);
+    expect(find(body, minePast.id)).toBeUndefined();
+    expect(find(body, theirs.id)).toBeUndefined();
+  });
+
+  it("403s for a player", async () => {
+    const player = await seedUser();
+    const { status } = await api<ApiErrorBody>("/api/me/hosted", { as: player.id });
+    expect(status).toBe(403);
+  });
+});

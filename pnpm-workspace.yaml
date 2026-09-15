@@ -1,0 +1,4 @@
+# pnpm 11 requires explicit approval for dependency build scripts.
+allowBuilds:
+  esbuild: true
+  workerd: true

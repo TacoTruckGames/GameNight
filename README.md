@@ -1,1 +1,242 @@
-# GameNight
+# Game Night
+
+A community event board for tabletop players. Organizers post events with a fixed number of seats; players
+find them, RSVP in one tap, cancel in one tap, and keep track of what they've joined. An event can never be
+over-booked — not even when two people grab the last seat at the same instant.
+
+**Hosted:** https://gamenight.tacotruckgames.com
+
+## Run it
+
+Requires Node ≥ 22 and pnpm (`corepack enable` gives you pnpm if you don't have it). No accounts, no Docker,
+no environment variables.
+
+```sh
+pnpm install && pnpm dev        # → http://localhost:5173
+```
+
+That's the whole app: the React client, the API, the database and the per-event Durable Objects all run
+locally inside Cloudflare's `workerd` runtime, exactly as they do in production. `pnpm dev` re-applies the
+migrations and re-seeds the demo board every time it starts (seed dates are relative to *now*, so the "FULL"
+and "one seat left" events are always there).
+
+```sh
+pnpm test                        # 117 tests, incl. the concurrency proofs (~3 s)
+pnpm stress [url] [--players 40] [--capacity 5]   # real-HTTP race against a running server
+pnpm typecheck
+```
+
+Pick a name on the first screen. Players (Alice, Bob, …) can browse and RSVP; the two organizers
+(Cardboard Castle Games, Metro Meetup Crew) can post events and see attendee lists. "Join as a new player"
+creates a fresh player. The seed has seven events: one full (Commander Pod Night, 4/4), one with a single seat
+left (D&D One-Shot, 4/5 — Alice isn't in it, which makes it the hand-run race demo), a few partly filled, one
+empty, and one in the past that the board correctly hides.
+
+## How it works
+
+```
+ phone / laptop
+   React + Vite SPA  ──HTTP /api/*──▶  Cloudflare Worker (Hono, TypeScript)
+                                           │  reads: list / detail / my events / attendees
+                                           ▼
+                                        D1 (SQLite)  ◀── write-through ──┐
+                                           ▲                             │
+                                           │  writes: RSVP / cancel      │
+                                           └──▶  EventRoom Durable Object (one per event)
+```
+
+One Worker serves the static client and the JSON API from the same origin. **D1** is the system of record
+and answers every read. **Every RSVP and cancel is routed through a Durable Object keyed by the event**
+(`EventRoom`), which is the single writer for that event's seats and writes through to D1 in one atomic
+batch. Reads never touch a Durable Object.
+
+```
+worker/          Hono app, routes, auth middleware, D1 queries, the EventRoom DO
+shared/          zod schemas + API types, imported by both worker and client
+src/             React client (pages, components, hooks, theme tokens)
+migrations/      D1 schema        seed/   demo board (idempotent SQL)
+test/            vitest, runs inside workerd against real local D1 + DOs
+scripts/         local db reset, stress test, deploy
+```
+
+## Design decisions
+
+### Identity and roles
+
+No real authentication — the brief allows a "who am I" picker. The client sends `X-User-Id`; the server
+resolves it to a user row and its role on every request, and every route declares who may call it:
+
+| Route | Player | Organizer |
+|---|---|---|
+| `GET /api/events`, `GET /api/events/:id`, `GET /api/users` | ✓ | ✓ (anonymous too) |
+| `POST /api/users` (creates a *player*; organizers are seed-only) | ✓ | ✓ |
+| `PUT` / `DELETE /api/events/:id/rsvp`, `GET /api/me/rsvps` | ✓ | 403 |
+| `POST /api/events`, `GET /api/me/hosted` | 403 | ✓ |
+| `GET /api/events/:id/attendees` | 403 | ✓ only for the owner |
+
+An unknown `X-User-Id` is a 401 everywhere, which the client treats as "your stored identity is gone — pick
+again". Errors are always `{ error: { code, message, details? } }`; validation failures list every bad field
+with a path the form maps straight onto its inputs.
+
+### Never over-booking (S1) and never double-counting (S2)
+
+Two layers, deliberately.
+
+1. **The Durable Object is the linearization point.** All RSVP/cancel calls for one event go through one
+   `EventRoom` instance, whose methods run behind a promise-chain mutex. It keeps the event's capacity and
+   member set in its own SQLite storage; a duplicate RSVP is answered from there without touching the
+   database, and a full event is refused the same way. The mutex matters because the DO awaits D1 in the
+   middle of a mutation, and Durable Object input gates only protect *storage* awaits — without it two
+   `rsvp()` calls could interleave around the D1 round-trip. (`blockConcurrencyWhile` was rejected: a throw
+   inside it resets the object, so a transient D1 error would drop the room, and it has a 30 s ceiling.)
+2. **The D1 write is a guarded insert in one transaction**, so the database itself cannot over-book even if
+   a DO were lost, replaced or bypassed:
+   ```sql
+   INSERT INTO rsvps (event_id, player_id, created_at) SELECT ?1, ?2, ?3
+     WHERE (SELECT COUNT(*) FROM rsvps WHERE event_id = ?1) < (SELECT capacity FROM events WHERE id = ?1)
+     ON CONFLICT (event_id, player_id) DO NOTHING;
+   UPDATE events SET rsvp_count = (SELECT COUNT(*) FROM rsvps WHERE event_id = ?1) WHERE id = ?1;
+   SELECT rsvp_count, capacity FROM events WHERE id = ?1;
+   ```
+   `PRIMARY KEY (event_id, player_id)` is S2 at the schema level; a `CHECK (rsvp_count <= capacity)` is a
+   third net underneath. If D1 ever reports `changes = 0` where the room expected an insert, the room knows
+   it is stale, throws its state away and rehydrates from D1 — that is also how a brand-new room learns
+   about SQL-seeded RSVPs, and how it recovers from storage loss.
+
+Why the DO when the guarded insert alone is correct? Measured, not argued: with the mutex, 25 simultaneous
+RSVPs for 5 seats cost 6 D1 batches (1 hydrate + 5 inserts); without it, 13 plus a resync per loser. The
+DO isolates each event's write spike from every other event, answers retries for free, and is where a
+waitlist or a live seat-count push would live later — with nothing to rewrite.
+
+`PUT` is used for RSVP because the operation is idempotent by contract, which is what lets the client retry
+it on a network failure. Cancel is a hard delete; there is no RSVP history (noted under "before real
+traffic").
+
+### Counts and freshness (S3)
+
+`events.rsvp_count` is a write-through projection: it is recomputed from the `rsvps` rows inside the same
+atomic D1 batch that inserts or deletes an RSVP, so it cannot drift. Every read (list, detail, my events,
+attendees) reads that column straight from D1 with no server-side cache — a count is exact as of the moment
+the query ran. The only staleness is client-side: the list is considered fresh for 10 seconds and is
+refetched on navigation, on window focus, and after every RSVP or cancel. A count you see is therefore at
+most ~10 s old, and the RSVP button is never trusted — the server's 201/200/409 is authoritative, and a 409
+("just filled up") refreshes the card immediately. There are no optimistic updates on purpose: an RSVP is
+precisely the operation the server may refuse, and showing someone a seat they don't have is worse than a
+half-second spinner.
+
+### Other calls the brief left open
+
+- **The event list is user-independent** (`GET /api/events` carries no "am I in it" flag; the client joins
+  that from `/api/me/rsvps`). That is what makes the hot path cacheable later.
+- **Timestamps** are stored and transmitted as UTC ISO-8601 at second precision and displayed in the
+  browser's local zone. Past events are hidden from the board and refuse RSVPs (`409 EVENT_STARTED`).
+- **Game type** is a small fixed enum (Magic Draft, Commander, D&D, Board games, Warhammer, Other),
+  validated by zod, not by a DB constraint, so adding one is a code change rather than a migration.
+- **Search** is a case-insensitive `LIKE` over title and location plus the game-type filter — correct at
+  50 events and at 5,000; full-text search would be gold-plating.
+- **No pagination** (`LIMIT 200`); ~50 live events fit on one screen.
+- **RSVP lives on the card**, not behind the detail page: the primary user is on a phone on a commute, so the
+  decision happens where the information is.
+- Validation runs twice on purpose — the shared zod schema in the browser to skip a round-trip, and the same
+  schema on the server, which is the one that counts.
+
+## Reaching the 12-month column
+
+The launch build already has the shape; here is exactly what changes at ~200k players / ~5k live events /
+100× list reads with 10× event-day spikes:
+
+1. **The list read path** — add a per-colo edge cache (`Cache-Control: public, s-maxage=5` + the Cache API)
+   on `GET /api/events`. The list is identical for every user by design, so this is a one-line change that
+   bounds staleness at ~15 s worst case and caps D1 list reads at ~0.2 QPS per colo *regardless of traffic*.
+   The database does not melt because it never sees the read volume.
+2. **Remaining reads** — D1 read replication (Sessions API) for detail and per-user pages; cursor pagination
+   on the list; an index review once there are thousands of live events.
+3. **Writes** — nothing. Each event is already its own Durable Object, so an event-day spike on one event
+   contends with nothing else, and 5,000 live events are 5,000 independent single-writers.
+4. **Counts** stay a write-through projection; no counters to reconcile.
+
+## Testing
+
+`pnpm test` runs 117 tests *inside* the Workers runtime (`@cloudflare/vitest-plugin`) against a real local
+D1 and real Durable Object instances — the same code paths as production, not mocks.
+
+| Suite | What it proves |
+|---|---|
+| `test/unit/schemas` | every S4 rejection: capacity `0`/`-1`/`1.5`/`501`/`"8"`, past or malformed dates, blank titles, unknown game types |
+| `test/unit/event-room` | hydration from D1; the `changes = 0` self-healing path when D1 and the room disagree |
+| `test/api/*` | every route × every role × every error code; list ordering, filters, `%` escaping in search |
+| `test/concurrency/rsvp-race` | **S1:** 25 simultaneous RSVPs for 1 seat and for 5 seats → exactly `capacity` × 201, the rest 409, and `rsvps` rows == `rsvp_count` == DO members == capacity; then a cancel frees exactly one seat |
+| `test/concurrency/rsvp-idempotent` | **S2:** one player firing 10 identical RSVPs at once → one 201, nine 200s, one row; 10 concurrent cancels → all 200, zero rows; a mixed RSVP/cancel storm ends consistent |
+| `test/concurrency/hydration` | a full event seeded straight into SQL, never touched by a DO → the first RSVP is correctly refused |
+
+The race tests were checked for vacuity: with instrumentation on the mutex, all 25 requests were observed
+queued inside the room simultaneously, and the suite was run five times back to back without a flake.
+
+`pnpm stress` is the real-HTTP proof: it creates a throw-away event and N players, fires N concurrent
+`PUT`s, and exits non-zero if the final count ever exceeds capacity. Removing the capacity guards makes it
+fail, as it should. Run it against the hosted URL:
+
+```sh
+pnpm stress https://gamenight.tacotruckgames.com --players 40 --capacity 5
+```
+
+To see the race by hand: open the app in two browser profiles, pick two different players, and press RSVP
+on the D&D One-Shot (one seat left) in both — one gets in, the other sees "just filled up".
+
+## Time spent
+
+Roughly **3–4 hours** end to end, in one sitting on 2026-09-15:
+
+| Where | ~Time |
+|---|---|
+| Reading the brief, choosing the stack, designing the DO/D1 write path and the test matrix | 1 h |
+| Backend, Durable Object, tests, stress script | 1 h |
+| React client | 45 min (in parallel with the above) |
+| Integration, verification, deploy, README | 45 min |
+
+## How it was built
+
+With Claude Code. I wrote the plan with the model (stack, schema, the exact RSVP SQL, the DO mutex design,
+the freshness statement, the test matrix) and reviewed it before any code existed; implementation agents
+then built the worker, the tests and the client from that plan in parallel, and a final pass integrated
+them. Everything here I can defend line by line, because the parts that matter were verified rather than
+trusted:
+
+- every S1/S2 claim above is backed by a test I read, and the tests were checked for vacuity (see Testing);
+- the Durable Object semantics the design leans on (synchronous `sql.exec`, input gates opening on a D1
+  await, `blockConcurrencyWhile` resetting on throw) were cross-checked against Cloudflare's documentation
+  and then exercised by the concurrency suite;
+- every route was hit over real HTTP with `curl` for each status code, and the stress script was run
+  against both the local server and the hosted deployment.
+
+## Before real traffic
+
+What is stubbed or simplified, roughly in the order I would harden it:
+
+1. **Auth.** `X-User-Id` is trust-the-client. Replace with real sessions (OAuth + signed cookie, or
+   Cloudflare Access for organizers); rate-limit `POST /api/users`; add body-size limits, write rate limits
+   and CSP headers.
+2. **Durable Object trade-offs.** A room lives in one location, so RSVP latency is higher for far-away
+   players (reads are unaffected). Storage loss is recovered by lazy rehydration from D1, but a periodic
+   reconcile alarm that re-derives members from D1 and logs discrepancies would make the DO/D1 divergence
+   window observable rather than merely self-healing.
+3. **Read scaling** as described above: list edge cache, read replication, pagination.
+4. **Event lifecycle.** No edit / cancel-event / capacity change, no waitlist, no RSVP history (cancel is a
+   hard delete), organizers cannot be created through the UI.
+5. **Observability.** Workers Logs is on; add request ids, structured logs around the DO write path,
+   error-rate alerts, and a D1 Time Travel restore drill.
+6. **CI and browser tests.** `pnpm typecheck && pnpm test` on every push, plus a Playwright smoke of the
+   three player flows; the client was verified over HTTP and by hand, not by an automated browser.
+
+## Deploying
+
+```sh
+cp .env.example .env             # CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
+pnpm run deploy                  # typecheck → build → remote D1 migrations → wrangler deploy
+pnpm db:seed:remote              # load the demo board (also resets it after a stress run)
+```
+
+The Worker, its D1 binding, the `EventRoom` Durable Object and the custom domain are all declared in
+`wrangler.toml`; the first deploy creates the DO class and the DNS record. `.env` is only ever read by the
+deploy script and is never bundled: the Vite/Vitest configs set `CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV=false`
+so wrangler does not mistake deploy credentials for Worker dev vars.

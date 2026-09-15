@@ -1,0 +1,17 @@
+# dependencies / build output
+node_modules/
+dist/
+.wrangler/
+
+# secrets — only needed for `pnpm deploy`; see .env.example
+.env
+.env.*
+!.env.example
+.dev.vars
+
+# misc
+*.log
+.DS_Store
+
+# confidential brief, not part of the deliverable
+InterviewReq/
