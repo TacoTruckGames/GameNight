@@ -37,6 +37,9 @@
   --brand-text: #ffffff;
   --brand-muted: #c9c4ea;
   --brand-line: rgb(255 255 255 / 25%);
+  /* Field errors on the brand band: the light-theme danger red is unreadable
+     on indigo, so the band borrows the dark theme's. */
+  --brand-danger: #ff9a92;
   --brand-gradient: linear-gradient(180deg, var(--brand-bg) 0%, var(--brand-bg-deep) 100%);
   --brand-glow-gradient: radial-gradient(60% 80% at 50% 120%, rgb(2 145 255 / 55%), transparent 70%);
 

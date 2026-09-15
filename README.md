@@ -26,9 +26,11 @@ pnpm stress [url] [--players 40] [--capacity 5]   # real-HTTP race against a run
 pnpm typecheck
 ```
 
-Pick a name on the first screen. Players (Alice, Bob, …) can browse and RSVP; the two organizers
-(Cardboard Castle Games, Metro Meetup Crew) can post events and see attendee lists. "Join as a new player"
-creates a fresh player. The seed has seven events: one full (Commander Pod Night, 4/4), one with a single seat
+The first screen has a tab per role. **Player** (Alice, Bob, …) browses and RSVPs; **Organizer**
+(Cardboard Castle Games, Metro Meetup Crew) posts events and sees attendee lists. On either tab, pick someone
+who already exists or type a name to join as somebody new, then press **Join as Player** / **Join as
+Organizer** — so a reviewer can see both halves of the product without editing a database.
+The seed has seven events: one full (Commander Pod Night, 4/4), one with a single seat
 left (D&D One-Shot, 4/5 — Alice isn't in it, which makes it the hand-run race demo), a few partly filled, one
 empty, and one in the past that the board correctly hides.
 
@@ -69,7 +71,7 @@ resolves it to a user row and its role on every request, and every route declare
 | Route | Player | Organizer |
 |---|---|---|
 | `GET /api/events`, `GET /api/events/:id`, `GET /api/users` | ✓ | ✓ (anonymous too) |
-| `POST /api/users` (creates a *player*; organizers are seed-only) | ✓ | ✓ |
+| `POST /api/users` (the caller names the role; defaults to player) | ✓ | ✓ (anonymous too) |
 | `PUT` / `DELETE /api/events/:id/rsvp`, `GET /api/me/rsvps` | ✓ | 403 |
 | `POST /api/events`, `GET /api/me/hosted` | 403 | ✓ |
 | `GET /api/events/:id/attendees` | 403 | ✓ only for the owner |
@@ -77,6 +79,12 @@ resolves it to a user row and its role on every request, and every route declare
 An unknown `X-User-Id` is a 401 everywhere, which the client treats as "your stored identity is gone — pick
 again". Errors are always `{ error: { code, message, details? } }`; validation failures list every bad field
 with a path the form maps straight onto its inputs.
+
+Signup lets the caller choose the role, which in a real product would be indefensible. It is deliberate here:
+the picker already signs anyone in as a seeded organizer, so there is no privilege boundary to protect — only
+a demo board to get into, from a phone, without seeding a database first. The part that *is* load-bearing is
+unchanged and tested: what each role may do is decided server-side on every route, and the table above is
+enforced, not advisory.
 
 ### Never over-booking (S1) and never double-counting (S2)
 
@@ -229,9 +237,10 @@ trusted:
 
 What is stubbed or simplified, roughly in the order I would harden it:
 
-1. **Auth.** `X-User-Id` is trust-the-client. Replace with real sessions (OAuth + signed cookie, or
-   Cloudflare Access for organizers); rate-limit `POST /api/users`; add body-size limits, write rate limits
-   and CSP headers.
+1. **Auth.** `X-User-Id` is trust-the-client, and anyone can mint an organizer account from the picker — both
+   fine for a demo board, neither survives contact with real users. Replace with real sessions (OAuth +
+   signed cookie, or Cloudflare Access for organizers) and make the organizer role something granted rather
+   than self-declared; rate-limit `POST /api/users`; add body-size limits, write rate limits and CSP headers.
 2. **Durable Object trade-offs.** A room lives in one location, so RSVP latency is higher for far-away
    players (reads are unaffected). Storage loss is recovered by lazy rehydration from D1, but a periodic
    reconcile alarm that re-derives members from D1 and logs discrepancies would make the DO/D1 divergence

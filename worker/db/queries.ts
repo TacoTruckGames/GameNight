@@ -68,9 +68,9 @@ export async function listUsers(db: D1Database): Promise<User[]> {
   return results.map((row) => ({ id: row.id, name: row.name, role: row.role as Role }));
 }
 
-export async function insertPlayer(db: D1Database, id: string, name: string): Promise<User> {
-  await db.prepare("INSERT INTO users (id, name, role) VALUES (?1, ?2, 'player')").bind(id, name).run();
-  return { id, name, role: "player" };
+export async function insertUser(db: D1Database, id: string, name: string, role: Role): Promise<User> {
+  await db.prepare("INSERT INTO users (id, name, role) VALUES (?1, ?2, ?3)").bind(id, name, role).run();
+  return { id, name, role };
 }
 
 // ----------------------------------------------------------------- events --

@@ -6,6 +6,7 @@
  */
 
 import { z } from "zod";
+import type { Role } from "./api-types";
 import { GAME_TYPES } from "./game-types";
 
 export const TITLE_MAX = 80;
@@ -59,12 +60,26 @@ export type CreateEventInput = z.infer<CreateEventSchema>;
 
 // -------------------------------------------------------- POST /api/users --
 
-/** Organizers are seed-only; self-signup always produces a player. */
-export const createPlayerSchema = z.object({
+/** One tuple, so the zod enum and the `Role` union cannot drift apart. */
+export const ROLES = ["player", "organizer"] as const satisfies readonly Role[];
+
+export const roleSchema = z.enum(ROLES);
+
+/**
+ * Self-signup. `role` is optional and defaults to `player`, so a caller that
+ * posts only a name still gets the old behaviour.
+ *
+ * Letting the caller pick the role is a demo-board decision, not an oversight:
+ * the picker already signs anyone in as a seeded organizer, so there is no
+ * privilege boundary here to protect. What each role may *do* is still decided
+ * server-side on every route. See the README's "before real traffic" list.
+ */
+export const createUserSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(NAME_MAX, `Name must be ${NAME_MAX} characters or fewer`),
+  role: roleSchema.default("player"),
 });
 
-export type CreatePlayerInput = z.infer<typeof createPlayerSchema>;
+export type CreateUserInput = z.infer<typeof createUserSchema>;
 
 // --------------------------------------------------------- GET /api/events --
 

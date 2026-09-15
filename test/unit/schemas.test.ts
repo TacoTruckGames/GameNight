@@ -8,7 +8,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { createEventSchema, createPlayerSchema, eventsQuerySchema } from "../../shared/schemas";
+import { createEventSchema, createUserSchema, eventsQuerySchema } from "../../shared/schemas";
 
 const NOW = new Date("2026-09-15T12:00:00Z");
 const schema = createEventSchema(NOW);
@@ -123,22 +123,35 @@ describe("createEventSchema", () => {
   });
 });
 
-describe("createPlayerSchema", () => {
+describe("createUserSchema", () => {
   it("trims the name", () => {
-    const result = createPlayerSchema.safeParse({ name: "  Alice  " });
+    const result = createUserSchema.safeParse({ name: "  Alice  " });
     expect(result.success && result.data.name).toBe("Alice");
   });
 
   it.each([["blank", "   "], ["missing", undefined], ["too long", "x".repeat(41)]])(
     "rejects a %s name",
     (_label, name) => {
-      expect(createPlayerSchema.safeParse({ name }).success).toBe(false);
+      expect(createUserSchema.safeParse({ name }).success).toBe(false);
     },
   );
 
   it("accepts exactly 40 characters", () => {
-    expect(createPlayerSchema.safeParse({ name: "x".repeat(40) }).success).toBe(true);
+    expect(createUserSchema.safeParse({ name: "x".repeat(40) }).success).toBe(true);
   });
+
+  it("defaults the role to player and accepts either role", () => {
+    const result = createUserSchema.safeParse({ name: "Alice" });
+    expect(result.success && result.data.role).toBe("player");
+    expect(createUserSchema.safeParse({ name: "Alice", role: "organizer" }).success).toBe(true);
+  });
+
+  it.each([["unknown", "admin"], ["blank", ""], ["wrong case", "Player"]])(
+    "rejects a %s role",
+    (_label, role) => {
+      expect(createUserSchema.safeParse({ name: "Alice", role }).success).toBe(false);
+    },
+  );
 });
 
 describe("eventsQuerySchema", () => {

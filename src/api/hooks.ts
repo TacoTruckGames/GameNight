@@ -27,7 +27,7 @@ import type {
   RsvpResponse,
   User,
 } from "../../shared/api-types";
-import type { CreateEventInput } from "../../shared/schemas";
+import type { CreateEventInput, CreateUserInput } from "../../shared/schemas";
 import { ApiError, NetworkError, apiFetch } from "./client";
 import { useIdentity } from "../identity/IdentityContext";
 import { useToast } from "../components/Toast";
@@ -153,11 +153,11 @@ function useAfterWrite() {
   };
 }
 
-export function useCreatePlayer() {
+export function useCreateUser() {
   const { signIn } = useIdentity();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (name: string) => apiFetch<User>("/api/users", { method: "POST", body: { name } }),
+    mutationFn: (input: CreateUserInput) => apiFetch<User>("/api/users", { method: "POST", body: input }),
     onSuccess: (user) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.users });
       signIn(user);

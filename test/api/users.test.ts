@@ -17,11 +17,10 @@ describe("GET /api/users", () => {
 });
 
 describe("POST /api/users", () => {
-  it("creates a player and never an organizer", async () => {
+  it("defaults to a player when no role is sent", async () => {
     const { status, body } = await api<User>("/api/users", {
       method: "POST",
-      // Role is not even part of the schema; send one anyway to prove it is ignored.
-      body: { name: "  New Player  ", role: "organizer" },
+      body: { name: "  New Player  " },
     });
 
     expect(status).toBe(201);
@@ -33,6 +32,43 @@ describe("POST /api/users", () => {
     const me = await api<User>("/api/me", { as: body.id });
     expect(me.status).toBe(200);
     expect(me.body).toEqual(body);
+  });
+
+  it("creates an organizer when the role is asked for, and the role is real", async () => {
+    const { status, body } = await api<User>("/api/users", {
+      method: "POST",
+      body: { name: "Back Room Games", role: "organizer" },
+    });
+
+    expect(status).toBe(201);
+    expect(body.role).toBe("organizer");
+    expect(body.id).toMatch(/^org_/);
+
+    // The role is not cosmetic: the new account can immediately do the one
+    // thing only organizers may do.
+    const created = await api<{ id: string }>("/api/events", {
+      as: body.id,
+      method: "POST",
+      body: {
+        title: "Opening Night",
+        gameType: "board_games",
+        startsAt: new Date(Date.now() + 86_400_000).toISOString(),
+        location: "Back Room",
+        capacity: 6,
+      },
+    });
+    expect(created.status).toBe(201);
+  });
+
+  it("rejects a role that is not player or organizer", async () => {
+    const { status, body } = await api<ApiErrorBody>("/api/users", {
+      method: "POST",
+      body: { name: "Impostor", role: "admin" },
+    });
+
+    expect(status).toBe(400);
+    expect(body.error.code).toBe("VALIDATION_FAILED");
+    expect(body.error.details?.[0]?.path).toBe("role");
   });
 
   it("rejects a blank name with a field error", async () => {
