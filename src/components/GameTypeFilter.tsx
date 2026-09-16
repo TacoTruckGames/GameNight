@@ -2,10 +2,12 @@
  * Game-type filter as a native `<select>`.
  *
  * It was a chip row, which cost two wrapped rows on a phone and pushed the
- * board itself below the fold. One control that collapses to a single line
- * leaves the first card visible, and the native picker is the one popover worth
+ * board itself below the fold. The native picker is the one popover worth
  * having: the platform renders it as a bottom sheet on iOS and a full-screen
  * list on Android, so it stays thumb-reachable without any code of ours.
+ *
+ * Labelled and full-width like the View and Sort controls below it — the three
+ * together read as one stack of settings rather than three loose shapes.
  *
  * `FILTER_GAME_TYPES` omits `board_games` — still a valid tag, just too broad
  * to filter on.
@@ -17,13 +19,13 @@ import { FILTER_GAME_TYPES, GAME_TYPE_LABELS } from "../../shared/game-types";
 export function GameTypeFilter({ value, onChange }: { value: string; onChange: (next: string) => void }) {
   const selectId = useId();
   return (
-    <div className="filter-group">
-      <label className="visually-hidden" htmlFor={selectId}>
-        Filter by game type
+    <div className="field">
+      <label className="field__label" htmlFor={selectId}>
+        Game
       </label>
       <select
         id={selectId}
-        className="select select--auto"
+        className="select"
         value={value}
         onChange={(event) => onChange(event.target.value)}
       >

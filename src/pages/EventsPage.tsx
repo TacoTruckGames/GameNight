@@ -114,10 +114,8 @@ export function EventsPage() {
             autoComplete="off"
           />
         </div>
-        <div className="filter-groups">
-          <GameTypeFilter value={gameType} onChange={setGameType} />
-          <BoardViewSwitch value={view} onChange={setView} />
-        </div>
+        <GameTypeFilter value={gameType} onChange={setGameType} />
+        <BoardViewSwitch value={view} onChange={setView} />
         {view === "list" ? <EventSortControl value={sort} onChange={setSort} /> : null}
       </div>
 
