@@ -694,7 +694,50 @@ a {
 
 /* The dashboard adds no colours and no new shapes — it is the same cards, chips
    and fields as the rest of the app, plus a grid, a bar and a stack trace.
-   Everything below is layout. */
+   Everything below is layout. The one exception is the operator bar: orange is
+   used here and nowhere else, which is the point of it. */
+
+/* Full width, above everything, in both themes, on every admin page. It sits in
+   normal flow rather than fixed so it can never cover content — you scroll past
+   it, but you cannot arrive without passing it. */
+.admin-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-2) var(--space-4);
+  padding-top: calc(var(--space-2) + env(safe-area-inset-top, 0px));
+  background: var(--admin-bar-bg);
+  color: var(--admin-bar-text);
+  font-size: var(--font-size-sm);
+}
+
+.admin-bar__tag {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px var(--space-2);
+  border: 1px solid var(--admin-bar-line);
+  border-radius: var(--radius-sm);
+}
+
+.admin-bar__text {
+  font-weight: 600;
+  margin-right: auto;
+}
+
+.admin-bar__exit {
+  color: var(--admin-bar-text);
+  font-weight: 700;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
+/* The admin shell has no bottom tab bar, so the column reclaims the space the
+   app's main reserves for one. */
+.shell__main--flush {
+  padding-bottom: var(--space-5);
+}
 
 /* A chip that is a link (the admin section nav), not a toggle. */
 .admin-chip-link {

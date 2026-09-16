@@ -11,10 +11,10 @@
  * commit. The commit button is deliberate — "Join as Organizer" names the
  * consequence, which a bare list of names never did.
  *
- * The Admin tab is the exception: it lists the admins the operator provisioned
- * and offers no "join as someone new" field, because self-signup as an admin is
- * exactly the thing `SIGNUP_ROLES` exists to prevent. (Picking a seeded admin is
- * still a free pass — this is a demo board with no auth; see the README.)
+ * There is deliberately no Admin tab. The main site carries no route into the
+ * operator tools at all — you reach them by typing `/admin`, which has its own
+ * door (`src/admin/AdminGate.tsx`). Keeping admin out of the picker also keeps
+ * it out of `SIGNUP_ROLES`, so self-signup cannot mint one.
  */
 
 import { useEffect, useId, useRef, useState } from "react";
@@ -38,14 +38,14 @@ const TABS = [
     join: "Join as Organizer",
     hint: "Post events and see who is coming.",
   },
-  {
-    role: "admin",
-    label: "Admin",
-    noun: "admin",
-    join: "Join as Admin",
-    hint: "Suspend accounts, fix events, watch for errors.",
-  },
 ] as const satisfies readonly { role: Role; label: string; noun: string; join: string; hint: string }[];
+
+/** The roles this picker offers. An admin signing in lands on the player tab. */
+type PickerRole = (typeof TABS)[number]["role"];
+
+function pickerRoleFor(role: Role | undefined): PickerRole {
+  return role === "organizer" ? "organizer" : "player";
+}
 
 export function WhoAreYou({ onClose }: { onClose?: () => void }) {
   const { user, signIn } = useIdentity();
@@ -53,8 +53,11 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
   const createUser = useCreateUser();
 
   // Open on the tab you are already signed in under, with yourself preselected.
-  const [role, setRole] = useState<Role>(user?.role ?? "player");
-  const [selectedId, setSelectedId] = useState<string | null>(user?.id ?? null);
+  // An admin has no tab here, so they land on the player one with nothing picked.
+  const [role, setRole] = useState<PickerRole>(pickerRoleFor(user?.role));
+  const [selectedId, setSelectedId] = useState<string | null>(
+    user && user.role !== "admin" ? user.id : null,
+  );
   const [name, setName] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -65,7 +68,7 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
   const headingId = `${baseId}-heading`;
   const tabId = (value: Role) => `${baseId}-tab-${value}`;
 
-  const tabRefs = useRef<Record<Role, HTMLButtonElement | null>>({ player: null, organizer: null, admin: null });
+  const tabRefs = useRef<Record<PickerRole, HTMLButtonElement | null>>({ player: null, organizer: null });
   const submitRef = useRef<HTMLButtonElement | null>(null);
   const isModal = onClose !== undefined;
 
@@ -78,7 +81,7 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [isModal, onClose]);
 
-  function selectRole(next: Role) {
+  function selectRole(next: PickerRole) {
     if (next === role) return;
     setRole(next);
     // A selection only means something inside its own tab, and a failed signup
@@ -95,7 +98,7 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
     // Wraps at both ends, as a tablist should.
     const current = TABS.findIndex((item) => item.role === role);
     const step = event.key === "ArrowRight" ? 1 : TABS.length - 1;
-    const next: Role = (TABS[(current + step) % TABS.length] ?? TABS[0]).role;
+    const next: PickerRole = (TABS[(current + step) % TABS.length] ?? TABS[0]).role;
     selectRole(next);
     tabRefs.current[next]?.focus();
   }
@@ -112,9 +115,7 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
 
   const tab = TABS.find((item) => item.role === role) ?? TABS[0];
   const people = (users.data ?? []).filter((person) => person.role === role);
-  // No signup on the Admin tab, so the only way to arm the button is to pick.
-  const canSignUp = role !== "admin";
-  const canJoin = (canSignUp && name.trim() !== "") || selectedId !== null;
+  const canJoin = name.trim() !== "" || selectedId !== null;
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -142,11 +143,7 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
     const picked =
       people.find((person) => person.id === selectedId) ?? (user?.id === selectedId ? user : undefined);
     if (!picked) {
-      setFormError(
-        canSignUp
-          ? `Pick a ${tab.noun} above, or type a name to join as someone new.`
-          : "Pick an admin above to continue.",
-      );
+      setFormError(`Pick a ${tab.noun} above, or type a name to join as someone new.`);
       return;
     }
     setFormError(null);
@@ -192,7 +189,7 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
         ) : people.length === 0 ? (
           <EmptyState
             title={`No ${tab.noun}s yet`}
-            hint={canSignUp ? "Type a name below to be the first." : "The operator provisions admins in the database."}
+            hint="Type a name below to be the first."
           />
         ) : (
           <ul className="stack">
@@ -219,44 +216,33 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
         )}
 
         <form className="stack" onSubmit={submit} noValidate>
-          {canSignUp ? (
-            <div className="field">
-              <label className="field__label" htmlFor={nameInputId}>
-                Or join as a new {tab.noun}
-              </label>
-              <input
-                id={nameInputId}
-                className="input"
-                value={name}
-                onChange={(event) => {
-                  // Typing and picking answer the same question, so one clears
-                  // the other and the button never has to guess which you meant.
-                  setName(event.target.value);
-                  setSelectedId(null);
-                  setFormError(null);
-                }}
-                placeholder="Your name"
-                maxLength={NAME_MAX}
-                autoComplete="name"
-                aria-invalid={formError !== null}
-                aria-describedby={formError ? errorId : undefined}
-              />
-              {formError ? (
-                <p className="field__error" id={errorId}>
-                  {formError}
-                </p>
-              ) : null}
-            </div>
-          ) : (
-            <>
-              <p className="who__hint">Admins are provisioned by the operator.</p>
-              {formError ? (
-                <p className="field__error" id={errorId}>
-                  {formError}
-                </p>
-              ) : null}
-            </>
-          )}
+          <div className="field">
+            <label className="field__label" htmlFor={nameInputId}>
+              Or join as a new {tab.noun}
+            </label>
+            <input
+              id={nameInputId}
+              className="input"
+              value={name}
+              onChange={(event) => {
+                // Typing and picking answer the same question, so one clears
+                // the other and the button never has to guess which you meant.
+                setName(event.target.value);
+                setSelectedId(null);
+                setFormError(null);
+              }}
+              placeholder="Your name"
+              maxLength={NAME_MAX}
+              autoComplete="name"
+              aria-invalid={formError !== null}
+              aria-describedby={formError ? errorId : undefined}
+            />
+            {formError ? (
+              <p className="field__error" id={errorId}>
+                {formError}
+              </p>
+            ) : null}
+          </div>
           {createUser.error ? <ErrorBanner error={createUser.error} /> : null}
           <button
             ref={submitRef}

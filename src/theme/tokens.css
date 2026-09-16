@@ -40,6 +40,14 @@
   /* Field errors on the brand band: the light-theme danger red is unreadable
      on indigo, so the band borrows the dark theme's. */
   --brand-danger: #ff9a92;
+
+  /* The operator bar. An environment marker, so it is the SAME orange in both
+     themes and is never redefined below — you should not have to work out which
+     theme you are in to know you are about to change live data. Its own text is
+     7.8:1 on it, and it is the one place this palette uses orange at all. */
+  --admin-bar-bg: #f59e0b;
+  --admin-bar-text: #2b1a05;
+  --admin-bar-line: rgb(43 26 5 / 30%);
   --brand-gradient: linear-gradient(180deg, var(--brand-bg) 0%, var(--brand-bg-deep) 100%);
   --brand-glow-gradient: radial-gradient(60% 80% at 50% 120%, rgb(2 145 255 / 55%), transparent 70%);
 

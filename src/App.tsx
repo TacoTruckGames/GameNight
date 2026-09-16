@@ -6,6 +6,7 @@
  * and an unknown/absent user gets the picker instead of a broken signed-in UI.
  */
 
+import { useLocation } from "react-router";
 import { AppRoutes } from "./routes";
 import { ErrorBanner } from "./components/ErrorBanner";
 import { Logo } from "./components/Logo";
@@ -16,6 +17,7 @@ import { WhoAreYou } from "./identity/WhoAreYou";
 
 export function App() {
   const { status, retry } = useIdentity();
+  const { pathname } = useLocation();
 
   if (status === "loading") {
     return (
@@ -42,7 +44,11 @@ export function App() {
     );
   }
 
-  if (status === "anonymous") return <WhoAreYou />;
+  // `/admin` owns its own door (`AdminGate`), so a stranger who types that URL
+  // must not be handed the player picker instead — it would be the one place
+  // the main site "leaked" into the operator route, just in the other
+  // direction. Every other path without an identity gets the picker.
+  if (status === "anonymous" && !pathname.startsWith("/admin")) return <WhoAreYou />;
 
   return <AppRoutes />;
 }

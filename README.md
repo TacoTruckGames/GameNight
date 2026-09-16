@@ -29,8 +29,8 @@ pnpm typecheck
 The first screen has a tab per role. **Player** (Alice, Bob, …) browses and RSVPs; **Organizer**
 (Cardboard Castle Games, Metro Meetup Crew) posts events and sees attendee lists. On either tab, pick someone
 who already exists or type a name to join as somebody new, then press **Join as Player** / **Join as
-Organizer** — so a reviewer can see both halves of the product without editing a database. A third tab,
-**Admin**, holds the one seeded operator account (*Site Admin*) — see "Administration" below.
+Organizer** — so a reviewer can see both halves of the product without editing a database. Operator tools
+are not on this screen at all: they live at **/admin**, typed — see "Administration" below.
 The seed has seven events: one full (Commander Pod Night, 4/4), one with a single seat
 left (D&D One-Shot, 4/5 — Alice isn't in it, which makes it the hand-run race demo), a few partly filled, one
 empty, and one in the past that the board correctly hides.
@@ -140,9 +140,14 @@ half-second spinner.
 - **Timestamps** are stored and transmitted as UTC ISO-8601 at second precision and displayed in the
   browser's local zone. Past events are hidden from the board and refuse RSVPs (`409 EVENT_STARTED`).
 - **Game type** is a small fixed enum (Magic Draft, Commander, D&D, Board games, Warhammer, Other),
-  validated by zod, not by a DB constraint, so adding one is a code change rather than a migration.
+  validated by zod, not by a DB constraint, so adding one is a code change rather than a migration. The
+  board offers all but "Board games" as filter chips — it is a real tag, just too broad to filter on.
 - **Search** is a case-insensitive `LIKE` over title and location plus the game-type filter — correct at
   50 events and at 5,000; full-text search would be gold-plating.
+- **Sort** (`?sort=`) is `date` (soonest first, the default) or `popular`: fullest-first by *ratio* of seats
+  taken, so a 3-of-4 table outranks a 4-of-8 one, tie-broken by start time. Full tables sort last under
+  `popular` — they are the most popular of all, but the top of the board should be seats you can still take.
+  Both orderings end in `e.id`, so the order is total and a refresh never reshuffles equal rows.
 - **No pagination** (`LIMIT 200`); ~50 live events fit on one screen.
 - **RSVP lives on the card**, not behind the detail page: the primary user is on a phone on a commute, so the
   decision happens where the information is.
@@ -163,7 +168,12 @@ credit, so this stays deliberately minimal.
 
 ### Administration
 
-`/admin` is the operator's entry point, reachable by picking **Site Admin** on the Admin tab. It is small on
+`/admin` is the operator's entry point, and it is reached **only by typing that URL** — the main site has no
+tab, link or redirect into it, and the identity picker offers no admin role. Landing there without an
+operator identity gives you the door (`AdminGate`): continue as one of the seeded operator accounts
+(*Site Admin*). Every operator page wears a fixed **orange bar** — the same colour in both themes, since
+"am I about to change live data?" should not depend on noticing a tint — and the admin site has its own
+shell, without the app's bottom tabs. It is small on
 purpose: an overview (counts, 14-day signups and RSVPs, open errors, recent admin actions), **Users**
 (search/filter, suspend with an optional reason, unsuspend), **Events** (every event, past and cancelled
 included; edit any field, cancel/restore, remove an attendee) and **Errors** (the backend error log).

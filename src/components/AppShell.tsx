@@ -5,6 +5,10 @@
  * Bottom tabs rather than a drawer or a top nav because the thumb is at the
  * bottom of the phone, and the tab set is role-dependent — a player never sees
  * organizer tools and vice versa.
+ *
+ * Nothing here links to `/admin`, on purpose: the operator tools are reached by
+ * typing the URL, and they have their own shell (`src/admin/AdminShell.tsx`).
+ * An admin signed in on the main site is just a reader of the board.
  */
 
 import { useState } from "react";
@@ -52,11 +56,9 @@ export function AppShell() {
       <nav className="shell__tabs" aria-label="Main">
         <div className="shell__tabs-inner">
           <Tab to="/" label="Events" icon="events" end />
-          {isAdmin ? (
-            <Tab to="/admin" label="Admin" icon="shield" />
-          ) : isOrganizer ? (
+          {isOrganizer ? (
             <Tab to="/organize" label="Organize" icon="organize" />
-          ) : (
+          ) : isAdmin ? null : (
             <Tab to="/me" label="My events" icon="mine" />
           )}
         </div>

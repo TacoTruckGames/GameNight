@@ -32,6 +32,9 @@ const PAIRS = [
   ["--color-success", "--color-success-soft"],
   ["--brand-text", "--brand-bg"],
   ["--brand-muted", "--brand-bg"],
+  // The operator bar is one fixed orange in both themes; audit it in both anyway,
+  // so a future theme edit that redefines it gets caught here rather than in prod.
+  ["--admin-bar-text", "--admin-bar-bg"],
   ["--color-focus", "--color-bg", 3],
   ["--color-focus", "--color-surface", 3],
 ];
