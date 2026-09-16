@@ -1,24 +1,31 @@
 /**
- * The board. Search + game-type chips + a list of cards you can RSVP to
- * without leaving the page.
+ * The board. Search + game-type chips, then the same list of RSVP-able cards
+ * in one of two shapes: **List** (day-grouped under the default `date` sort,
+ * flat under `popular` — a rank has no day boundaries) or **Calendar**, which
+ * is not a second data source but the very same `useEvents` result re-rendered
+ * as a month grid, so there is no new endpoint and no second cache to age.
  *
  * `GET /api/events` is deliberately user-independent (so it stays cacheable),
  * so "You're in" comes from `GET /api/me/rsvps` and is joined here on the
  * client.
  */
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { DEFAULT_EVENT_SORT, type EventSort } from "../../shared/event-sort";
 import { SEARCH_MAX } from "../../shared/schemas";
 import { useEvents, useMyRsvpIds } from "../api/hooks";
+import { AgendaList } from "../components/AgendaList";
+import { BoardViewSwitch, DEFAULT_BOARD_VIEW, type BoardView } from "../components/BoardViewSwitch";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { EventCard } from "../components/EventCard";
 import { EventSortControl } from "../components/EventSort";
 import { Icon } from "../components/Icon";
 import { GameTypeFilter } from "../components/GameTypeFilter";
+import { MonthCalendar } from "../components/MonthCalendar";
 import { EventListSkeleton } from "../components/Skeleton";
 import { useIdentity } from "../identity/IdentityContext";
+import { dayKey, formatMonthLabel, groupByDay, monthOf, sameMonth, type DayKey, type YearMonth } from "../lib/calendar";
 
 const DEBOUNCE_MS = 250;
 
@@ -28,6 +35,9 @@ export function EventsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [gameType, setGameType] = useState("");
   const [sort, setSort] = useState<EventSort>(DEFAULT_EVENT_SORT);
+  const [view, setView] = useState<BoardView>(DEFAULT_BOARD_VIEW);
+  const [month, setMonth] = useState<YearMonth>(() => monthOf(dayKey(new Date())!));
+  const [selectedDay, setSelectedDay] = useState<DayKey | null>(null); // the user's explicit tap only
   const searchId = useId();
 
   // One request per pause in typing, not one per keystroke.
@@ -36,9 +46,24 @@ export function EventsPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const events = useEvents({ q: debouncedSearch, gameType, sort });
+  // The grid is chronological by construction, so calendar view always asks for
+  // the default sort — which also shares the query cache with the default list.
+  const effectiveSort = view === "calendar" ? DEFAULT_EVENT_SORT : sort;
+  const events = useEvents({ q: debouncedSearch, gameType, sort: effectiveSort });
   const myRsvpIds = useMyRsvpIds();
   const filtered = debouncedSearch !== "" || gameType !== "";
+
+  const todayKey = dayKey(new Date())!; // `new Date()` is always valid; per render is fine
+  const groups = useMemo(() => groupByDay(events.data ?? []), [events.data]);
+  const counts = useMemo(() => new Map(groups.map((group) => [group.key, group.events.length])), [groups]);
+
+  // Selection is derived with a fallback chain, never synced into state by an
+  // effect: explicit tap if it still has events in the shown month → today →
+  // first day with events in the shown month → nothing.
+  const pick = (key: DayKey | null) => (key !== null && counts.has(key) && sameMonth(monthOf(key), month) ? key : null);
+  const effectiveDay =
+    pick(selectedDay) ?? pick(todayKey) ?? groups.find((group) => sameMonth(monthOf(group.key), month))?.key ?? null;
+  const selectedGroup = groups.find((group) => group.key === effectiveDay) ?? null;
 
   return (
     <>
@@ -65,7 +90,10 @@ export function EventsPage() {
           />
         </div>
         <GameTypeFilter value={gameType} onChange={setGameType} />
-        <EventSortControl value={sort} onChange={setSort} />
+        <div className="filter-groups">
+          <BoardViewSwitch value={view} onChange={setView} />
+          {view === "list" ? <EventSortControl value={sort} onChange={setSort} /> : null}
+        </div>
       </div>
 
       {events.isPending ? (
@@ -91,6 +119,27 @@ export function EventsPage() {
             ) : null
           }
         />
+      ) : view === "calendar" ? (
+        <div className="stack stack--loose">
+          <MonthCalendar
+            month={month}
+            todayKey={todayKey}
+            counts={counts}
+            selectedDay={effectiveDay}
+            onSelectDay={setSelectedDay}
+            onMonthChange={(next) => {
+              setMonth(next);
+              setSelectedDay(null);
+            }}
+          />
+          {selectedGroup ? (
+            <AgendaList groups={[selectedGroup]} myRsvpIds={myRsvpIds} showRsvp={isPlayer} busy={events.isFetching} />
+          ) : (
+            <EmptyState title={`No events in ${formatMonthLabel(month)}`} hint="Try the next month or clear the filters." />
+          )}
+        </div>
+      ) : sort === "date" ? (
+        <AgendaList groups={groups} myRsvpIds={myRsvpIds} showRsvp={isPlayer} busy={events.isFetching} />
       ) : (
         <ul className="stack" aria-busy={events.isFetching}>
           {events.data?.map((event) => (

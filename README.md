@@ -21,7 +21,7 @@ migrations and re-seeds the demo board every time it starts (seed dates are rela
 and "one seat left" events are always there).
 
 ```sh
-pnpm test                        # 184 tests, incl. the concurrency proofs (~3 s)
+pnpm test                        # 213 tests, incl. the concurrency proofs (~3 s)
 pnpm stress [url] [--players 40] [--capacity 5]   # real-HTTP race against a running server
 pnpm typecheck
 ```
@@ -148,6 +148,16 @@ half-second spinner.
   taken, so a 3-of-4 table outranks a 4-of-8 one, tie-broken by start time. Full tables sort last under
   `popular` — they are the most popular of all, but the top of the board should be seats you can still take.
   Both orderings end in `e.id`, so the order is total and a refresh never reshuffles equal rows.
+- **Agenda headers.** Under the default `date` sort the board groups cards by *local* day ("Fri, Sep 18 ·
+  3 events"); `popular` stays flat because a rank has no day boundaries. Grouping is a client-side pass over
+  the same list keyed by an `Intl`-derived local day, never by the UTC string — a 7 PM Pacific table must not
+  land under Saturday.
+- **Calendar view** is a second rendering of the same `GET /api/events` result: no new endpoint, same search
+  and type filters, the 200-row cap is the board's cap. Month grid, Monday-first so the weekend sits
+  together, a count per day, tap a day to get the ordinary cards beneath — the card stays the RSVP surface
+  because a title does not fit a phone-width cell. Day cells are plain labelled buttons (empty days
+  disabled), not an ARIA grid, because a list of buttons is correct with zero focus-management code. Sort is
+  hidden in this view; the grid is chronological by construction.
 - **No pagination** (`LIMIT 200`); ~50 live events fit on one screen.
 - **RSVP lives on the card**, not behind the detail page: the primary user is on a phone on a commute, so the
   decision happens where the information is.
@@ -209,13 +219,14 @@ The launch build already has the shape; here is exactly what changes at ~200k pl
 
 ## Testing
 
-`pnpm test` runs 184 tests *inside* the Workers runtime (`@cloudflare/vitest-plugin`) against a real local
+`pnpm test` runs 213 tests *inside* the Workers runtime (`@cloudflare/vitest-plugin`) against a real local
 D1 and real Durable Object instances — the same code paths as production, not mocks.
 
 | Suite | What it proves |
 |---|---|
 | `test/unit/schemas` | every S4 rejection: capacity `0`/`-1`/`1.5`/`501`/`"8"`, past or malformed dates, blank titles, unknown game types |
 | `test/unit/event-room` | hydration from D1; the `changes = 0` self-healing path when D1 and the room disagree |
+| `test/unit/calendar` | local-day keys across the UTC-midnight boundary in both directions, grouping order, month grids for Sunday- and Monday-first weeks, leap February, today marking |
 | `test/api/*` | every route × every role × every error code; list ordering, filters, `%` escaping in search |
 | `test/concurrency/rsvp-race` | **S1:** 25 simultaneous RSVPs for 1 seat and for 5 seats → exactly `capacity` × 201, the rest 409, and `rsvps` rows == `rsvp_count` == DO members == capacity; then a cancel frees exactly one seat |
 | `test/concurrency/rsvp-idempotent` | **S2:** one player firing 10 identical RSVPs at once → one 201, nine 200s, one row; 10 concurrent cancels → all 200, zero rows; a mixed RSVP/cancel storm ends consistent |

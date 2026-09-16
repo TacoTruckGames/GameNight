@@ -393,6 +393,126 @@ a {
   color: var(--color-accent-text);
 }
 
+/* ------------------------------------------------------- agenda + calendar -- */
+
+/* View and Sort are two captioned chip groups sharing one row: they wrap to
+   two rows on a narrow phone rather than squeezing. */
+.filter-groups {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.agenda__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  margin-bottom: var(--space-2);
+}
+
+.agenda__count {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.cal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.cal__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.cal__month {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  text-align: center;
+}
+
+/* The width math: a 390px phone leaves ~358px of content, so seven cells with
+   six 4px gaps come out ~47px each — wider than the 44px tap target. At 320px
+   they narrow to ~37px, but `min-height` keeps them 44px tall, which is the
+   dimension a thumb misses on. */
+.cal__weekdays,
+.cal__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-1);
+}
+
+.cal__grid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cal__weekday {
+  text-align: center;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.cal__day {
+  width: 100%;
+  min-height: var(--tap-target);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* An empty day is still readable, just plainly not a target. */
+.cal__day:disabled {
+  background: transparent;
+  border-color: transparent;
+  color: var(--color-muted);
+  cursor: default;
+}
+
+.cal__count {
+  font-size: var(--font-size-sm);
+  font-weight: 650;
+  color: var(--color-accent-strong);
+}
+
+/* `:disabled` above is class + pseudo-class, so a bare `.cal__day--today` would
+   lose to it and an empty today would go ringless; matching the specificity
+   keeps the ring whether or not today has a table. */
+.cal__day--today,
+.cal__day--today:disabled {
+  border-color: var(--color-accent);
+  color: var(--color-accent-strong);
+}
+
+.cal__day[aria-pressed="true"] {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-text);
+}
+
+.cal__day[aria-pressed="true"] .cal__count {
+  color: inherit;
+}
+
 /* ----------------------------------------------------------------- forms -- */
 
 .field {
