@@ -29,7 +29,7 @@ import { PlaceCombobox } from "../components/PlaceCombobox";
 import { SeatChip } from "../components/SeatChip";
 import { EventListSkeleton } from "../components/Skeleton";
 import { useToast } from "../components/Toast";
-import { defaultLocalInputValue, formatEventDateTime, localInputToIso, toDateTimeAttr } from "../lib/datetime";
+import { defaultEventStartValue, formatEventDateTime, localInputToIso, toDateTimeAttr } from "../lib/datetime";
 
 type FieldErrors = Partial<Record<"title" | "gameType" | "startsAt" | "location" | "placeId" | "capacity", string>>;
 
@@ -53,7 +53,7 @@ function NewEventForm() {
 
   const [title, setTitle] = useState("");
   const [gameType, setGameType] = useState<GameType>("magic_draft");
-  const [startsAtLocal, setStartsAtLocal] = useState(() => defaultLocalInputValue(48));
+  const [startsAtLocal, setStartsAtLocal] = useState(() => defaultEventStartValue(48));
   const [location, setLocation] = useState("");
   const [placeId, setPlaceId] = useState<string | null>(null);
   const [placeSession, setPlaceSession] = useState<string | null>(null);
@@ -109,7 +109,7 @@ function NewEventForm() {
         setPlaceId(null);
         setPlaceSession(null); // the billing session ends with the write it paid for
         setCapacity("8");
-        setStartsAtLocal(defaultLocalInputValue(48));
+        setStartsAtLocal(defaultEventStartValue(48));
       },
       onError: (error) => {
         if (error instanceof ApiError && error.code === "VALIDATION_FAILED" && error.details) {
@@ -123,6 +123,21 @@ function NewEventForm() {
         }
         setFormError(error);
       },
+    });
+  }
+
+  /**
+   * An error outlives the mistake it describes unless editing the field retires
+   * it — "Title is required" under a filled title is a lie, and the red ring
+   * fights the focus ring while the user types the fix. Submit still decides:
+   * this only forgets, it never re-validates.
+   */
+  function clearError(field: keyof FieldErrors) {
+    setErrors((prev) => {
+      if (prev[field] === undefined) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
     });
   }
 
@@ -140,7 +155,10 @@ function NewEventForm() {
           id={ids.title}
           className="input"
           value={title}
-          onChange={(event) => setTitle(event.target.value)}
+          onChange={(event) => {
+            setTitle(event.target.value);
+            clearError("title");
+          }}
           maxLength={TITLE_MAX}
           placeholder="Friday Night Draft"
           aria-invalid={errors.title !== undefined}
@@ -161,7 +179,10 @@ function NewEventForm() {
           id={ids.gameType}
           className="select"
           value={gameType}
-          onChange={(event) => setGameType(event.target.value as GameType)}
+          onChange={(event) => {
+            setGameType(event.target.value as GameType);
+            clearError("gameType");
+          }}
           aria-invalid={errors.gameType !== undefined}
           aria-describedby={describedBy("gameType", ids.gameType)}
         >
@@ -187,7 +208,10 @@ function NewEventForm() {
           className="input"
           type="datetime-local"
           value={startsAtLocal}
-          onChange={(event) => setStartsAtLocal(event.target.value)}
+          onChange={(event) => {
+            setStartsAtLocal(event.target.value);
+            clearError("startsAt");
+          }}
           aria-invalid={errors.startsAt !== undefined}
           aria-describedby={describedBy("startsAt", ids.startsAt)}
         />
@@ -206,9 +230,15 @@ function NewEventForm() {
         <PlaceCombobox
           id={ids.location}
           value={location}
-          onValueChange={setLocation}
+          onValueChange={(next) => {
+            setLocation(next);
+            clearError("location");
+          }}
           placeId={placeId}
-          onPlaceIdChange={setPlaceId}
+          onPlaceIdChange={(next) => {
+            setPlaceId(next);
+            clearError("placeId");
+          }}
           sessionToken={placeSession}
           onSessionTokenChange={setPlaceSession}
           maxLength={LOCATION_MAX}
@@ -238,7 +268,10 @@ function NewEventForm() {
           max={CAPACITY_MAX}
           step={1}
           value={capacity}
-          onChange={(event) => setCapacity(event.target.value)}
+          onChange={(event) => {
+            setCapacity(event.target.value);
+            clearError("capacity");
+          }}
           aria-invalid={errors.capacity !== undefined}
           aria-describedby={describedBy("capacity", ids.capacity)}
         />

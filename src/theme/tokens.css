@@ -27,6 +27,11 @@
   --color-success: #1f7a4d;
   --color-success-soft: #e2f3ea;
   --color-border: #dcd9ea;
+  /* A second border, for controls that are nothing but an outline (secondary
+     buttons, unpressed chips). In light mode it is barely a shade past the
+     hairline; in dark mode `--color-border` sits too close to the surface to
+     read as an edge at all, so this one carries the difference. */
+  --color-border-strong: #bdb8d6;
   --color-focus: #6e64da;
   --color-overlay: rgb(15 5 28 / 55%);
 
@@ -95,6 +100,7 @@
     --color-success: #7fd8a8;
     --color-success-soft: #17301f;
     --color-border: #332c4d;
+    --color-border-strong: #6c6494;
     --color-focus: #a49fda;
     --color-overlay: rgb(0 0 0 / 65%);
 

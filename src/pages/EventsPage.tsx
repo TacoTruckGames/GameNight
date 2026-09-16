@@ -25,7 +25,16 @@ import { GameTypeFilter } from "../components/GameTypeFilter";
 import { MonthCalendar } from "../components/MonthCalendar";
 import { EventListSkeleton } from "../components/Skeleton";
 import { useIdentity } from "../identity/IdentityContext";
-import { dayKey, formatMonthLabel, groupByDay, monthOf, sameMonth, type DayKey, type YearMonth } from "../lib/calendar";
+import {
+  dayKey,
+  formatMonthLabel,
+  groupByDay,
+  monthOf,
+  sameMonth,
+  shiftMonth,
+  type DayKey,
+  type YearMonth,
+} from "../lib/calendar";
 
 const DEBOUNCE_MS = 250;
 
@@ -64,6 +73,19 @@ export function EventsPage() {
   const effectiveDay =
     pick(selectedDay) ?? pick(todayKey) ?? groups.find((group) => sameMonth(monthOf(group.key), month))?.key ?? null;
   const selectedGroup = groups.find((group) => group.key === effectiveDay) ?? null;
+
+  // Both of these are reached from two places now (the calendar's own controls
+  // and the empty states below), so they live here rather than being retyped —
+  // changing month always drops the explicit tap, which belonged to the month
+  // you just left.
+  const showMonth = (next: YearMonth) => {
+    setMonth(next);
+    setSelectedDay(null);
+  };
+  const clearFilters = () => {
+    setSearch("");
+    setGameType("");
+  };
 
   return (
     <>
@@ -106,36 +128,47 @@ export function EventsPage() {
           hint={filtered ? "Try a different search or clear the filters." : "Check back soon — organizers post new tables regularly."}
           action={
             filtered ? (
-              <button
-                type="button"
-                className="btn btn--sm btn--secondary"
-                onClick={() => {
-                  setSearch("");
-                  setGameType("");
-                }}
-              >
+              <button type="button" className="btn btn--sm btn--secondary" onClick={clearFilters}>
                 Clear filters
               </button>
             ) : null
           }
         />
       ) : view === "calendar" ? (
-        <div className="stack stack--loose">
+        // `board-calendar` is the desktop hook only: wide enough, the grid and
+        // the selected day's cards sit side by side instead of stacked.
+        <div className="stack stack--loose board-calendar">
           <MonthCalendar
             month={month}
             todayKey={todayKey}
             counts={counts}
             selectedDay={effectiveDay}
             onSelectDay={setSelectedDay}
-            onMonthChange={(next) => {
-              setMonth(next);
-              setSelectedDay(null);
-            }}
+            onMonthChange={showMonth}
           />
           {selectedGroup ? (
             <AgendaList groups={[selectedGroup]} myRsvpIds={myRsvpIds} showRsvp={isPlayer} busy={events.isFetching} />
           ) : (
-            <EmptyState title={`No events in ${formatMonthLabel(month)}`} hint="Try the next month or clear the filters." />
+            <EmptyState
+              title={`No events in ${formatMonthLabel(month)}`}
+              hint={filtered ? "Try another month, or clear the filters." : "Try another month."}
+              action={
+                <>
+                  <button
+                    type="button"
+                    className="btn btn--sm btn--secondary"
+                    onClick={() => showMonth(shiftMonth(month, 1))}
+                  >
+                    Next month
+                  </button>
+                  {filtered ? (
+                    <button type="button" className="btn btn--sm btn--secondary" onClick={clearFilters}>
+                      Clear filters
+                    </button>
+                  ) : null}
+                </>
+              }
+            />
           )}
         </div>
       ) : sort === "date" ? (

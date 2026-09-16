@@ -1,11 +1,13 @@
 /**
- * The honest count (S3), in three words or fewer.
+ * The honest count (S3), in a handful of words.
  *
- * "You're in" wins over the seat count: once you have a seat, how many are
- * left is somebody else's problem.
+ * "You're in" leads once you have a seat — but it no longer *replaces* the
+ * count. How full the table is stays useful after you join: it is what you
+ * check before telling a friend to grab a seat, and the board, My events and
+ * the detail page all render this same chip.
  *
- * The icon repeats what the word says so the states are still distinct states
- * without colour.
+ * The icon repeats what the leading word says so the states are still distinct
+ * states without colour.
  *
  * "Cancelled" outranks everything, including "You're in": if an admin pulled the
  * event, how many seats are left — and whether you had one — stopped mattering.
@@ -34,14 +36,17 @@ export function SeatChip({
         Cancelled
       </span>
     );
+  const full = isFull || seatsLeft <= 0;
   if (joined)
+    // A middle dot rather than a second sentence: the chip is one nowrap line
+    // and has to survive a 390px-wide card next to the RSVP button.
     return (
       <span className="seat-chip seat-chip--mine">
         <Icon name="in" size={16} />
-        You're in
+        You're in · {full ? "table full" : `${seatsLeft} of ${capacity} left`}
       </span>
     );
-  if (isFull || seatsLeft <= 0)
+  if (full)
     return (
       <span className="seat-chip seat-chip--full">
         <Icon name="full" size={16} />

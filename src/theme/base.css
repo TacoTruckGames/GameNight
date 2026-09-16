@@ -4,7 +4,9 @@
  *
  * Mobile-first: the primary user is a player on a phone during a commute, so
  * the page is a single 640px-max column with a bottom tab bar and 44px tap
- * targets; wider screens just get more margin.
+ * targets; wider screens mostly just get more margin. The exceptions are
+ * gathered in one `desktop` section at the foot of this file — the only width
+ * queries here.
  */
 
 *,
@@ -82,6 +84,19 @@ a {
   gap: var(--space-3);
 }
 
+/* The wordmark keeps its width and the identity takes whatever is left, so a
+   long name eats the header's empty space and ellipsises only when it would
+   reach the Switch button — no width query needed. */
+.shell__header-inner > .brand {
+  flex: none;
+}
+
+.shell__header-inner > .shell__identity,
+.shell__header-inner > .shell__identity-name {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
 /* Logo + wordmark lockup: header, identity screen and the boot screens all show
    the same thing, so they share one class. */
 .brand {
@@ -96,8 +111,14 @@ a {
 .shell__identity {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--space-2);
   min-width: 0;
+}
+
+/* Switch is the target; it never gives up width to the name beside it. */
+.shell__identity > .btn {
+  flex: none;
 }
 
 .shell__identity-name {
@@ -106,7 +127,10 @@ a {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 10ch;
+  /* A cap, not a crop: "Cardboard Castle Games" fits where the header is wide
+     and the flex shrink above trims it on a phone. At 10ch the two demo
+     organizers both rendered as "Cardboard …". */
+  max-width: 26ch;
 }
 
 .shell__main {
@@ -180,6 +204,9 @@ a {
   color: var(--color-accent-text);
   font: inherit;
   font-weight: 650;
+  /* `.btn` is worn by both <button> and <a>; without this the links inside a
+     bordered button keep the browser's underline and the two stop matching. */
+  text-decoration: none;
   cursor: pointer;
 }
 
@@ -191,10 +218,12 @@ a {
   cursor: not-allowed;
 }
 
+/* Outlined controls carry their own edge: the hairline that separates a card
+   from the page is too faint in dark mode for a button to read as pressable. */
 .btn--secondary {
   background: var(--color-surface);
   color: var(--color-text);
-  border-color: var(--color-border);
+  border-color: var(--color-border-strong);
 }
 
 .btn--danger {
@@ -374,7 +403,9 @@ a {
   min-height: var(--tap-target);
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-pill);
-  border: 1px solid var(--color-border);
+  /* Same reason as `.btn--secondary`: an unpressed chip is an outline and
+     nothing else, so it needs the edge that reads in both themes. */
+  border: 1px solid var(--color-border-strong);
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
@@ -397,11 +428,12 @@ a {
 
 /* The game-type dropdown and the View chips on one line — the filter is a
    `<select>` precisely so the two fit. They wrap rather than squeeze if a long
-   game name and a narrow phone run out of room. */
+   game name and a narrow phone run out of room. Packed left, not spread: with
+   `space-between` the "View" caption drifted to the right edge while the "Sort"
+   row below it started hard left, and the two rows lined up with nothing. */
 .filter-groups {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
   gap: var(--space-2) var(--space-4);
 }
 
@@ -463,14 +495,18 @@ a {
   color: var(--color-muted);
 }
 
+/* Two explicit rows, because only a day with events renders the count span: a
+   content-sized cell made every week row a different height and left the day
+   numbers staggered. The second row is reserved whether or not the span exists,
+   so every cell is the same height and every number sits in the same place. */
 .cal__day {
   width: 100%;
+  height: 100%;
   min-height: var(--tap-target);
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: 1fr 1.25em;
   align-items: center;
-  justify-content: center;
-  gap: 2px;
+  justify-items: center;
   padding: var(--space-1);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -685,12 +721,27 @@ a {
   position: relative;
   isolation: isolate;
   min-height: 100dvh;
-  justify-content: center;
+  /* Centred only while there is room to centre. With eight seeded profiles the
+     column is taller than the viewport, and `justify-content: center` overflows
+     it at BOTH ends: the "Join as Player" button was cut off by the bottom edge
+     and the top of the list was unreachable above the scroll origin. Auto
+     margins collapse to zero once the free space is gone — `safe center`
+     without depending on that keyword's support — so tall content starts at the
+     top and scrolls all the way through. */
+  justify-content: flex-start;
   background: var(--brand-glow-gradient), var(--brand-gradient);
   background-attachment: fixed;
   color: var(--brand-text);
   padding-block: var(--space-5);
   padding-inline: max(var(--space-4), calc((100% - var(--page-max)) / 2));
+}
+
+.who--full > :first-child {
+  margin-block-start: auto;
+}
+
+.who--full > :last-child {
+  margin-block-end: auto;
 }
 
 .who--full::before {

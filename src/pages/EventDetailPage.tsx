@@ -5,6 +5,7 @@
  * `GET /api/events/:id` carries `myRsvp`, so this page needs no join.
  */
 
+import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { gameTypeLabel } from "../../shared/game-types";
 import { mapsDirectionsUrl } from "../../shared/maps-links";
@@ -16,6 +17,7 @@ import { RsvpButton } from "../components/RsvpButton";
 import { SeatChip } from "../components/SeatChip";
 import { Skeleton } from "../components/Skeleton";
 import { useIdentity } from "../identity/IdentityContext";
+import { WhoAreYou } from "../identity/WhoAreYou";
 import { formatEventDateTimeLong, toDateTimeAttr } from "../lib/datetime";
 
 export function EventDetailPage() {
@@ -26,6 +28,9 @@ export function EventDetailPage() {
   // The one public page that asks. The board deliberately does not: the flags
   // change nothing there, so a request per list would buy nothing.
   const maps = useMapsConfig({ enabled: true });
+  // Same move as the header's "Switch": an organizer who wants this seat does
+  // not have to go hunting for that button, the picker opens right here.
+  const [switching, setSwitching] = useState(false);
 
   if (event.isPending) {
     return (
@@ -115,9 +120,16 @@ export function EventDetailPage() {
             block
           />
         ) : cancelled ? null : (
-          <p className="text-sm muted">Sign in as a player to RSVP.</p>
+          // Not a disclaimer in the primary slot: you *are* signed in, just not
+          // as someone who can take a seat, and this is the button that fixes
+          // that without leaving the page.
+          <button type="button" className="btn btn--secondary btn--block" onClick={() => setSwitching(true)}>
+            Switch to a player to RSVP
+          </button>
         )}
       </div>
+
+      {switching ? <WhoAreYou onClose={() => setSwitching(false)} /> : null}
     </div>
   );
 }

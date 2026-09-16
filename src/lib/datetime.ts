@@ -77,9 +77,16 @@ export function isoToLocalInput(iso: string): string {
   return at ? toLocalInput(at) : "";
 }
 
-/** Local wall time `n` hours from now, formatted for a `datetime-local` value. */
-export function defaultLocalInputValue(hoursFromNow: number): string {
+/** Game nights start after work, so a new one defaults to 7pm, not to whatever o'clock it is now. */
+const EVENING_HOUR = 19;
+
+/**
+ * The "Starts" default: 7pm local on the day `hoursFromNow` lands on. Keeps the
+ * must-be-future contract — an evening already gone rolls to the next one.
+ */
+export function defaultEventStartValue(hoursFromNow: number): string {
   const at = new Date(Date.now() + hoursFromNow * 3_600_000);
-  at.setMinutes(0, 0, 0);
+  at.setHours(EVENING_HOUR, 0, 0, 0);
+  if (at.getTime() <= Date.now()) at.setDate(at.getDate() + 1);
   return toLocalInput(at);
 }

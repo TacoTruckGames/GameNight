@@ -62,7 +62,7 @@ export function AttendeesPage() {
       </div>
 
       {list.length === 0 ? (
-        <EmptyState title="No RSVPs yet" hint="Share the event — seats fill up fast." />
+        <EmptyState title="No RSVPs yet" hint="The event is live on the board with every seat open; names land here as players RSVP." />
       ) : (
         <ul className="stack" aria-busy={attendees.isFetching}>
           {list.map((attendee) => (
