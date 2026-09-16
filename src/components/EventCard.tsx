@@ -7,6 +7,7 @@ import { Link } from "react-router";
 import type { EventSummary } from "../../shared/api-types";
 import { gameTypeLabel } from "../../shared/game-types";
 import { formatEventDateTime, toDateTimeAttr } from "../lib/datetime";
+import { MapLink } from "./MapLink";
 import { SeatChip } from "./SeatChip";
 import { RsvpButton } from "./RsvpButton";
 
@@ -26,13 +27,15 @@ export function EventCard({
         <span className="card__title">{event.title}</span>
         <span className="card__meta">
           <time dateTime={toDateTimeAttr(event.startsAt)}>{formatEventDateTime(event.startsAt)}</time>
-          {" · "}
-          {event.location}
         </span>
         <span className="card__meta">
           <span className="badge">{gameTypeLabel(event.gameType)}</span> Hosted by {event.organizerName}
         </span>
       </Link>
+      {/* A sibling of the card link, never a child: an `<a>` cannot nest in an
+          `<a>`, and the stretched-link trick that hides the nesting from the
+          browser still breaks text selection on the address you want to read. */}
+      <MapLink event={event} />
       <div className="card__row">
         <SeatChip
           seatsLeft={event.seatsLeft}

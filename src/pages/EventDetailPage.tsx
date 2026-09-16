@@ -7,8 +7,11 @@
 
 import { Link, useParams } from "react-router";
 import { gameTypeLabel } from "../../shared/game-types";
-import { useEvent, useMyRsvpIds } from "../api/hooks";
+import { mapsDirectionsUrl } from "../../shared/maps-links";
+import { useEvent, useMapsConfig, useMyRsvpIds } from "../api/hooks";
 import { ErrorBanner } from "../components/ErrorBanner";
+import { EventMiniMap } from "../components/EventMiniMap";
+import { MapLink } from "../components/MapLink";
 import { RsvpButton } from "../components/RsvpButton";
 import { SeatChip } from "../components/SeatChip";
 import { Skeleton } from "../components/Skeleton";
@@ -20,6 +23,9 @@ export function EventDetailPage() {
   const { isPlayer } = useIdentity();
   const event = useEvent(id);
   const myRsvpIds = useMyRsvpIds();
+  // The one public page that asks. The board deliberately does not: the flags
+  // change nothing there, so a request per list would buy nothing.
+  const maps = useMapsConfig({ enabled: true });
 
   if (event.isPending) {
     return (
@@ -62,7 +68,27 @@ export function EventDetailPage() {
           <p>
             <time dateTime={toDateTimeAttr(detail.startsAt)}>{formatEventDateTimeLong(detail.startsAt)}</time>
           </p>
-          <p className="muted">{detail.location}</p>
+          {/* The venue block: the label you can tap, the address Google
+              confirmed (only when it adds something the label does not already
+              say), the map, and the one button the phone user came for. */}
+          <div className="venue">
+            <MapLink event={detail} className="card__address venue__link" />
+            {detail.place && detail.place.address !== detail.location ? (
+              <p className="text-sm muted venue__address">{detail.place.address}</p>
+            ) : null}
+            {detail.place && maps.map ? (
+              <EventMiniMap eventId={detail.id} place={detail.place} location={detail.location} />
+            ) : null}
+            <a
+              className="btn btn--secondary venue__directions"
+              href={mapsDirectionsUrl(detail)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Directions
+              <span className="visually-hidden"> — opens in Google Maps</span>
+            </a>
+          </div>
           <div>
             <SeatChip
               seatsLeft={detail.seatsLeft}

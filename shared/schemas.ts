@@ -12,6 +12,10 @@ import { GAME_TYPES } from "./game-types";
 
 export const TITLE_MAX = 80;
 export const LOCATION_MAX = 120;
+/** Google documents no maximum for a place id; 512 is generous and bounds the column. */
+export const PLACE_ID_MAX = 512;
+/** A uuid in practice, but kept loose — see `placeSessionToken` below. */
+export const PLACE_SESSION_MAX = 64;
 export const NAME_MAX = 40;
 export const SEARCH_MAX = 80;
 export const CAPACITY_MIN = 1;
@@ -50,6 +54,22 @@ export function createEventSchema(now: Date) {
       .trim()
       .min(1, "Location is required")
       .max(LOCATION_MAX, `Location must be ${LOCATION_MAX} characters or fewer`),
+    /**
+     * The only piece of place data a client may send. The server resolves the
+     * address and coordinates itself — a client-supplied latitude is not
+     * evidence of anything.
+     *
+     * Absent means "free text"; an explicit `null` on an admin patch means
+     * "unlink the venue". Both are ordinary, so neither is an error.
+     */
+    placeId: z.string().trim().min(1).max(PLACE_ID_MAX).nullish(),
+    /**
+     * Google's autocomplete session token, so the keystrokes and the final
+     * lookup bill as one session. Deliberately lax validation: a billing hint
+     * must never be the reason an event fails to post, so a malformed token is
+     * dropped by the places client rather than rejected with a 400 here.
+     */
+    placeSessionToken: z.string().trim().max(PLACE_SESSION_MAX).optional(),
     capacity: z
       .int(`Capacity must be a whole number between ${CAPACITY_MIN} and ${CAPACITY_MAX}`)
       .min(CAPACITY_MIN, `Capacity must be at least ${CAPACITY_MIN}`)

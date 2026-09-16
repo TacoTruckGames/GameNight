@@ -40,13 +40,35 @@ export interface User {
 /** Cancellation is a status, not a delete: RSVP rows and the audit trail survive. */
 export type EventStatus = "scheduled" | "cancelled";
 
+/**
+ * A venue Google could confirm, or `null` when the organizer typed free text —
+ * which is an ordinary state, not a failure. `location` is always present and is
+ * what a human reads; this is the machine-readable half that makes a map pin and
+ * an exact deep link possible.
+ *
+ * Deliberately has no `name`: `displayName` is a Pro-tier Place Details field,
+ * and `location` already carries the name the organizer chose. Every field here
+ * is resolved server-side — a client may only ever send a `placeId`.
+ */
+export interface EventPlace {
+  /** Google's id as *returned* by Place Details; it can differ from the one asked for if a place moved. */
+  id: string;
+  /** Google's canonical `formattedAddress`. Not length-capped: it is their string, not ours. */
+  address: string;
+  lat: number;
+  lng: number;
+}
+
 export interface EventSummary {
   id: string;
   title: string;
   gameType: GameType;
   /** ISO-8601 UTC, e.g. "2026-09-17T19:00:00Z". Rendered in local time. */
   startsAt: string;
+  /** The human label, always present. The venue's name lives here. */
   location: string;
+  /** The map-linked venue, when there is one. */
+  place: EventPlace | null;
   capacity: number;
   attendeeCount: number;
   seatsLeft: number;
@@ -100,6 +122,8 @@ export type ApiErrorCode =
   | "EVENT_STARTED" //     409 — event is in the past
   | "EVENT_CANCELLED" //   409 — an admin cancelled the event; no new RSVPs
   | "RSVP_UNAVAILABLE" //  503 — DO/D1 write failed; safe to retry (PUT/DELETE are idempotent)
+  | "PLACE_UNAVAILABLE" // 503 — the maps provider is down or over budget. Only an *admin* edit
+  //                             sees this: posting an event degrades to free text instead.
   | "INTERNAL"; //         500
 
 export interface ApiFieldError {

@@ -15,7 +15,7 @@
 
 import { SELF, env } from "cloudflare:test";
 
-import type { Role } from "../shared/api-types";
+import type { EventPlace, Role } from "../shared/api-types";
 import type { GameType } from "../shared/game-types";
 
 export const BASE = "http://gamenight.test";
@@ -77,6 +77,8 @@ export interface SeededEvent {
   location: string;
   capacity: number;
   roomKey: string;
+  /** The verified venue, or `null` for the free-text case (the default). */
+  place: EventPlace | null;
 }
 
 export interface SeedEventOptions {
@@ -88,6 +90,12 @@ export interface SeedEventOptions {
   location?: string;
   gameType?: GameType;
   organizer?: SeededUser;
+  /**
+   * A verified venue, written straight into the five place columns — the same
+   * way `seed/seed.sql` does it, and with no API key or network involved.
+   * Omitted means free text, which is the ordinary case and stays the default.
+   */
+  place?: EventPlace | null;
 }
 
 /**
@@ -108,11 +116,13 @@ export async function seedEvent(options: SeedEventOptions = {}): Promise<SeededE
     location: options.location ?? "Test Hall",
     capacity: options.capacity ?? 4,
     roomKey: crypto.randomUUID().replaceAll("-", "").slice(0, 16),
+    place: options.place ?? null,
   };
 
   await env.DB.prepare(
-    `INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, capacity, rsvp_count, room_key)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, ?8)`,
+    `INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, capacity, rsvp_count, room_key,
+                         place_id, place_address, place_lat, place_lng, place_resolved_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, ?8, ?9, ?10, ?11, ?12, ?13)`,
   )
     .bind(
       event.id,
@@ -123,6 +133,11 @@ export async function seedEvent(options: SeedEventOptions = {}): Promise<SeededE
       event.location,
       event.capacity,
       event.roomKey,
+      event.place?.id ?? null,
+      event.place?.address ?? null,
+      event.place?.lat ?? null,
+      event.place?.lng ?? null,
+      event.place ? isoSeconds(new Date()) : null,
     )
     .run();
 

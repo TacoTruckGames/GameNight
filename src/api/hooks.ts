@@ -97,6 +97,16 @@ export const queryKeys = {
     event: (id: string) => ["admin", "events", "detail", id] as const,
     errors: (status: string) => ["admin", "errors", status] as const,
   },
+  /** One key for the whole app: the capability flags never vary by user. */
+  mapsConfig: ["places", "config"] as const,
+  /**
+   * The session token is part of the key on purpose. It is what the Worker
+   * forwards to Google, so two sessions are genuinely two different requests —
+   * and within one session, backspacing back to a prefix is a cache hit and
+   * costs nothing, which is where the de-duplication that makes this affordable
+   * actually happens.
+   */
+  placeSuggestions: (q: string, session: string) => ["places", "suggest", session, q] as const,
 };
 
 // ----------------------------------------------------------------- queries --
@@ -170,6 +180,96 @@ export function useMyRsvpIds(): Set<string> {
   const ids = new Set<string>();
   for (const event of data ?? []) ids.add(event.id);
   return ids;
+}
+
+// ----------------------------------------------------------------- places --
+// Maps is an enhancement bolted onto a product that works without it, so every
+// hook here fails to "off" rather than to an error state.
+
+/**
+ * What the deployment can actually do, from `GET /api/places/config`. Two flags
+ * and not one, because the two halves have separate quotas and either can be
+ * switched off on its own.
+ */
+export interface MapsConfig {
+  /** Venue autocomplete in the organizer and admin forms. */
+  suggest: boolean;
+  /** The static mini map on an event page. */
+  map: boolean;
+}
+
+/** One place suggestion, already flattened by the Worker. */
+export interface PlaceSuggestion {
+  placeId: string;
+  /** Usually the venue name — "Cardboard Castle". */
+  primaryText: string;
+  /** Usually the street and city — "412 Pine St, Seattle, WA". */
+  secondaryText: string;
+}
+
+interface PlaceSuggestionsResponse {
+  suggestions: PlaceSuggestion[];
+}
+
+/**
+ * Degraded is the default, and a module constant so the identity is stable
+ * across renders. A deployment with no key, a request in flight and a request
+ * that failed all land here, and all three mean the same thing to the UI: show
+ * the plain text input and no map.
+ */
+const MAPS_OFF: MapsConfig = { suggest: false, map: false };
+
+/** Shorter than this, `GET /api/places/suggest` answers `[]` without calling out. */
+export const PLACE_QUERY_MIN = 3;
+
+const PLACE_SUGGEST_STALE_MS = 5 * 60_000;
+
+/**
+ * Call this ONLY from the two forms and the event detail page. The public board
+ * must make zero extra requests to render — the flags change nothing there, and
+ * a config fetch per card list would be a request the feature does not earn.
+ *
+ * `staleTime: Infinity` because a Worker secret cannot appear mid-session, and
+ * `retry: false` because a failure and a `false` are the same answer.
+ */
+export function useMapsConfig({ enabled }: { enabled: boolean }): MapsConfig {
+  const { data } = useQuery({
+    queryKey: queryKeys.mapsConfig,
+    queryFn: ({ signal }) => apiFetch<MapsConfig>("/api/places/config", { signal }),
+    enabled,
+    staleTime: Infinity,
+    retry: false,
+  });
+  return data ?? MAPS_OFF;
+}
+
+/**
+ * Venue suggestions for the combobox. Organizer- and admin-only server-side, so
+ * this stays disabled without an identity rather than collecting 403s.
+ *
+ * The endpoint answers 200 with an empty array for every degraded path, so
+ * "disabled", "over budget" and "upstream down" all arrive as "no matches" and
+ * the caller needs no error branch.
+ */
+export function usePlaceSuggestions(
+  q: string,
+  session: string,
+  enabled: boolean,
+): UseQueryResult<PlaceSuggestion[], unknown> {
+  const { userId } = useIdentity();
+  return useQuery({
+    queryKey: queryKeys.placeSuggestions(q, session),
+    queryFn: ({ signal }) => {
+      const params = new URLSearchParams({ q, session });
+      return apiFetch<PlaceSuggestionsResponse>(`/api/places/suggest?${params.toString()}`, {
+        userId,
+        signal,
+      }).then((response) => response.suggestions);
+    },
+    enabled: enabled && userId !== null && session !== "" && q.length >= PLACE_QUERY_MIN,
+    staleTime: PLACE_SUGGEST_STALE_MS,
+    retry: false,
+  });
 }
 
 // --------------------------------------------------------------- mutations --

@@ -8,6 +8,7 @@ import { Link, useParams } from "react-router";
 import { useAttendees } from "../api/hooks";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBanner } from "../components/ErrorBanner";
+import { MapLink } from "../components/MapLink";
 import { SeatChip } from "../components/SeatChip";
 import { Skeleton } from "../components/Skeleton";
 import { formatEventDateTime, formatEventDateTimeLong, toDateTimeAttr } from "../lib/datetime";
@@ -48,9 +49,8 @@ export function AttendeesPage() {
         <h1 className="page-title">{event.title}</h1>
         <p className="card__meta">
           <time dateTime={toDateTimeAttr(event.startsAt)}>{formatEventDateTimeLong(event.startsAt)}</time>
-          {" · "}
-          {event.location}
         </p>
+        <MapLink event={event} />
         <div>
           <SeatChip
             seatsLeft={event.seatsLeft}

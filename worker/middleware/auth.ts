@@ -80,3 +80,21 @@ export function requireOrganizer(c: Context<AppEnv>): User {
 export function requireAdmin(c: Context<AppEnv>): User {
   return requireRole(c, "admin", "Admins only.");
 }
+
+/**
+ * The one place the exact-role rule bends, and only for a *read*.
+ *
+ * Venue autocomplete costs money per keystroke, so it cannot be anonymous — but
+ * the two people who fill in a venue field are the organizer posting an event
+ * and the admin fixing one, and an operator locked out of the tool they are
+ * meant to operate with is not a security boundary, it is a bug. Nothing is
+ * written here, so the usual "operators operate, they do not play" reasoning
+ * does not apply.
+ */
+export function requireOrganizerOrAdmin(c: Context<AppEnv>): User {
+  const user = requireUser(c);
+  if (user.role !== "organizer" && user.role !== "admin") {
+    throw new ApiError(403, "FORBIDDEN", "Only organizers can look up a venue.");
+  }
+  return user;
+}

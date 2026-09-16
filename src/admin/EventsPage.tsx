@@ -13,6 +13,7 @@ import { gameTypeLabel } from "../../shared/game-types";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { Icon } from "../components/Icon";
+import { MapLink } from "../components/MapLink";
 import { SeatChip } from "../components/SeatChip";
 import { Skeleton } from "../components/Skeleton";
 import { formatEventDateTime, toDateTimeAttr } from "../lib/datetime";
@@ -135,13 +136,13 @@ export function AdminEventsPage() {
                     <span className="card__title">{event.title}</span>
                     <span className="card__meta">
                       <time dateTime={toDateTimeAttr(event.startsAt)}>{formatEventDateTime(event.startsAt)}</time>
-                      {" · "}
-                      {event.location}
                     </span>
                     <span className="card__meta">
                       <span className="badge">{gameTypeLabel(event.gameType)}</span> Hosted by {event.organizerName}
                     </span>
                   </Link>
+                  {/* Outside the card link — `<a>` cannot nest in `<a>`. */}
+                  <MapLink event={event} />
                   <div className="card__row">
                     <SeatChip
                       seatsLeft={event.seatsLeft}

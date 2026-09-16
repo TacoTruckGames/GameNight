@@ -385,3 +385,59 @@ describe("GET /api/me/hosted", () => {
     expect(status).toBe(403);
   });
 });
+
+/**
+ * Appended with the verified-venues feature.
+ *
+ * The point of the whole design is that `location` did not change: it is still
+ * the required free-text label, and the place data sits *alongside* it. Which
+ * means search has two haystacks now, and the interesting case is the one where
+ * they disagree.
+ */
+describe("GET /api/events?q= — searching the verified address", () => {
+  const PIKE = {
+    id: "place-pike-hall",
+    address: "1501 Pike Pl, Seattle, WA 98101, USA",
+    lat: 47.6094,
+    lng: -122.3417,
+  };
+
+  it("finds an event by its canonical address when the typed label says nothing of the sort", async () => {
+    // "back room" is exactly the kind of label an organizer types, and exactly
+    // the kind nobody searches for. The address is what a player knows.
+    const event = await seedEvent({ location: "The back room", place: PIKE, startsAt: inDays(5) });
+
+    const { status, body } = await api<EventSummary[]>("/api/events?q=Pike%20Pl");
+
+    expect(status).toBe(200);
+    expect(find(body, event.id)).toBeDefined();
+    expect(find(body, event.id)?.location).toBe("The back room"); // label untouched
+  });
+
+  it("still matches the typed label, and still matches the title", async () => {
+    const event = await seedEvent({ title: "Unique Draft Night", location: "Somewhere Specific", startsAt: inDays(5) });
+
+    expect(find((await api<EventSummary[]>("/api/events?q=Somewhere%20Specific")).body, event.id)).toBeDefined();
+    expect(find((await api<EventSummary[]>("/api/events?q=Unique%20Draft")).body, event.id)).toBeDefined();
+  });
+
+  it("does not match an event whose address merely exists", async () => {
+    const event = await seedEvent({ location: "The back room", place: PIKE, startsAt: inDays(5) });
+    const { body } = await api<EventSummary[]>("/api/events?q=Nowhere%20Boulevard%20Xyzzy");
+    expect(find(body, event.id)).toBeUndefined();
+  });
+
+  it("keeps escaping LIKE wildcards in the new clause too", async () => {
+    // `%` is a literal, here as everywhere else: a search for it must not turn
+    // into a full-table match.
+    const event = await seedEvent({ location: "The back room", place: PIKE, startsAt: inDays(5) });
+    const { body } = await api<EventSummary[]>("/api/events?q=%25");
+    expect(find(body, event.id)).toBeUndefined();
+  });
+
+  it("carries the place through to the detail endpoint", async () => {
+    const event = await seedEvent({ location: "The back room", place: PIKE, startsAt: inDays(5) });
+    const { body } = await api<EventDetail>(`/api/events/${event.id}`);
+    expect(body.place).toEqual(PIKE);
+  });
+});

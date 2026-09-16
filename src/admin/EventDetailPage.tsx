@@ -23,6 +23,8 @@ import type { AdminEventPatch } from "../../shared/schemas";
 import { ApiError } from "../api/client";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBanner } from "../components/ErrorBanner";
+import { MapLink } from "../components/MapLink";
+import { PlaceCombobox } from "../components/PlaceCombobox";
 import { SeatChip } from "../components/SeatChip";
 import { Skeleton } from "../components/Skeleton";
 import {
@@ -35,9 +37,9 @@ import {
 import { AdminPage } from "./AdminNav";
 import { useAdminEvent, usePatchEvent, useRemoveAttendee, useSetEventStatus } from "./hooks";
 
-type FieldErrors = Partial<Record<"title" | "gameType" | "startsAt" | "location" | "capacity", string>>;
+type FieldErrors = Partial<Record<"title" | "gameType" | "startsAt" | "location" | "placeId" | "capacity", string>>;
 
-const FIELDS = new Set(["title", "gameType", "startsAt", "location", "capacity"]);
+const FIELDS = new Set(["title", "gameType", "startsAt", "location", "placeId", "capacity"]);
 
 function asFieldKey(path: string): keyof FieldErrors | null {
   const head = path.split(".")[0] ?? "";
@@ -58,6 +60,8 @@ function EditForm({ event }: { event: AdminEventDetail }) {
   const [gameType, setGameType] = useState<GameType>(event.gameType);
   const [startsAtLocal, setStartsAtLocal] = useState(() => isoToLocalInput(event.startsAt));
   const [location, setLocation] = useState(event.location);
+  const [placeId, setPlaceId] = useState<string | null>(event.place?.id ?? null);
+  const [placeSession, setPlaceSession] = useState<string | null>(null);
   const [capacity, setCapacity] = useState(String(event.capacity));
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<unknown>(null);
@@ -71,8 +75,14 @@ function EditForm({ event }: { event: AdminEventDetail }) {
     setGameType(event.gameType);
     setStartsAtLocal(isoToLocalInput(event.startsAt));
     setLocation(event.location);
+    setPlaceId(event.place?.id ?? null);
+    setPlaceSession(null); // the save consumed the autocomplete session
     setCapacity(String(event.capacity));
-  }, [event.title, event.gameType, event.startsAt, event.location, event.capacity]);
+    // `event.place?.id`, not `event.place`: the dependency list is an explicit
+    // field list, and the object is a fresh reference on every refetch — which
+    // would re-run this effect (and stomp the admin's in-progress edit) on any
+    // background refresh.
+  }, [event.title, event.gameType, event.startsAt, event.location, event.place?.id, event.capacity]);
 
   function submit(formEvent: FormEvent<HTMLFormElement>) {
     formEvent.preventDefault();
@@ -86,6 +96,15 @@ function EditForm({ event }: { event: AdminEventDetail }) {
     if (gameType !== event.gameType) patch["gameType"] = gameType;
     if (startsAtLocal !== isoToLocalInput(event.startsAt)) patch["startsAt"] = startsAt ?? "";
     if (location !== event.location) patch["location"] = location;
+    // Compare the *id string*, never `event.place` itself. This diff is built on
+    // reference equality, and `place` is a fresh object on every refetch — so
+    // comparing the objects would put `placeId` in every single save, spend a
+    // billed Place Details lookup each time, and write "placeId" into every
+    // audit row whether or not the venue moved.
+    if (placeId !== (event.place?.id ?? null)) {
+      patch["placeId"] = placeId;
+      if (placeSession !== null) patch["placeSessionToken"] = placeSession;
+    }
     if (capacityNumber !== event.capacity) patch["capacity"] = capacityNumber;
 
     if (Object.keys(patch).length === 0) {
@@ -199,20 +218,45 @@ function EditForm({ event }: { event: AdminEventDetail }) {
         <label className="field__label" htmlFor={ids.location}>
           Location
         </label>
-        <input
+        <PlaceCombobox
           id={ids.location}
-          className="input"
           value={location}
-          onChange={(changed) => setLocation(changed.target.value)}
+          onValueChange={setLocation}
+          placeId={placeId}
+          onPlaceIdChange={setPlaceId}
+          sessionToken={placeSession}
+          onSessionTokenChange={setPlaceSession}
           maxLength={LOCATION_MAX}
-          aria-invalid={errors.location !== undefined}
-          aria-describedby={describedBy("location", ids.location)}
+          invalid={errors.location !== undefined}
+          describedBy={describedBy("location", ids.location)}
         />
+        {event.place ? (
+          <p className="text-sm muted">
+            Linked venue: <span className="admin-mono">{event.place.address}</span>. Editing the label unlinks it;
+            pick a suggestion to re-point it.
+          </p>
+        ) : (
+          <p className="text-sm muted">No verified venue — the address is free text.</p>
+        )}
         {errors.location ? (
           <p className="field__error" id={`${ids.location}-error`}>
             {errors.location}
           </p>
         ) : null}
+        {errors.placeId ? <p className="field__error">{errors.placeId}</p> : null}
+        {/* Its own button, not a save: unlinking is the one place an operator
+            wants to change *only* the venue and see it happen immediately. */}
+        <button
+          type="button"
+          className="btn btn--sm btn--secondary field__aside"
+          disabled={!event.place || patchEvent.isPending}
+          onClick={() => {
+            setPlaceId(null);
+            patchEvent.mutate({ placeId: null } as AdminEventPatch);
+          }}
+        >
+          Remove venue link
+        </button>
       </div>
 
       <div className="field">
@@ -338,7 +382,10 @@ export function AdminEventDetailPage() {
             <time dateTime={toDateTimeAttr(detail.startsAt)}>{formatEventDateTimeLong(detail.startsAt)}</time>{" "}
             <span className="muted">(your local time)</span>
           </p>
-          <p className="muted">{detail.location}</p>
+          <MapLink event={detail} />
+          {detail.place && detail.place.address !== detail.location ? (
+            <p className="text-sm muted">{detail.place.address}</p>
+          ) : null}
           <p className="card__meta">
             <span className="badge">{gameTypeLabel(detail.gameType)}</span> Hosted by {detail.organizerName}{" "}
             <span className="admin-mono">{detail.organizerId}</span>

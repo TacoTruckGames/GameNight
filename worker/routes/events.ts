@@ -10,14 +10,62 @@ import { Hono } from "hono";
 
 import type { AttendeesResponse, EventDetail } from "../../shared/api-types";
 import { createEventSchema, eventsQuerySchema } from "../../shared/schemas";
-import { getEventRow, hasRsvp, insertEvent, listAttendees, listUpcomingEvents, toEventSummary } from "../db/queries";
+import {
+  getEventRow,
+  hasRsvp,
+  insertEvent,
+  listAttendees,
+  listUpcomingEvents,
+  toEventSummary,
+  type ResolvedPlace,
+} from "../db/queries";
 import type { AppEnv } from "../lib/context";
 import { ApiError } from "../lib/errors";
+import { redact, resolvePlaceId } from "../lib/places";
+import { reportError } from "../lib/report";
 import { nowIso, toIsoSeconds } from "../lib/time";
 import { parseJson, parseQuery } from "../lib/validate";
 import { requireOrganizer } from "../middleware/auth";
 
 export const events = new Hono<AppEnv>();
+
+/**
+ * Turn the one piece of place data a client may send — an opaque id — into the
+ * columns we store, and **never fail**.
+ *
+ * That is the whole contract, and it is why the signature returns
+ * `ResolvedPlace | null` rather than a result type. Posting an event is the
+ * core action of this product; a map pin is a garnish. A third-party outage,
+ * an exhausted budget or a key nobody has configured yet must all end the same
+ * way: the event is created, `place` is `null`, and `location` still says
+ * exactly what the organizer typed. The client's job is then one honest line of
+ * copy, not an error.
+ *
+ * A configuration absence is not reported — see `routes/places.ts`. Everything
+ * else is, so an operator can tell "we are degraded" from "we are switched off".
+ */
+async function resolveForCreate(
+  env: Env,
+  db: D1Database,
+  placeId: string | null | undefined,
+  sessionToken: string | undefined,
+): Promise<ResolvedPlace | null> {
+  if (!placeId) return null;
+  try {
+    const outcome = await resolvePlaceId(env, db, placeId, sessionToken);
+    if (outcome.ok) return outcome.place;
+    if (outcome.reason === "unconfigured") return null;
+    await reportError(db, "places.details", new Error(`Place lookup failed: ${outcome.reason}`), {
+      reason: outcome.reason,
+      placeId: redact(placeId).slice(0, 128),
+    });
+  } catch (error) {
+    // Belt and braces: `resolvePlaceId` is written not to throw, and if that
+    // ever stops being true it must still not cost an organizer their event.
+    await reportError(db, "places.details", error, { placeId: redact(placeId).slice(0, 128) });
+  }
+  return null;
+}
 
 /**
  * `?q=` matches title or location; `?gameType=` is the chip filter; `?sort=`
@@ -35,9 +83,12 @@ events.post("/events", async (c) => {
   // the server received the request rather than whatever the client believes.
   const input = await parseJson(c, createEventSchema(new Date()));
 
+  const place = await resolveForCreate(c.env, c.env.DB, input.placeId, input.placeSessionToken);
+
   const id = `evt_${crypto.randomUUID()}`;
   await insertEvent(c.env.DB, {
     id,
+    place,
     organizerId: organizer.id,
     title: input.title,
     gameType: input.gameType,

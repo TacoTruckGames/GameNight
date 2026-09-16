@@ -44,10 +44,13 @@ import {
   listAudit,
   listErrors,
   resolveError,
+  type PlaceUpdate,
 } from "../db/queries";
 import { audit } from "../lib/audit";
 import type { AppEnv } from "../lib/context";
 import { ApiError } from "../lib/errors";
+import { redact, resolvePlaceId } from "../lib/places";
+import { reportError } from "../lib/report";
 import { newRoomKey, roomFor } from "../lib/room";
 import { nowIso, toIsoSeconds } from "../lib/time";
 import { parseJson, parseQuery } from "../lib/validate";
@@ -70,6 +73,63 @@ async function readSuspendBody(c: Context<AppEnv>): Promise<SuspendInput> {
 
 function fieldError(path: string, message: string): ApiFieldError[] {
   return [{ path, message }];
+}
+
+/**
+ * **This is where the operator tool refuses to lie.**
+ *
+ * `POST /api/events` degrades silently when Google is unreachable: the
+ * organizer wanted to post a game and the map is a garnish, so the event is
+ * created with no place and the UI says so in one line. An admin editing an
+ * event's venue is doing *only* that, deliberately, on a screen whose entire
+ * purpose is fixing a wrong venue. Returning 200 with the old coordinates still
+ * in the row would tell them the fix landed when it did not — and they would
+ * close the tab.
+ *
+ * So the asymmetry is exact, and it is three cases:
+ *   - `placeId: null`     → unlink. No network call; clearing always works.
+ *   - `not_found`         → 400 on the `placeId` field. The id is stale; this is
+ *                           the operator's problem and it is actionable.
+ *   - anything else       → 503 `PLACE_UNAVAILABLE`, nothing written. Ours.
+ *
+ * `undefined` (the field absent) means "not editing the venue" and is the only
+ * path that touches neither the network nor the place columns.
+ */
+async function resolvePlaceForPatch(
+  c: Context<AppEnv>,
+  placeId: string | null | undefined,
+  sessionToken: string | undefined,
+): Promise<PlaceUpdate | null> {
+  if (placeId === undefined) return null;
+  if (placeId === null) return { kind: "clear" };
+
+  const outcome = await resolvePlaceId(c.env, c.env.DB, placeId, sessionToken);
+  if (outcome.ok) return { kind: "set", place: outcome.place };
+
+  if (outcome.reason === "not_found") {
+    throw new ApiError(
+      400,
+      "VALIDATION_FAILED",
+      "Please fix the highlighted fields.",
+      fieldError("placeId", "Google no longer recognises that place. Search for the venue again."),
+    );
+  }
+
+  // "No key configured" is not a failure and never reaches the Errors page —
+  // but it is still a 503 here, because nothing was written and saying
+  // otherwise would be the lie this whole function exists to avoid.
+  if (outcome.reason !== "unconfigured") {
+    await reportError(c.env.DB, "places.details", new Error(`Place lookup failed: ${outcome.reason}`), {
+      reason: outcome.reason,
+      placeId: redact(placeId).slice(0, 128),
+    });
+  }
+
+  throw new ApiError(
+    503,
+    "PLACE_UNAVAILABLE",
+    "We couldn't confirm that venue just now, so nothing was changed. Try again in a moment.",
+  );
 }
 
 // --------------------------------------------------------------- overview --
@@ -182,12 +242,16 @@ admin.patch("/admin/events/:id", async (c) => {
   // the same UPDATE as the capacity, so the two can never disagree.
   const rotate = patch.capacity !== undefined && patch.capacity !== row.capacity ? newRoomKey() : null;
 
+  // Resolved *before* the UPDATE, so a failed lookup writes nothing at all.
+  const place = await resolvePlaceForPatch(c, patch.placeId, patch.placeSessionToken);
+
   const changed = await adminUpdateEvent(
     c.env.DB,
     id,
     // Normalise to the one storage format, whatever offset the client sent.
     { ...patch, ...(patch.startsAt !== undefined ? { startsAt: toIsoSeconds(new Date(patch.startsAt)) } : {}) },
     rotate,
+    place,
   );
 
   await audit(c.env.DB, {

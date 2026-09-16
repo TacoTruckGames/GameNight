@@ -18,6 +18,7 @@ import { attachUser } from "./middleware/auth";
 import { admin } from "./routes/admin";
 import { events } from "./routes/events";
 import { me } from "./routes/me";
+import { places } from "./routes/places";
 import { rsvp } from "./routes/rsvp";
 import { users } from "./routes/users";
 
@@ -33,6 +34,9 @@ app.get("/api/health", (c) => c.json({ ok: true }));
 app.route("/api", users);
 app.route("/api", me);
 app.route("/api", events);
+// After `events`, because it hangs `/events/:id/map` off the same prefix and a
+// reader should find the two together; before `admin`, because it is public API.
+app.route("/api", places);
 app.route("/api", rsvp);
 // Last: nothing else claims `/api/admin/*`, and keeping it at the bottom means
 // the public API's routing is unaffected by the operator surface existing.

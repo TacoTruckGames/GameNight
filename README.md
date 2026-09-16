@@ -21,7 +21,7 @@ migrations and re-seeds the demo board every time it starts (seed dates are rela
 and "one seat left" events are always there).
 
 ```sh
-pnpm test                        # 213 tests, incl. the concurrency proofs (~3 s)
+pnpm test                        # 322 tests, incl. the concurrency proofs (~3 s)
 pnpm stress [url] [--players 40] [--capacity 5]   # real-HTTP race against a running server
 pnpm typecheck
 ```
@@ -165,6 +165,49 @@ half-second spinner.
 - Validation runs twice on purpose — the shared zod schema in the browser to skip a round-trip, and the same
   schema on the server, which is the one that counts.
 
+### Venues and maps
+
+A player has to physically get to the table, so an organizer can attach a **real venue** when posting and
+players get a mini map and one-tap navigation. Four things about it are deliberate.
+
+**`location` is still a plain, required string, and the place is separate.** Google knows the building; the
+organizer knows the room. "Central Library, Room 2B" is the label a human reads, `1000 4th Ave, Seattle, WA
+98104` is the canonical address, and both are searchable — `?q=4th Ave` finds that event even though the
+label never says "4th Ave". Editing the label keeps the venue link; only emptying the field, choosing "Use
+what I typed", or pressing Remove drops it. There is no venue *name* column because `displayName` is a
+Pro-tier Place Details field: asking for it would triple the price per lookup and halve the free tier, to
+store a string the organizer already typed.
+
+**The client sends only a place id; the server resolves it.** The address and coordinates come from the
+Worker's own Place Details call, so a forged latitude is not a thing that exists. The browser never talks to
+Google at all — autocomplete and the map image are both proxied — which keeps the key a Worker secret, keeps
+the SPA's zero-cross-origin-requests property, and means a future CSP needs no allowlist entry.
+
+**It degrades, always.** With no `GOOGLE_MAPS_API_KEY` configured — which is what you get cloning this repo —
+the typeahead is an ordinary text input, there is no mini map, and the address deep-links still work, because
+Maps URLs are free and need no key. If Google is down or over budget when an event is posted, the event still
+posts with the address as typed; a venue lookup is an enhancement, never a gate. The one deliberate exception
+is the **admin** edit, which fails loudly with a 503: an operator re-pointing a venue is doing only that, and
+telling them "saved" when nothing changed is a lie in an operator tool.
+
+**What it costs, and why it is ~$0.** Free tier is 10,000 calls/month per Essentials SKU; beyond that
+autocomplete is $2.83/1k, Place Details Essentials $5.00/1k and Static Maps $2.00/1k (0–100K band). A month
+of 1,000 posted events is roughly 3,000 autocomplete + 1,000 details + a few thousand cached map renders —
+inside the free tier, and about $13.50 per 1,000 events past it. The mini map is on the detail page only and
+is keyed by **event id**, not by coordinates: a `?lat=&lng=` image route would be an open proxy where every
+invented coordinate is a fresh billed render. Renders are cached in the Cloudflare Cache API (not R2 — the
+image is regenerable for a fifth of a cent, so durability buys nothing a per-colo cache does not). A daily
+per-SKU counter in D1 (`api_usage`) is a hard ceiling that a code bug cannot bypass, and it fails closed.
+And the real cost lever is the **300 ms debounce**, not the session token: with an Essentials termination
+Google still bills the first 12 autocomplete requests of a session, so the token only pays off past ~4.2
+requests per session and a debounced session lands near 3.
+
+Demo data note: the seeded venues are **real public civic facilities** (library branches, a community centre,
+a park) so the map links resolve; the events, organizers and people are invented, and no real private
+business is implied to be hosting anything. The seeded place ids are obvious placeholders rather than
+fabricated Google-shaped ids, and the link builder drops them rather than asking Maps to disambiguate against
+an id Google never issued.
+
 ### Look and feel
 
 The palette is derived from the public design tokens on company.wizards.com (accent `#6E64DA`, indigo
@@ -220,7 +263,7 @@ The launch build already has the shape; here is exactly what changes at ~200k pl
 
 ## Testing
 
-`pnpm test` runs 213 tests *inside* the Workers runtime (`@cloudflare/vitest-plugin`) against a real local
+`pnpm test` runs 322 tests *inside* the Workers runtime (`@cloudflare/vitest-plugin`) against a real local
 D1 and real Durable Object instances — the same code paths as production, not mocks.
 
 | Suite | What it proves |
@@ -298,6 +341,11 @@ What is stubbed or simplified, roughly in the order I would harden it:
    error-rate alerts, and a D1 Time Travel restore drill.
 6. **CI and browser tests.** `pnpm typecheck && pnpm test` on every push, plus a Playwright smoke of the
    three player flows; the client was verified over HTTP and by hand, not by an automated browser.
+7. **Maps.** Set per-SKU daily quota caps in the Google console and a billing budget alert — the in-repo
+   `api_usage` ceiling is the braces, the console is the belt. Refresh stale `place_resolved_at` rows
+   periodically, since place ids and addresses drift. Note that autocomplete sends the organizer's coarse
+   Cloudflare edge location to Google as a relevance bias; say so in a privacy note before real users. The
+   map route's success path (upstream fetch → cache write) is the one branch only a live key exercises.
 
 ## Deploying
 

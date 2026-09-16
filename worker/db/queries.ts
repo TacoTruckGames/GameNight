@@ -22,6 +22,7 @@ import type {
   AuditEntry,
   DayCount,
   ErrorEntry,
+  EventPlace,
   EventStatus,
   EventSummary,
   Page,
@@ -46,10 +47,18 @@ export interface EventRow {
   room_key: string;
   status: string;
   organizer_name: string;
+  // The verified-venue half. All four, or none — see `toPlace`. `place_resolved_at`
+  // is deliberately not selected: it is operational metadata, not wire data.
+  place_id: string | null;
+  place_address: string | null;
+  place_lat: number | null;
+  place_lng: number | null;
 }
 
 const EVENT_COLUMNS = `e.id, e.organizer_id, e.title, e.game_type, e.starts_at, e.location,
-         e.capacity, e.rsvp_count, e.room_key, e.status, u.name AS organizer_name`;
+         e.capacity, e.rsvp_count, e.room_key, e.status,
+         e.place_id, e.place_address, e.place_lat, e.place_lng,
+         u.name AS organizer_name`;
 
 /**
  * `game_type` is validated by zod before it is ever written, so this only has
@@ -60,6 +69,22 @@ function toGameType(value: string): GameType {
   return isGameType(value) ? value : "other";
 }
 
+/**
+ * All four columns, or no place at all.
+ *
+ * SQLite cannot express "these are set together" as a CHECK added by ALTER, so
+ * the invariant lives here, in the one mapper every read path goes through. The
+ * failure it prevents is specific: a row with an address but a null latitude
+ * would otherwise render as a map pin at 0,0 — a spot in the Gulf of Guinea —
+ * which is a far worse answer than "this event has no verified venue".
+ */
+function toPlace(row: EventRow): EventPlace | null {
+  const { place_id: id, place_address: address, place_lat: lat, place_lng: lng } = row;
+  if (id == null || address == null || lat == null || lng == null) return null;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { id, address, lat, lng };
+}
+
 /** Row → wire shape. `seatsLeft`/`isFull` are derived here so no client re-does it. */
 export function toEventSummary(row: EventRow): EventSummary {
   return {
@@ -68,6 +93,7 @@ export function toEventSummary(row: EventRow): EventSummary {
     gameType: toGameType(row.game_type),
     startsAt: row.starts_at,
     location: row.location,
+    place: toPlace(row),
     capacity: row.capacity,
     attendeeCount: row.rsvp_count,
     seatsLeft: Math.max(0, row.capacity - row.rsvp_count),
@@ -144,7 +170,10 @@ export async function listUpcomingEvents(db: D1Database, filters: EventFilters):
         WHERE e.starts_at >= ?1
           AND e.status = 'scheduled'
           AND (?2 IS NULL OR e.game_type = ?2)
-          AND (?3 IS NULL OR e.title LIKE ?3 ESCAPE '\\' OR e.location LIKE ?3 ESCAPE '\\')
+          AND (?3 IS NULL OR e.title LIKE ?3 ESCAPE '\\' OR e.location LIKE ?3 ESCAPE '\\'
+               -- The same bound parameter: searching "Pike" finds the event whose
+               -- typed label says "back room" but whose verified address is on Pike St.
+               OR e.place_address LIKE ?3 ESCAPE '\\')
         ORDER BY ${ORDER_BY[filters.sort ?? DEFAULT_EVENT_SORT]}
         LIMIT 200`,
     )
@@ -174,13 +203,26 @@ export interface NewEvent {
   location: string;
   capacity: number;
   roomKey: string;
+  /**
+   * Resolved server-side from a place id the client sent, or `null` — which is
+   * both "the organizer typed free text" and "Google was unreachable". Creating
+   * an event never fails over a venue lookup.
+   */
+  place?: ResolvedPlace | null;
+}
+
+/** A place plus the moment we resolved it. Mirrors `worker/lib/places.ts`. */
+export interface ResolvedPlace extends EventPlace {
+  resolvedAt: string;
 }
 
 export async function insertEvent(db: D1Database, event: NewEvent): Promise<void> {
+  const place = event.place ?? null;
   await db
     .prepare(
-      `INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, capacity, rsvp_count, room_key)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, ?8)`,
+      `INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, capacity, rsvp_count, room_key,
+                           place_id, place_address, place_lat, place_lng, place_resolved_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, ?8, ?9, ?10, ?11, ?12, ?13)`,
     )
     .bind(
       event.id,
@@ -191,8 +233,28 @@ export async function insertEvent(db: D1Database, event: NewEvent): Promise<void
       event.location,
       event.capacity,
       event.roomKey,
+      place?.id ?? null,
+      place?.address ?? null,
+      place?.lat ?? null,
+      place?.lng ?? null,
+      place?.resolvedAt ?? null,
     )
     .run();
+}
+
+/**
+ * Just enough of an event to render its map: the coordinates and the id the
+ * `?v=` cache buster has to match. Deliberately not `getEventRow` — the map
+ * route is the hottest cache-miss path in the app and has no use for a join.
+ */
+export function getEventPlace(
+  db: D1Database,
+  id: string,
+): Promise<{ place_id: string | null; place_lat: number | null; place_lng: number | null } | null> {
+  return db
+    .prepare("SELECT place_id, place_lat, place_lng FROM events WHERE id = ?1")
+    .bind(id)
+    .first<{ place_id: string | null; place_lat: number | null; place_lng: number | null }>();
 }
 
 /** Attendees in RSVP order — the order the organizer's sheet should read in. */
@@ -424,7 +486,8 @@ export async function adminListEvents(
       `SELECT ${ADMIN_EVENT_COLUMNS}
          FROM events e
          JOIN users u ON u.id = e.organizer_id
-        WHERE (?1 IS NULL OR e.title LIKE ?1 ESCAPE '\\' OR e.location LIKE ?1 ESCAPE '\\')
+        WHERE (?1 IS NULL OR e.title LIKE ?1 ESCAPE '\\' OR e.location LIKE ?1 ESCAPE '\\'
+               OR e.place_address LIKE ?1 ESCAPE '\\')
           AND (?2 IS NULL OR e.status = ?2)
           AND (?3 = 'all'
                OR (?3 = 'upcoming' AND e.starts_at >= ?4)
@@ -463,6 +526,13 @@ export function adminGetEventRow(db: D1Database, id: string): Promise<AdminEvent
 }
 
 /**
+ * Re-point a venue, or unlink it. Never derived from `patch.placeId` inside
+ * this function: resolving an id is a network call, and `queries.ts` does not
+ * make network calls.
+ */
+export type PlaceUpdate = { kind: "clear" } | { kind: "set"; place: ResolvedPlace };
+
+/**
  * Apply a partial edit. Only the fields present in `patch` are written, and the
  * returned list is what the audit row records as `changed`.
  *
@@ -478,15 +548,20 @@ export async function adminUpdateEvent(
   id: string,
   patch: AdminEventPatch,
   rotateRoom: string | null,
+  place: PlaceUpdate | null = null,
 ): Promise<string[]> {
   const sets: string[] = [];
   const values: unknown[] = [];
   const changed: string[] = [];
 
-  const assign = (field: string, column: string, value: unknown) => {
-    if (value === undefined) return;
+  const write = (column: string, value: unknown) => {
     values.push(value);
     sets.push(`${column} = ?${values.length + 1}`); // ?1 is the id
+  };
+
+  const assign = (field: string, column: string, value: unknown) => {
+    if (value === undefined) return;
+    write(column, value);
     changed.push(field);
   };
 
@@ -495,6 +570,21 @@ export async function adminUpdateEvent(
   assign("startsAt", "starts_at", patch.startsAt);
   assign("location", "location", patch.location);
   assign("capacity", "capacity", patch.capacity);
+
+  // Five columns, but **one** audit entry. `place` is a separate parameter
+  // rather than five more `assign` calls precisely so that `changed` stays a
+  // list of things a human changed — an operator reading the audit trail wants
+  // to see "placeId", not "placeId, placeAddress, placeLat, placeLng,
+  // placeResolvedAt" for one click on one field.
+  if (place !== null) {
+    const next = place.kind === "clear" ? null : place.place;
+    write("place_id", next?.id ?? null);
+    write("place_address", next?.address ?? null);
+    write("place_lat", next?.lat ?? null);
+    write("place_lng", next?.lng ?? null);
+    write("place_resolved_at", next?.resolvedAt ?? null);
+    changed.push("placeId");
+  }
 
   if (rotateRoom !== null) {
     values.push(rotateRoom);

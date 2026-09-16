@@ -24,14 +24,16 @@ import { ApiError } from "../api/client";
 import { useCreateEvent, useHostedEvents } from "../api/hooks";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBanner } from "../components/ErrorBanner";
+import { MapLink } from "../components/MapLink";
+import { PlaceCombobox } from "../components/PlaceCombobox";
 import { SeatChip } from "../components/SeatChip";
 import { EventListSkeleton } from "../components/Skeleton";
 import { useToast } from "../components/Toast";
 import { defaultLocalInputValue, formatEventDateTime, localInputToIso, toDateTimeAttr } from "../lib/datetime";
 
-type FieldErrors = Partial<Record<"title" | "gameType" | "startsAt" | "location" | "capacity", string>>;
+type FieldErrors = Partial<Record<"title" | "gameType" | "startsAt" | "location" | "placeId" | "capacity", string>>;
 
-const FIELDS = new Set(["title", "gameType", "startsAt", "location", "capacity"]);
+const FIELDS = new Set(["title", "gameType", "startsAt", "location", "placeId", "capacity"]);
 
 function asFieldKey(path: string): keyof FieldErrors | null {
   const head = path.split(".")[0] ?? "";
@@ -53,13 +55,23 @@ function NewEventForm() {
   const [gameType, setGameType] = useState<GameType>("magic_draft");
   const [startsAtLocal, setStartsAtLocal] = useState(() => defaultLocalInputValue(48));
   const [location, setLocation] = useState("");
+  const [placeId, setPlaceId] = useState<string | null>(null);
+  const [placeSession, setPlaceSession] = useState<string | null>(null);
   const [capacity, setCapacity] = useState("8");
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<unknown>(null);
+  /**
+   * Said once, after a post whose venue the server could not confirm. Not a
+   * toast: the event *is* live, so this is a standing correction to what the
+   * organizer thought they filed, and it should still be there when they look
+   * back at the form.
+   */
+  const [placeNote, setPlaceNote] = useState<string | null>(null);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
+    setPlaceNote(null);
 
     const startsAt = localInputToIso(startsAtLocal);
     const parsed = createEventSchema(new Date()).safeParse({
@@ -67,6 +79,8 @@ function NewEventForm() {
       gameType,
       startsAt: startsAt ?? "",
       location,
+      ...(placeId !== null ? { placeId } : {}),
+      ...(placeSession !== null ? { placeSessionToken: placeSession } : {}),
       capacity: capacity.trim() === "" ? Number.NaN : Number(capacity),
     });
 
@@ -84,8 +98,16 @@ function NewEventForm() {
     createEvent.mutate(parsed.data, {
       onSuccess: (created) => {
         toast.show(`"${created.title}" is live.`);
+        // A venue we asked about and did not get back means the lookup failed —
+        // Google down, over budget, or the id gone stale. The post succeeded
+        // anyway, on purpose, so say what happened instead of pretending.
+        if (placeId !== null && created.place === null) {
+          setPlaceNote("Posted. We couldn't confirm that venue just now, so the address is saved exactly as you typed it.");
+        }
         setTitle("");
         setLocation("");
+        setPlaceId(null);
+        setPlaceSession(null); // the billing session ends with the write it paid for
         setCapacity("8");
         setStartsAtLocal(defaultLocalInputValue(48));
       },
@@ -181,21 +203,26 @@ function NewEventForm() {
         <label className="field__label" htmlFor={ids.location}>
           Location
         </label>
-        <input
+        <PlaceCombobox
           id={ids.location}
-          className="input"
           value={location}
-          onChange={(event) => setLocation(event.target.value)}
+          onValueChange={setLocation}
+          placeId={placeId}
+          onPlaceIdChange={setPlaceId}
+          sessionToken={placeSession}
+          onSessionTokenChange={setPlaceSession}
           maxLength={LOCATION_MAX}
           placeholder="Cardboard Castle, 4th & Pine"
-          aria-invalid={errors.location !== undefined}
-          aria-describedby={describedBy("location", ids.location)}
+          invalid={errors.location !== undefined}
+          describedBy={describedBy("location", ids.location)}
         />
         {errors.location ? (
           <p className="field__error" id={`${ids.location}-error`}>
             {errors.location}
           </p>
         ) : null}
+        {errors.placeId ? <p className="field__error">{errors.placeId}</p> : null}
+        {placeNote ? <p className="field__note">{placeNote}</p> : null}
       </div>
 
       <div className="field">
@@ -249,13 +276,13 @@ function HostedEvents() {
               <span className="card__title">{event.title}</span>
               <span className="card__meta">
                 <time dateTime={toDateTimeAttr(event.startsAt)}>{formatEventDateTime(event.startsAt)}</time>
-                {" · "}
-                {event.location}
               </span>
               <span className="card__meta">
                 <span className="badge">{gameTypeLabel(event.gameType)}</span>
               </span>
             </Link>
+            {/* Outside the card link — `<a>` cannot nest in `<a>`. */}
+            <MapLink event={event} />
             <div className="card__row">
               <SeatChip
                 seatsLeft={event.seatsLeft}

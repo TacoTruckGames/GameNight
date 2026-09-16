@@ -834,3 +834,89 @@ describe("GET /api/admin/overview", () => {
     });
   });
 });
+
+/**
+ * Appended with the verified-venues feature.
+ *
+ * A venue is five columns but one decision, and the audit trail has to read
+ * that way. If `adminUpdateEvent` had grown four more `assign(...)` calls, one
+ * click on one field would have produced `["placeId", "placeAddress",
+ * "placeLat", "placeLng", "placeResolvedAt"]` in `changed` — noise that makes
+ * the trail harder to read, and that would have broken the exact-array
+ * assertion above.
+ */
+describe("editing an event's venue", () => {
+  const LIBRARY = {
+    id: "place-audit-library",
+    address: "1000 4th Ave, Seattle, WA 98104, USA",
+    lat: 47.6067,
+    lng: -122.3325,
+  };
+
+  it("records 'placeId' exactly once when a venue is unlinked", async () => {
+    const admin = await seedAdmin();
+    const event = await seedEvent({ place: LIBRARY });
+
+    const { status, body } = await api<AdminEvent>(`/api/admin/events/${event.id}`, {
+      method: "PATCH",
+      as: admin.id,
+      body: { placeId: null },
+    });
+
+    expect(status).toBe(200);
+    expect(body.place).toBeNull();
+
+    const rows = await auditFor(event.id);
+    const recorded: string[] = JSON.parse(rows[0]?.metadata ?? "null").changed;
+    expect(recorded.filter((field) => field === "placeId")).toEqual(["placeId"]);
+  });
+
+  it("writes one audit entry per human decision, not one per column", async () => {
+    const admin = await seedAdmin();
+    const event = await seedEvent({ place: LIBRARY, title: "Before" });
+
+    await api<AdminEvent>(`/api/admin/events/${event.id}`, {
+      method: "PATCH",
+      as: admin.id,
+      body: { title: "After", placeId: null },
+    });
+
+    const rows = await auditFor(event.id);
+    const recorded: string[] = JSON.parse(rows[0]?.metadata ?? "null").changed;
+    expect(recorded.sort()).toEqual(["placeId", "title"]);
+  });
+
+  it("does not mention the venue at all in a place-free patch", async () => {
+    const admin = await seedAdmin();
+    const event = await seedEvent({ place: LIBRARY, title: "Before" });
+
+    const { status, body } = await api<AdminEvent>(`/api/admin/events/${event.id}`, {
+      method: "PATCH",
+      as: admin.id,
+      body: { title: "After" },
+    });
+
+    expect(status).toBe(200);
+    // The venue survives a patch that never mentioned it…
+    expect(body.place).toEqual(LIBRARY);
+
+    const rows = await auditFor(event.id);
+    expect(JSON.parse(rows[0]?.metadata ?? "null").changed).toEqual(["title"]);
+  });
+
+  it("returns the place on the admin event detail too", async () => {
+    const admin = await seedAdmin();
+    const event = await seedEvent({ place: LIBRARY });
+
+    const { body } = await api<AdminEvent>(`/api/admin/events/${event.id}`, { as: admin.id });
+    expect(body.place).toEqual(LIBRARY);
+  });
+
+  it("finds an event by its verified address in the admin list", async () => {
+    const admin = await seedAdmin();
+    const event = await seedEvent({ location: "back room", place: LIBRARY });
+
+    const { body } = await api<Page<AdminEvent>>("/api/admin/events?q=4th%20Ave&when=all", { as: admin.id });
+    expect(body.items.some((item) => item.id === event.id)).toBe(true);
+  });
+});
