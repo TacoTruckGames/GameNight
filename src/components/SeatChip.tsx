@@ -4,10 +4,14 @@
  * "You're in" wins over the seat count: once you have a seat, how many are
  * left is somebody else's problem.
  *
- * The icon repeats what the word says so the three states are still three
- * states without colour.
+ * The icon repeats what the word says so the states are still distinct states
+ * without colour.
+ *
+ * "Cancelled" outranks everything, including "You're in": if an admin pulled the
+ * event, how many seats are left — and whether you had one — stopped mattering.
  */
 
+import type { EventStatus } from "../../shared/api-types";
 import { Icon } from "./Icon";
 
 export function SeatChip({
@@ -15,12 +19,21 @@ export function SeatChip({
   capacity,
   isFull,
   joined,
+  status,
 }: {
   seatsLeft: number;
   capacity: number;
   isFull: boolean;
   joined?: boolean;
+  status?: EventStatus;
 }) {
+  if (status === "cancelled")
+    return (
+      <span className="seat-chip seat-chip--cancelled">
+        <Icon name="alert" size={16} />
+        Cancelled
+      </span>
+    );
   if (joined)
     return (
       <span className="seat-chip seat-chip--mine">

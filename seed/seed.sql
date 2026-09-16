@@ -10,13 +10,18 @@
 -- EventRoom hydrates itself lazily from these rows on first RSVP/cancel, which
 -- is also the DO-storage-loss recovery path.
 
+-- audit_log and error_log first: they reference nothing, but a reseeded board
+-- should not carry the previous run's operator history.
+DELETE FROM audit_log;
+DELETE FROM error_log;
 DELETE FROM rsvps;
 DELETE FROM events;
 DELETE FROM users;
 
 -- ---------------------------------------------------------------- users ----
--- 8 players + 2 organizers. Organizers are seed-only: POST /api/users always
--- creates a player.
+-- 8 players + 2 organizers + 1 admin. Organizers are seed-only in spirit and
+-- the admin is seed-only by construction: `SIGNUP_ROLES` excludes it, so
+-- POST /api/users can never create one.
 INSERT INTO users (id, name, role) VALUES
   ('u_alice', 'Alice',  'player'),
   ('u_bob',   'Bob',    'player'),
@@ -27,7 +32,8 @@ INSERT INTO users (id, name, role) VALUES
   ('u_gus',   'Gus',    'player'),
   ('u_hana',  'Hana',   'player'),
   ('org_cardboard', 'Cardboard Castle Games', 'organizer'),
-  ('org_metro',     'Metro Meetup Crew',      'organizer');
+  ('org_metro',     'Metro Meetup Crew',      'organizer'),
+  ('adm_site',      'Site Admin',             'admin');
 
 -- --------------------------------------------------------------- events ----
 -- rsvp_count is left at 0 here and recomputed by the UPDATE at the bottom.

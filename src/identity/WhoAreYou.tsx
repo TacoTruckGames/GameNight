@@ -5,11 +5,16 @@
  * you tap "Switch" in the header — which is how a reviewer demonstrates the
  * race: two profiles, same event, two taps.
  *
- * One tab per role, because the two roles see different apps and the choice
- * should be made before you are dropped into one of them. Each tab is the same
+ * One tab per role, because the roles see different apps and the choice should
+ * be made before you are dropped into one of them. Each tab is the same
  * two-step form: pick someone who already exists or type a new name, then
  * commit. The commit button is deliberate — "Join as Organizer" names the
  * consequence, which a bare list of names never did.
+ *
+ * The Admin tab is the exception: it lists the admins the operator provisioned
+ * and offers no "join as someone new" field, because self-signup as an admin is
+ * exactly the thing `SIGNUP_ROLES` exists to prevent. (Picking a seeded admin is
+ * still a free pass — this is a demo board with no auth; see the README.)
  */
 
 import { useEffect, useId, useRef, useState } from "react";
@@ -33,6 +38,13 @@ const TABS = [
     join: "Join as Organizer",
     hint: "Post events and see who is coming.",
   },
+  {
+    role: "admin",
+    label: "Admin",
+    noun: "admin",
+    join: "Join as Admin",
+    hint: "Suspend accounts, fix events, watch for errors.",
+  },
 ] as const satisfies readonly { role: Role; label: string; noun: string; join: string; hint: string }[];
 
 export function WhoAreYou({ onClose }: { onClose?: () => void }) {
@@ -53,7 +65,7 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
   const headingId = `${baseId}-heading`;
   const tabId = (value: Role) => `${baseId}-tab-${value}`;
 
-  const tabRefs = useRef<Record<Role, HTMLButtonElement | null>>({ player: null, organizer: null });
+  const tabRefs = useRef<Record<Role, HTMLButtonElement | null>>({ player: null, organizer: null, admin: null });
   const submitRef = useRef<HTMLButtonElement | null>(null);
   const isModal = onClose !== undefined;
 
@@ -80,8 +92,10 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
   function onTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
     event.preventDefault();
-    // Two tabs, so either arrow lands on the other one.
-    const next: Role = role === "player" ? "organizer" : "player";
+    // Wraps at both ends, as a tablist should.
+    const current = TABS.findIndex((item) => item.role === role);
+    const step = event.key === "ArrowRight" ? 1 : TABS.length - 1;
+    const next: Role = (TABS[(current + step) % TABS.length] ?? TABS[0]).role;
     selectRole(next);
     tabRefs.current[next]?.focus();
   }
@@ -98,7 +112,9 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
 
   const tab = TABS.find((item) => item.role === role) ?? TABS[0];
   const people = (users.data ?? []).filter((person) => person.role === role);
-  const canJoin = name.trim() !== "" || selectedId !== null;
+  // No signup on the Admin tab, so the only way to arm the button is to pick.
+  const canSignUp = role !== "admin";
+  const canJoin = (canSignUp && name.trim() !== "") || selectedId !== null;
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -126,7 +142,11 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
     const picked =
       people.find((person) => person.id === selectedId) ?? (user?.id === selectedId ? user : undefined);
     if (!picked) {
-      setFormError(`Pick a ${tab.noun} above, or type a name to join as someone new.`);
+      setFormError(
+        canSignUp
+          ? `Pick a ${tab.noun} above, or type a name to join as someone new.`
+          : "Pick an admin above to continue.",
+      );
       return;
     }
     setFormError(null);
@@ -170,7 +190,10 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
         ) : users.isError ? (
           <ErrorBanner error={users.error} onRetry={() => void users.refetch()} />
         ) : people.length === 0 ? (
-          <EmptyState title={`No ${tab.noun}s yet`} hint="Type a name below to be the first." />
+          <EmptyState
+            title={`No ${tab.noun}s yet`}
+            hint={canSignUp ? "Type a name below to be the first." : "The operator provisions admins in the database."}
+          />
         ) : (
           <ul className="stack">
             {people.map((person) => {
@@ -196,33 +219,44 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
         )}
 
         <form className="stack" onSubmit={submit} noValidate>
-          <div className="field">
-            <label className="field__label" htmlFor={nameInputId}>
-              Or join as a new {tab.noun}
-            </label>
-            <input
-              id={nameInputId}
-              className="input"
-              value={name}
-              onChange={(event) => {
-                // Typing and picking answer the same question, so one clears
-                // the other and the button never has to guess which you meant.
-                setName(event.target.value);
-                setSelectedId(null);
-                setFormError(null);
-              }}
-              placeholder="Your name"
-              maxLength={NAME_MAX}
-              autoComplete="name"
-              aria-invalid={formError !== null}
-              aria-describedby={formError ? errorId : undefined}
-            />
-            {formError ? (
-              <p className="field__error" id={errorId}>
-                {formError}
-              </p>
-            ) : null}
-          </div>
+          {canSignUp ? (
+            <div className="field">
+              <label className="field__label" htmlFor={nameInputId}>
+                Or join as a new {tab.noun}
+              </label>
+              <input
+                id={nameInputId}
+                className="input"
+                value={name}
+                onChange={(event) => {
+                  // Typing and picking answer the same question, so one clears
+                  // the other and the button never has to guess which you meant.
+                  setName(event.target.value);
+                  setSelectedId(null);
+                  setFormError(null);
+                }}
+                placeholder="Your name"
+                maxLength={NAME_MAX}
+                autoComplete="name"
+                aria-invalid={formError !== null}
+                aria-describedby={formError ? errorId : undefined}
+              />
+              {formError ? (
+                <p className="field__error" id={errorId}>
+                  {formError}
+                </p>
+              ) : null}
+            </div>
+          ) : (
+            <>
+              <p className="who__hint">Admins are provisioned by the operator.</p>
+              {formError ? (
+                <p className="field__error" id={errorId}>
+                  {formError}
+                </p>
+              ) : null}
+            </>
+          )}
           {createUser.error ? <ErrorBanner error={createUser.error} /> : null}
           <button
             ref={submitRef}

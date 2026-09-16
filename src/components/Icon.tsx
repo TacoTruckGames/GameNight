@@ -1,5 +1,5 @@
 /**
- * The whole icon set, nine glyphs, applied as CSS masks.
+ * The whole icon set, ten glyphs, applied as CSS masks.
  *
  * A mask rather than an `<img>` because the same file then paints in
  * `currentColor` — muted in an inactive tab, accent in the active one, white on
@@ -12,7 +12,17 @@
 
 import type { CSSProperties } from "react";
 
-export type IconName = "events" | "mine" | "organize" | "search" | "seat" | "full" | "in" | "empty" | "alert";
+export type IconName =
+  | "events"
+  | "mine"
+  | "organize"
+  | "search"
+  | "seat"
+  | "full"
+  | "in"
+  | "empty"
+  | "alert"
+  | "shield";
 
 export function Icon({ name, size = 20, label }: { name: IconName; size?: number; label?: string }) {
   return (

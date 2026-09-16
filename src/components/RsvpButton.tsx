@@ -8,6 +8,7 @@
  * updates).
  */
 
+import type { EventStatus } from "../../shared/api-types";
 import { useCancelRsvp, useRsvp } from "../api/hooks";
 
 export function RsvpButton({
@@ -16,6 +17,7 @@ export function RsvpButton({
   isFull,
   joined,
   startsAt,
+  status,
   block = false,
 }: {
   eventId: string;
@@ -24,6 +26,7 @@ export function RsvpButton({
   isFull: boolean;
   joined: boolean;
   startsAt: string;
+  status?: EventStatus;
   block?: boolean;
 }) {
   const rsvp = useRsvp(eventId);
@@ -31,8 +34,12 @@ export function RsvpButton({
 
   const pending = rsvp.isPending || cancel.isPending;
   const started = new Date(startsAt).getTime() <= Date.now();
+  const cancelled = status === "cancelled";
   const className = `btn btn--sm${block ? " btn--block" : ""}`;
 
+  // Cancelling your own RSVP stays available on a cancelled event — clearing it
+  // off your list is the one thing you might still want to do, and the API
+  // allows DELETE (only PUT is refused with `EVENT_CANCELLED`).
   if (joined) {
     return (
       <button
@@ -47,6 +54,9 @@ export function RsvpButton({
       </button>
     );
   }
+
+  // Nothing to offer: the event is off, and you have no seat to release.
+  if (cancelled) return null;
 
   if (started) {
     return (

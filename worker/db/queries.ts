@@ -12,8 +12,23 @@
  */
 
 import { isGameType } from "../../shared/game-types";
-import type { Attendee, EventSummary, Role, User } from "../../shared/api-types";
+import type {
+  AdminEvent,
+  AdminOverview,
+  AdminUser,
+  Attendee,
+  AuditAction,
+  AuditEntry,
+  DayCount,
+  ErrorEntry,
+  EventStatus,
+  EventSummary,
+  Page,
+  Role,
+  User,
+} from "../../shared/api-types";
 import type { GameType } from "../../shared/game-types";
+import { ADMIN_PAGE_SIZE, type AdminEventPatch, type AdminEventsQuery, type AdminUsersQuery } from "../../shared/schemas";
 
 // ------------------------------------------------------------------- rows --
 
@@ -28,11 +43,12 @@ export interface EventRow {
   capacity: number;
   rsvp_count: number;
   room_key: string;
+  status: string;
   organizer_name: string;
 }
 
 const EVENT_COLUMNS = `e.id, e.organizer_id, e.title, e.game_type, e.starts_at, e.location,
-         e.capacity, e.rsvp_count, e.room_key, u.name AS organizer_name`;
+         e.capacity, e.rsvp_count, e.room_key, e.status, u.name AS organizer_name`;
 
 /**
  * `game_type` is validated by zod before it is ever written, so this only has
@@ -55,6 +71,9 @@ export function toEventSummary(row: EventRow): EventSummary {
     attendeeCount: row.rsvp_count,
     seatsLeft: Math.max(0, row.capacity - row.rsvp_count),
     isFull: row.rsvp_count >= row.capacity,
+    // Same defensive degrade as `game_type`: an unrecognised value reads as the
+    // safe default rather than breaking the card.
+    status: row.status === "cancelled" ? "cancelled" : "scheduled",
     organizerName: row.organizer_name,
   };
 }
@@ -90,7 +109,12 @@ export interface EventFilters {
   gameType?: GameType | undefined;
 }
 
-/** Upcoming events, soonest first. `LIMIT 200` — no pagination at this scale. */
+/**
+ * Upcoming events, soonest first. `LIMIT 200` — no pagination at this scale.
+ *
+ * Cancelled events drop off the public board entirely; the people who already
+ * hold a seat still see them (with the status) via `listPlayerRsvps`.
+ */
 export async function listUpcomingEvents(db: D1Database, filters: EventFilters): Promise<EventSummary[]> {
   const { results } = await db
     .prepare(
@@ -98,6 +122,7 @@ export async function listUpcomingEvents(db: D1Database, filters: EventFilters):
          FROM events e
          JOIN users u ON u.id = e.organizer_id
         WHERE e.starts_at >= ?1
+          AND e.status = 'scheduled'
           AND (?2 IS NULL OR e.game_type = ?2)
           AND (?3 IS NULL OR e.title LIKE ?3 ESCAPE '\\' OR e.location LIKE ?3 ESCAPE '\\')
         ORDER BY e.starts_at, e.id
@@ -176,7 +201,13 @@ export async function hasRsvp(db: D1Database, eventId: string, playerId: string)
   return row !== null;
 }
 
-/** The player's upcoming events, soonest first. */
+/**
+ * The player's upcoming events, soonest first.
+ *
+ * Deliberately *not* filtered by status: someone holding a seat on an event an
+ * admin called off needs to be told, so the cancelled row stays in the list and
+ * the client renders it as cancelled.
+ */
 export async function listPlayerRsvps(db: D1Database, playerId: string, now: string): Promise<EventSummary[]> {
   const { results } = await db
     .prepare(
@@ -193,7 +224,7 @@ export async function listPlayerRsvps(db: D1Database, playerId: string, now: str
   return results.map(toEventSummary);
 }
 
-/** The organizer's own upcoming events, soonest first. */
+/** The organizer's own upcoming events, soonest first — cancelled ones included. */
 export async function listHostedEvents(db: D1Database, organizerId: string, now: string): Promise<EventSummary[]> {
   const { results } = await db
     .prepare(
@@ -207,4 +238,533 @@ export async function listHostedEvents(db: D1Database, organizerId: string, now:
     .bind(organizerId, now)
     .all<EventRow>();
   return results.map(toEventSummary);
+}
+
+// ------------------------------------------------------------------ admin --
+//
+// One rule bends here, on purpose: the admin queries *do* use `COUNT(*)`
+// subqueries (a user's RSVP and hosted totals, the overview tiles). Rule 1 at
+// the top of this file is about the hot read path — the board, which every
+// visitor loads. The admin surface is one operator, occasionally, over a table
+// measured in hundreds of rows; a correct number beats another projection
+// column to keep honest.
+
+/** `LIMIT pageSize + 1`: the extra row is the only thing `hasNext` needs. */
+function paginate<T>(rows: T[], page: number): Page<T> {
+  const hasNext = rows.length > ADMIN_PAGE_SIZE;
+  return {
+    items: hasNext ? rows.slice(0, ADMIN_PAGE_SIZE) : rows,
+    page,
+    pageSize: ADMIN_PAGE_SIZE,
+    hasNext,
+  };
+}
+
+function pageBounds(page: number | undefined): { page: number; limit: number; offset: number } {
+  const current = page ?? 1;
+  return { page: current, limit: ADMIN_PAGE_SIZE + 1, offset: (current - 1) * ADMIN_PAGE_SIZE };
+}
+
+/** `metadata` columns are JSON text; a hand-edited row must not 500 the page. */
+function parseMetadata(value: string | null): Record<string, unknown> | null {
+  if (!value) return null;
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+// ------------------------------------------------------------ admin: users --
+
+interface AdminUserRow {
+  id: string;
+  name: string;
+  role: string;
+  created_at: string;
+  suspended_at: string | null;
+  suspended_reason: string | null;
+  rsvp_count: number;
+  hosted_count: number;
+}
+
+const ADMIN_USER_COLUMNS = `u.id, u.name, u.role, u.created_at, u.suspended_at, u.suspended_reason,
+         (SELECT COUNT(*) FROM rsvps r WHERE r.player_id = u.id) AS rsvp_count,
+         (SELECT COUNT(*) FROM events ev WHERE ev.organizer_id = u.id) AS hosted_count`;
+
+function toAdminUser(row: AdminUserRow): AdminUser {
+  return {
+    id: row.id,
+    name: row.name,
+    role: row.role as Role,
+    createdAt: row.created_at,
+    suspendedAt: row.suspended_at,
+    suspendedReason: row.suspended_reason,
+    rsvpCount: row.rsvp_count,
+    hostedCount: row.hosted_count,
+  };
+}
+
+/** Newest first. `q` matches the display name; `status` is the suspension flag. */
+export async function adminListUsers(db: D1Database, filters: AdminUsersQuery): Promise<Page<AdminUser>> {
+  const { page, limit, offset } = pageBounds(filters.page);
+  const { results } = await db
+    .prepare(
+      `SELECT ${ADMIN_USER_COLUMNS}
+         FROM users u
+        WHERE (?1 IS NULL OR u.name LIKE ?1 ESCAPE '\\')
+          AND (?2 IS NULL OR u.role = ?2)
+          AND (?3 IS NULL
+               OR (?3 = 'suspended' AND u.suspended_at IS NOT NULL)
+               OR (?3 = 'active' AND u.suspended_at IS NULL))
+        ORDER BY u.created_at DESC, u.id DESC
+        LIMIT ?4 OFFSET ?5`,
+    )
+    .bind(
+      filters.q === undefined ? null : likePattern(filters.q),
+      filters.role ?? null,
+      filters.status ?? null,
+      limit,
+      offset,
+    )
+    .all<AdminUserRow>();
+  return paginate(results.map(toAdminUser), page);
+}
+
+/** The admin view of one user — also what the suspend/unsuspend routes return. */
+export async function adminGetUser(db: D1Database, id: string): Promise<AdminUser | null> {
+  const row = await db
+    .prepare(`SELECT ${ADMIN_USER_COLUMNS} FROM users u WHERE u.id = ?1`)
+    .bind(id)
+    .first<AdminUserRow>();
+  return row ? toAdminUser(row) : null;
+}
+
+/**
+ * Suspend (`reason` may be `null` for "no reason given") or lift a suspension
+ * (`suspended = false`). Idempotent: re-suspending only refreshes the reason.
+ */
+export async function adminSetSuspended(
+  db: D1Database,
+  id: string,
+  suspended: boolean,
+  reason: string | null,
+  now: string,
+): Promise<void> {
+  await db
+    .prepare(
+      `UPDATE users
+          SET suspended_at = ?2,
+              suspended_reason = ?3
+        WHERE id = ?1`,
+    )
+    .bind(id, suspended ? now : null, suspended ? reason : null)
+    .run();
+}
+
+// ----------------------------------------------------------- admin: events --
+
+interface AdminEventRow extends EventRow {
+  created_at: string;
+  cancelled_at: string | null;
+}
+
+const ADMIN_EVENT_COLUMNS = `${EVENT_COLUMNS}, e.created_at, e.cancelled_at`;
+
+function toAdminEvent(row: AdminEventRow): AdminEvent {
+  return {
+    ...toEventSummary(row),
+    organizerId: row.organizer_id,
+    createdAt: row.created_at,
+    cancelledAt: row.cancelled_at,
+  };
+}
+
+/**
+ * `when` defaults to `upcoming`. Cancelled events are included unless `status`
+ * says otherwise — hiding them from the admin is exactly backwards.
+ *
+ * `ORDER BY` cannot be bound, so the two orderings are literals picked here:
+ * upcoming reads soonest-first (what is about to happen), everything else
+ * newest-first (what just happened).
+ */
+export async function adminListEvents(
+  db: D1Database,
+  filters: AdminEventsQuery & { now: string },
+): Promise<Page<AdminEvent>> {
+  const { page, limit, offset } = pageBounds(filters.page);
+  const when = filters.when ?? "upcoming";
+  const order = when === "upcoming" ? "e.starts_at ASC, e.id ASC" : "e.starts_at DESC, e.id DESC";
+
+  const { results } = await db
+    .prepare(
+      `SELECT ${ADMIN_EVENT_COLUMNS}
+         FROM events e
+         JOIN users u ON u.id = e.organizer_id
+        WHERE (?1 IS NULL OR e.title LIKE ?1 ESCAPE '\\' OR e.location LIKE ?1 ESCAPE '\\')
+          AND (?2 IS NULL OR e.status = ?2)
+          AND (?3 = 'all'
+               OR (?3 = 'upcoming' AND e.starts_at >= ?4)
+               OR (?3 = 'past' AND e.starts_at < ?4))
+        ORDER BY ${order}
+        LIMIT ?5 OFFSET ?6`,
+    )
+    .bind(
+      filters.q === undefined ? null : likePattern(filters.q),
+      filters.status ?? null,
+      when,
+      filters.now,
+      limit,
+      offset,
+    )
+    .all<AdminEventRow>();
+  return paginate(results.map(toAdminEvent), page);
+}
+
+export async function adminGetEvent(db: D1Database, id: string): Promise<AdminEvent | null> {
+  const row = await adminGetEventRow(db, id);
+  return row ? toAdminEvent(row) : null;
+}
+
+/** The raw row, for the route that needs `rsvp_count` and `room_key` too. */
+export function adminGetEventRow(db: D1Database, id: string): Promise<AdminEventRow | null> {
+  return db
+    .prepare(
+      `SELECT ${ADMIN_EVENT_COLUMNS}
+         FROM events e
+         JOIN users u ON u.id = e.organizer_id
+        WHERE e.id = ?1`,
+    )
+    .bind(id)
+    .first<AdminEventRow>();
+}
+
+/**
+ * Apply a partial edit. Only the fields present in `patch` are written, and the
+ * returned list is what the audit row records as `changed`.
+ *
+ * `rotateRoom` sets a new `room_key` **in the same statement** as the capacity
+ * change. That is hazard 1: `EventRoom` caches capacity in its own storage and
+ * answers "full" from the cache without touching D1, so raising capacity on a
+ * live event would otherwise be invisible until the room happened to rehydrate.
+ * A new key names a room that has never existed, which hydrates from D1 — the
+ * new capacity — on its next call.
+ */
+export async function adminUpdateEvent(
+  db: D1Database,
+  id: string,
+  patch: AdminEventPatch,
+  rotateRoom: string | null,
+): Promise<string[]> {
+  const sets: string[] = [];
+  const values: unknown[] = [];
+  const changed: string[] = [];
+
+  const assign = (field: string, column: string, value: unknown) => {
+    if (value === undefined) return;
+    values.push(value);
+    sets.push(`${column} = ?${values.length + 1}`); // ?1 is the id
+    changed.push(field);
+  };
+
+  assign("title", "title", patch.title);
+  assign("gameType", "game_type", patch.gameType);
+  assign("startsAt", "starts_at", patch.startsAt);
+  assign("location", "location", patch.location);
+  assign("capacity", "capacity", patch.capacity);
+
+  if (rotateRoom !== null) {
+    values.push(rotateRoom);
+    sets.push(`room_key = ?${values.length + 1}`);
+  }
+
+  if (sets.length > 0) {
+    await db
+      .prepare(`UPDATE events SET ${sets.join(", ")} WHERE id = ?1`)
+      .bind(id, ...values)
+      .run();
+  }
+  return changed;
+}
+
+/** Cancel or restore. `cancelled_at` is cleared on restore so it never lies. */
+export async function adminSetEventStatus(
+  db: D1Database,
+  id: string,
+  status: EventStatus,
+  now: string,
+): Promise<void> {
+  await db
+    .prepare("UPDATE events SET status = ?2, cancelled_at = ?3 WHERE id = ?1")
+    .bind(id, status, status === "cancelled" ? now : null)
+    .run();
+}
+
+// ----------------------------------------------------------- admin: errors --
+
+interface ErrorRow {
+  id: string;
+  fingerprint: string;
+  scope: string;
+  message: string;
+  stack: string | null;
+  metadata: string | null;
+  count: number;
+  first_seen_at: string;
+  last_seen_at: string;
+  resolved_at: string | null;
+}
+
+function toErrorEntry(row: ErrorRow): ErrorEntry {
+  return {
+    id: row.id,
+    fingerprint: row.fingerprint,
+    scope: row.scope,
+    message: row.message,
+    stack: row.stack,
+    metadata: parseMetadata(row.metadata),
+    count: row.count,
+    firstSeenAt: row.first_seen_at,
+    lastSeenAt: row.last_seen_at,
+    resolvedAt: row.resolved_at,
+  };
+}
+
+/** Most recently seen first. `LIMIT 200` — the log is a triage list, not an archive. */
+export async function listErrors(db: D1Database, status: "open" | "resolved" | "all"): Promise<ErrorEntry[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT id, fingerprint, scope, message, stack, metadata, count,
+              first_seen_at, last_seen_at, resolved_at
+         FROM error_log
+        WHERE (?1 = 'all'
+               OR (?1 = 'open' AND resolved_at IS NULL)
+               OR (?1 = 'resolved' AND resolved_at IS NOT NULL))
+        ORDER BY last_seen_at DESC, rowid DESC
+        LIMIT 200`,
+    )
+    .bind(status)
+    .all<ErrorRow>();
+  return results.map(toErrorEntry);
+}
+
+/** Existence check for the resolve/dismiss routes, which 404 on an unknown id. */
+export function getError(db: D1Database, id: string): Promise<{ id: string; fingerprint: string } | null> {
+  return db
+    .prepare("SELECT id, fingerprint FROM error_log WHERE id = ?1")
+    .bind(id)
+    .first<{ id: string; fingerprint: string }>();
+}
+
+/** Marks it handled. A later recurrence clears this again — see `reportError`. */
+export async function resolveError(db: D1Database, id: string, now: string): Promise<void> {
+  await db.prepare("UPDATE error_log SET resolved_at = ?2 WHERE id = ?1").bind(id, now).run();
+}
+
+export async function deleteError(db: D1Database, id: string): Promise<void> {
+  await db.prepare("DELETE FROM error_log WHERE id = ?1").bind(id).run();
+}
+
+// ------------------------------------------------------------ admin: audit --
+
+interface AuditRow {
+  id: string;
+  actor_id: string;
+  actor_name: string | null;
+  action: string;
+  target_type: string;
+  target_id: string;
+  metadata: string | null;
+  created_at: string;
+}
+
+function toAuditEntry(row: AuditRow): AuditEntry {
+  return {
+    id: row.id,
+    actorId: row.actor_id,
+    // The join is a LEFT JOIN so a row survives the actor being deleted; the
+    // audit trail outliving its subject is the whole point of an audit trail.
+    actorName: row.actor_name ?? row.actor_id,
+    action: row.action as AuditAction,
+    targetType: row.target_type as AuditEntry["targetType"],
+    targetId: row.target_id,
+    metadata: parseMetadata(row.metadata),
+    createdAt: row.created_at,
+  };
+}
+
+export async function listAudit(db: D1Database, limit: number): Promise<AuditEntry[]> {
+  const { results } = await db
+    .prepare(
+      // `created_at` has second precision, so a burst of actions ties. `rowid`
+      // is SQLite's insertion order — the exact tiebreak "newest first" means.
+      `SELECT a.id, a.actor_id, u.name AS actor_name, a.action, a.target_type,
+              a.target_id, a.metadata, a.created_at
+         FROM audit_log a
+         LEFT JOIN users u ON u.id = a.actor_id
+        ORDER BY a.created_at DESC, a.rowid DESC
+        LIMIT ?1`,
+    )
+    .bind(limit)
+    .all<AuditRow>();
+  return results.map(toAuditEntry);
+}
+
+// --------------------------------------------------------- admin: overview --
+
+interface DayRow {
+  day: string;
+  n: number;
+}
+
+/**
+ * Zero-fill: SQL only returns the days that happened, and a bar chart with
+ * holes in it is a lie. 14 entries, oldest first, ending on `now`'s UTC day.
+ */
+function densify(rows: DayRow[], now: Date, days: number): DayCount[] {
+  const counts = new Map(rows.map((row) => [row.day, row.n]));
+  const out: DayCount[] = [];
+  for (let offset = days - 1; offset >= 0; offset -= 1) {
+    const day = new Date(now.getTime() - offset * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    out.push({ day, count: counts.get(day) ?? 0 });
+  }
+  return out;
+}
+
+const OVERVIEW_DAYS = 14;
+
+function isoAgo(now: Date, hours: number): string {
+  return `${new Date(now.getTime() - hours * 60 * 60 * 1000).toISOString().slice(0, 19)}Z`;
+}
+
+/**
+ * Every tile on the dashboard in one D1 batch. All of it is SQL aggregation —
+ * no rows are shipped to the Worker just to be counted there.
+ */
+export async function adminOverview(db: D1Database, now: Date): Promise<AdminOverview> {
+  const nowIso = `${now.toISOString().slice(0, 19)}Z`;
+  const day1 = isoAgo(now, 24);
+  const day7 = isoAgo(now, 24 * 7);
+  // Midnight of the oldest day in the 14-day window, so a partial "today" at
+  // either end cannot drop a bucket.
+  const windowStart = `${new Date(now.getTime() - (OVERVIEW_DAYS - 1) * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10)}T00:00:00Z`;
+
+  const [users, events, rsvps, errors, signups, rsvpDays] = await db.batch([
+    db
+      .prepare(
+        `SELECT COUNT(*) AS total,
+                COALESCE(SUM(role = 'player'), 0) AS players,
+                COALESCE(SUM(role = 'organizer'), 0) AS organizers,
+                COALESCE(SUM(role = 'admin'), 0) AS admins,
+                COALESCE(SUM(suspended_at IS NOT NULL), 0) AS suspended,
+                COALESCE(SUM(created_at >= ?1), 0) AS new_last_7d
+           FROM users`,
+      )
+      .bind(day7),
+    db
+      .prepare(
+        `SELECT COALESCE(SUM(status = 'scheduled' AND starts_at >= ?1), 0) AS upcoming,
+                COALESCE(SUM(status = 'scheduled' AND starts_at >= ?1 AND rsvp_count >= capacity), 0) AS full,
+                COALESCE(SUM(status = 'cancelled'), 0) AS cancelled,
+                COALESCE(SUM(starts_at < ?1), 0) AS past
+           FROM events`,
+      )
+      .bind(nowIso),
+    db
+      .prepare(
+        `SELECT COUNT(*) AS total,
+                COALESCE(SUM(created_at >= ?1), 0) AS last_24h,
+                COALESCE(SUM(created_at >= ?2), 0) AS last_7d
+           FROM rsvps`,
+      )
+      .bind(day1, day7),
+    db
+      .prepare(
+        `SELECT COALESCE(SUM(resolved_at IS NULL), 0) AS open,
+                COALESCE(SUM(last_seen_at >= ?1), 0) AS last_24h
+           FROM error_log`,
+      )
+      .bind(day1),
+    db
+      .prepare(
+        `SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS n
+           FROM users
+          WHERE created_at >= ?1
+          GROUP BY day`,
+      )
+      .bind(windowStart),
+    db
+      .prepare(
+        `SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS n
+           FROM rsvps
+          WHERE created_at >= ?1
+          GROUP BY day`,
+      )
+      .bind(windowStart),
+  ]);
+
+  // `batch` is typed as a sparse array; the statements above always produce a
+  // row apiece, so the `?? 0` fallbacks below are belt and braces.
+  const userRow = (users?.results as UserCountsRow[] | undefined)?.[0];
+  const eventRow = (events?.results as EventCountsRow[] | undefined)?.[0];
+  const rsvpRow = (rsvps?.results as RsvpCountsRow[] | undefined)?.[0];
+  const errorRow = (errors?.results as ErrorCountsRow[] | undefined)?.[0];
+
+  return {
+    users: {
+      total: userRow?.total ?? 0,
+      players: userRow?.players ?? 0,
+      organizers: userRow?.organizers ?? 0,
+      admins: userRow?.admins ?? 0,
+      suspended: userRow?.suspended ?? 0,
+      newLast7d: userRow?.new_last_7d ?? 0,
+    },
+    events: {
+      upcoming: eventRow?.upcoming ?? 0,
+      full: eventRow?.full ?? 0,
+      cancelled: eventRow?.cancelled ?? 0,
+      past: eventRow?.past ?? 0,
+    },
+    rsvps: {
+      total: rsvpRow?.total ?? 0,
+      last24h: rsvpRow?.last_24h ?? 0,
+      last7d: rsvpRow?.last_7d ?? 0,
+    },
+    errors: {
+      open: errorRow?.open ?? 0,
+      last24h: errorRow?.last_24h ?? 0,
+    },
+    signupsByDay: densify((signups?.results ?? []) as DayRow[], now, OVERVIEW_DAYS),
+    rsvpsByDay: densify((rsvpDays?.results ?? []) as DayRow[], now, OVERVIEW_DAYS),
+    recentActions: await listAudit(db, 10),
+  };
+}
+
+interface UserCountsRow {
+  total: number;
+  players: number;
+  organizers: number;
+  admins: number;
+  suspended: number;
+  new_last_7d: number;
+}
+interface EventCountsRow {
+  upcoming: number;
+  full: number;
+  cancelled: number;
+  past: number;
+}
+interface RsvpCountsRow {
+  total: number;
+  last_24h: number;
+  last_7d: number;
+}
+interface ErrorCountsRow {
+  open: number;
+  last_24h: number;
 }

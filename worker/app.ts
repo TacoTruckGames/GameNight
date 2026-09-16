@@ -15,6 +15,7 @@ import { Hono } from "hono";
 import { apiNotFound, onError } from "./lib/errors";
 import type { AppEnv } from "./lib/context";
 import { attachUser } from "./middleware/auth";
+import { admin } from "./routes/admin";
 import { events } from "./routes/events";
 import { me } from "./routes/me";
 import { rsvp } from "./routes/rsvp";
@@ -33,6 +34,9 @@ app.route("/api", users);
 app.route("/api", me);
 app.route("/api", events);
 app.route("/api", rsvp);
+// Last: nothing else claims `/api/admin/*`, and keeping it at the bottom means
+// the public API's routing is unaffected by the operator surface existing.
+app.route("/api", admin);
 
 app.all("/api/*", apiNotFound);
 

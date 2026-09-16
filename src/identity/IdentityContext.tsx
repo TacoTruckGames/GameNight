@@ -8,6 +8,10 @@
  * identity and show the picker instead of rendering a broken, half-signed-in
  * app.
  *
+ * A suspended account is the same story with a different cause: the id is real
+ * but an admin took it away (403 `ACCOUNT_SUSPENDED`). Dropping it silently
+ * would look like a bug, so that one branch also says why, out loud.
+ *
  * Every `localStorage` access is wrapped: Safari private mode throws.
  */
 
@@ -16,6 +20,9 @@ import type { ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { User } from "../../shared/api-types";
 import { ApiError, apiFetch } from "../api/client";
+import { useToast } from "../components/Toast";
+
+export const SUSPENDED_MESSAGE = "This account has been suspended.";
 
 const STORAGE_KEY = "gn.userId";
 
@@ -44,6 +51,7 @@ interface IdentityValue {
   userId: string | null;
   isPlayer: boolean;
   isOrganizer: boolean;
+  isAdmin: boolean;
   signIn: (user: User) => void;
   signOut: () => void;
   /** Re-runs the boot check after a network failure. */
@@ -54,6 +62,7 @@ const IdentityContext = createContext<IdentityValue | null>(null);
 
 export function IdentityProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [status, setStatus] = useState<IdentityStatus>("loading");
   const [user, setUser] = useState<User | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -77,11 +86,15 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
         setStatus("ready");
       } catch (error) {
         if (cancelled) return;
-        if (error instanceof ApiError && error.status === 401) {
+        const suspended = error instanceof ApiError && error.code === "ACCOUNT_SUSPENDED";
+        if ((error instanceof ApiError && error.status === 401) || suspended) {
           // AUTH_REQUIRED / UNKNOWN_USER — the stored id is worthless now.
+          // ACCOUNT_SUSPENDED — the id is real but unusable; say so, because a
+          // picker appearing out of nowhere reads as a crash.
           writeStoredId(null);
           setUser(null);
           setStatus("anonymous");
+          if (suspended) toast.show(SUSPENDED_MESSAGE, "error");
           return;
         }
         setStatus("error");
@@ -91,7 +104,7 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [attempt]);
+  }, [attempt, toast]);
 
   const signIn = useCallback(
     (next: User) => {
@@ -122,6 +135,7 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
       userId: user?.id ?? null,
       isPlayer: user?.role === "player",
       isOrganizer: user?.role === "organizer",
+      isAdmin: user?.role === "admin",
       signIn,
       signOut,
       retry,

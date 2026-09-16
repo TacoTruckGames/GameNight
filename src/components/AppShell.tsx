@@ -25,7 +25,7 @@ function Tab({ to, label, icon, end = false }: { to: string; label: string; icon
 }
 
 export function AppShell() {
-  const { user, isOrganizer } = useIdentity();
+  const { user, isOrganizer, isAdmin } = useIdentity();
   const [switching, setSwitching] = useState(false);
 
   return (
@@ -52,7 +52,9 @@ export function AppShell() {
       <nav className="shell__tabs" aria-label="Main">
         <div className="shell__tabs-inner">
           <Tab to="/" label="Events" icon="events" end />
-          {isOrganizer ? (
+          {isAdmin ? (
+            <Tab to="/admin" label="Admin" icon="shield" />
+          ) : isOrganizer ? (
             <Tab to="/organize" label="Organize" icon="organize" />
           ) : (
             <Tab to="/me" label="My events" icon="mine" />

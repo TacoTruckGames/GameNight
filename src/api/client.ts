@@ -35,7 +35,7 @@ export class NetworkError extends Error {
 }
 
 export interface ApiFetchOptions {
-  method?: "GET" | "POST" | "PUT" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   /** Serialized as JSON when present. */
   body?: unknown;
   /** Sent as `X-User-Id`; the Worker's only notion of identity. */

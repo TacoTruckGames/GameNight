@@ -257,7 +257,12 @@ function HostedEvents() {
               </span>
             </Link>
             <div className="card__row">
-              <SeatChip seatsLeft={event.seatsLeft} capacity={event.capacity} isFull={event.isFull} />
+              <SeatChip
+                seatsLeft={event.seatsLeft}
+                capacity={event.capacity}
+                isFull={event.isFull}
+                status={event.status}
+              />
               <Link className="btn btn--sm btn--secondary" to={`/organize/events/${event.id}`}>
                 {event.attendeeCount === 1 ? "1 attendee" : `${event.attendeeCount} attendees`}
               </Link>

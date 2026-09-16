@@ -21,7 +21,7 @@ migrations and re-seeds the demo board every time it starts (seed dates are rela
 and "one seat left" events are always there).
 
 ```sh
-pnpm test                        # 117 tests, incl. the concurrency proofs (~3 s)
+pnpm test                        # 179 tests, incl. the concurrency proofs (~3 s)
 pnpm stress [url] [--players 40] [--capacity 5]   # real-HTTP race against a running server
 pnpm typecheck
 ```
@@ -29,7 +29,8 @@ pnpm typecheck
 The first screen has a tab per role. **Player** (Alice, Bob, …) browses and RSVPs; **Organizer**
 (Cardboard Castle Games, Metro Meetup Crew) posts events and sees attendee lists. On either tab, pick someone
 who already exists or type a name to join as somebody new, then press **Join as Player** / **Join as
-Organizer** — so a reviewer can see both halves of the product without editing a database.
+Organizer** — so a reviewer can see both halves of the product without editing a database. A third tab,
+**Admin**, holds the one seeded operator account (*Site Admin*) — see "Administration" below.
 The seed has seven events: one full (Commander Pod Night, 4/4), one with a single seat
 left (D&D One-Shot, 4/5 — Alice isn't in it, which makes it the hand-run race demo), a few partly filled, one
 empty, and one in the past that the board correctly hides.
@@ -160,6 +161,27 @@ generated with Gemini via `tools/artgen/gen.py`; icons ship as alpha masks paint
 they inherit text colour and theme for free. That is the whole of it — the brief says polish earns no
 credit, so this stays deliberately minimal.
 
+### Administration
+
+`/admin` is the operator's entry point, reachable by picking **Site Admin** on the Admin tab. It is small on
+purpose: an overview (counts, 14-day signups and RSVPs, open errors, recent admin actions), **Users**
+(search/filter, suspend with an optional reason, unsuspend), **Events** (every event, past and cancelled
+included; edit any field, cancel/restore, remove an attendee) and **Errors** (the backend error log).
+
+Three rules keep it honest with the rest of the system. A suspension is one nullable `suspended_at` checked
+once in the auth middleware, so every route inherits it as `403 ACCOUNT_SUSPENDED` and the client returns the
+person to the picker. A capacity change **rotates the event's `room_key`**, because an already-hydrated
+`EventRoom` caches capacity and would otherwise keep refusing RSVPs at the old number; removing an attendee
+goes **through the room's `cancel()`** so its member set never drifts from D1; and capacity can't be set
+below the current attendee count (a field error, not a constraint crash). Cancelling is a status, not a
+delete — the board hides the event and refuses new RSVPs (`409 EVENT_CANCELLED`), but seat-holders still see
+it, marked, in My events. Every admin mutation writes an `audit_log` row with the actor.
+
+Backend errors: unexpected throws are `console.error`'d first (Workers Logs is the floor), then upserted
+into `error_log` keyed by a fingerprint of scope + normalised message, so a hot failure loop is one row with
+a count rather than a million writes; resolving an error hides it until it recurs. The overview's "Send
+test error" button exercises that whole path so an operator can trust it before they need it.
+
 ## Reaching the 12-month column
 
 The launch build already has the shape; here is exactly what changes at ~200k players / ~5k live events /
@@ -237,10 +259,12 @@ trusted:
 
 What is stubbed or simplified, roughly in the order I would harden it:
 
-1. **Auth.** `X-User-Id` is trust-the-client, and anyone can mint an organizer account from the picker — both
-   fine for a demo board, neither survives contact with real users. Replace with real sessions (OAuth +
-   signed cookie, or Cloudflare Access for organizers) and make the organizer role something granted rather
-   than self-declared; rate-limit `POST /api/users`; add body-size limits, write rate limits and CSP headers.
+1. **Auth.** `X-User-Id` is trust-the-client, anyone can mint an organizer account from the picker, and the
+   admin is just another name on it — all fine for a demo board, none of it survives contact with real
+   users. Replace with real sessions (OAuth + signed cookie), put Cloudflare Access or an email allowlist in
+   front of `/admin` and `/api/admin/*`, and make organizer and admin roles something granted rather than
+   self-declared; rate-limit `POST /api/users`; add body-size limits, write rate limits and CSP headers.
+   The `error_log` and `audit_log` tables need a retention job (anonymise, then purge).
 2. **Durable Object trade-offs.** A room lives in one location, so RSVP latency is higher for far-away
    players (reads are unaffected). Storage loss is recovered by lazy rehydration from D1, but a periodic
    reconcile alarm that re-derives members from D1 and logs discrepancies would make the DO/D1 divergence

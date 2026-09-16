@@ -26,12 +26,19 @@ export const attachUser: MiddlewareHandler<AppEnv> = async (c, next) => {
     return next();
   }
 
-  const row = await c.env.DB.prepare("SELECT id, name, role FROM users WHERE id = ?1")
+  const row = await c.env.DB.prepare("SELECT id, name, role, suspended_at FROM users WHERE id = ?1")
     .bind(id)
-    .first<{ id: string; name: string; role: string }>();
+    .first<{ id: string; name: string; role: string; suspended_at: string | null }>();
 
   if (!row) {
     throw new ApiError(401, "UNKNOWN_USER", "That user no longer exists. Please pick who you are again.");
+  }
+
+  // Suspension is enforced once, here, before `c.set` — so no route has to
+  // remember to check it and a suspended account cannot reach any handler.
+  // The client treats this like a 401: clear the identity, back to the picker.
+  if (row.suspended_at) {
+    throw new ApiError(403, "ACCOUNT_SUSPENDED", "This account has been suspended.");
   }
 
   c.set("user", { id: row.id, name: row.name, role: row.role as Role });
@@ -63,4 +70,13 @@ export function requirePlayer(c: Context<AppEnv>): User {
 /** 401 when signed out, 403 for players. */
 export function requireOrganizer(c: Context<AppEnv>): User {
   return requireRole(c, "organizer", "Only organizers can do that.");
+}
+
+/**
+ * 401 when signed out, 403 for everyone else. Exact-role, like the other two,
+ * which is also why an admin cannot RSVP or post an event: the operator account
+ * is for operating, not for playing.
+ */
+export function requireAdmin(c: Context<AppEnv>): User {
+  return requireRole(c, "admin", "Admins only.");
 }

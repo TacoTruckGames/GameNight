@@ -37,6 +37,20 @@ export function formatEventDateTimeLong(iso: string): string {
   return at ? `${dateOnly.format(at)} at ${timeOnly.format(at)}` : iso;
 }
 
+/**
+ * "Sep 18" for a `DayCount`'s `"YYYY-MM-DD"`.
+ *
+ * The admin day buckets are grouped in UTC server-side, so they are formatted in
+ * UTC too — reading them in the local zone would shift every label by a day for
+ * anyone west of Greenwich. The chart says "UTC" next to them.
+ */
+const utcDay = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
+
+export function formatUtcDay(day: string): string {
+  const at = parse(`${day}T00:00:00Z`);
+  return at ? utcDay.format(at) : day;
+}
+
 /** Machine-readable value for `<time dateTime>`; empty when unparseable. */
 export function toDateTimeAttr(iso: string): string {
   return parse(iso) ? iso : "";
@@ -52,10 +66,20 @@ export function localInputToIso(value: string): string | null {
   return Number.isNaN(at.getTime()) ? null : at.toISOString();
 }
 
+function toLocalInput(at: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}T${pad(at.getHours())}:${pad(at.getMinutes())}`;
+}
+
+/** The other direction: a stored UTC instant, as a local `datetime-local` value. */
+export function isoToLocalInput(iso: string): string {
+  const at = parse(iso);
+  return at ? toLocalInput(at) : "";
+}
+
 /** Local wall time `n` hours from now, formatted for a `datetime-local` value. */
 export function defaultLocalInputValue(hoursFromNow: number): string {
   const at = new Date(Date.now() + hoursFromNow * 3_600_000);
   at.setMinutes(0, 0, 0);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}T${pad(at.getHours())}:${pad(at.getMinutes())}`;
+  return toLocalInput(at);
 }

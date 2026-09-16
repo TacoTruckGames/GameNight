@@ -29,7 +29,7 @@ import type {
 } from "../../shared/api-types";
 import type { CreateEventInput, CreateUserInput } from "../../shared/schemas";
 import { ApiError, NetworkError, apiFetch } from "./client";
-import { useIdentity } from "../identity/IdentityContext";
+import { SUSPENDED_MESSAGE, useIdentity } from "../identity/IdentityContext";
 import { useToast } from "../components/Toast";
 
 const STALE_TIME_MS = 10_000;
@@ -61,6 +61,21 @@ export interface EventsFilter {
   gameType?: string;
 }
 
+/** The admin lists are filtered entirely from the URL, so the key is the URL's query. */
+export interface AdminUsersFilter {
+  q?: string;
+  role?: string;
+  status?: string;
+  page?: number;
+}
+
+export interface AdminEventsFilter {
+  q?: string;
+  when?: string;
+  status?: string;
+  page?: number;
+}
+
 export const queryKeys = {
   users: ["users"] as const,
   eventList: (filter: EventsFilter) => ["events", "list", filter.q ?? "", filter.gameType ?? ""] as const,
@@ -68,6 +83,17 @@ export const queryKeys = {
   attendees: (id: string) => ["events", "attendees", id] as const,
   myRsvps: (userId: string) => ["me", "rsvps", userId] as const,
   hosted: (userId: string) => ["me", "hosted", userId] as const,
+  /** Everything the dashboard reads hangs off one prefix, so one write clears it all. */
+  admin: {
+    all: ["admin"] as const,
+    overview: ["admin", "overview"] as const,
+    users: (filter: AdminUsersFilter) =>
+      ["admin", "users", filter.q ?? "", filter.role ?? "", filter.status ?? "", filter.page ?? 1] as const,
+    events: (filter: AdminEventsFilter) =>
+      ["admin", "events", "list", filter.q ?? "", filter.when ?? "", filter.status ?? "", filter.page ?? 1] as const,
+    event: (id: string) => ["admin", "events", "detail", id] as const,
+    errors: (status: string) => ["admin", "errors", status] as const,
+  },
 };
 
 // ----------------------------------------------------------------- queries --
@@ -153,6 +179,21 @@ function useAfterWrite() {
   };
 }
 
+/**
+ * An admin write can move anything: a suspension changes `/api/users` (the
+ * picker), a cancelled event changes the board and everyone's "My events", and
+ * every mutation adds an audit row to the overview. So it clears all four
+ * prefixes rather than trying to be clever about which one moved.
+ */
+export function useAfterAdminWrite() {
+  const queryClient = useQueryClient();
+  return () => {
+    for (const key of [["admin"], ["events"], ["me"], ["users"]]) {
+      void queryClient.invalidateQueries({ queryKey: key });
+    }
+  };
+}
+
 export function useCreateUser() {
   const { signIn } = useIdentity();
   const queryClient = useQueryClient();
@@ -195,9 +236,17 @@ function useRsvpErrorHandler() {
           toast.show("That event has already started.", "error");
           afterWrite();
           return;
+        case "EVENT_CANCELLED":
+          toast.show("That event was cancelled.", "error");
+          afterWrite();
+          return;
         case "AUTH_REQUIRED":
         case "UNKNOWN_USER":
           toast.show("Pick who you are to continue.", "error");
+          signOut();
+          return;
+        case "ACCOUNT_SUSPENDED":
+          toast.show(SUSPENDED_MESSAGE, "error");
           signOut();
           return;
         default:

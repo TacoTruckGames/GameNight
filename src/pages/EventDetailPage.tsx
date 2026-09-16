@@ -42,6 +42,7 @@ export function EventDetailPage() {
 
   const detail = event.data;
   const joined = detail.myRsvp ?? myRsvpIds.has(detail.id);
+  const cancelled = detail.status === "cancelled";
 
   return (
     <div className="stack stack--loose">
@@ -68,8 +69,14 @@ export function EventDetailPage() {
               capacity={detail.capacity}
               isFull={detail.isFull}
               joined={joined}
+              status={detail.status}
             />
           </div>
+          {cancelled ? (
+            <p className="text-sm muted">
+              An admin cancelled this event. {joined ? "Your seat is gone — you can clear it from your list." : ""}
+            </p>
+          ) : null}
         </div>
         {isPlayer ? (
           <RsvpButton
@@ -78,9 +85,10 @@ export function EventDetailPage() {
             isFull={detail.isFull}
             joined={joined}
             startsAt={detail.startsAt}
+            status={detail.status}
             block
           />
-        ) : (
+        ) : cancelled ? null : (
           <p className="text-sm muted">Sign in as a player to RSVP.</p>
         )}
       </div>

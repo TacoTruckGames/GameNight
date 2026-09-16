@@ -14,7 +14,11 @@ import type { GameType } from "./game-types";
 
 // ------------------------------------------------------------------ users --
 
-export type Role = "player" | "organizer";
+/**
+ * `admin` is provisioned by the operator (seed / database), never by
+ * self-signup — see `SIGNUP_ROLES` in `shared/schemas.ts`.
+ */
+export type Role = "player" | "organizer" | "admin";
 
 export interface User {
   id: string;
@@ -33,6 +37,9 @@ export interface User {
  * the same atomic D1 batch as the RSVP rows. `seatsLeft` and `isFull` are
  * derived server-side so the client never re-does the arithmetic.
  */
+/** Cancellation is a status, not a delete: RSVP rows and the audit trail survive. */
+export type EventStatus = "scheduled" | "cancelled";
+
 export interface EventSummary {
   id: string;
   title: string;
@@ -44,6 +51,7 @@ export interface EventSummary {
   attendeeCount: number;
   seatsLeft: number;
   isFull: boolean;
+  status: EventStatus;
   organizerName: string;
 }
 
@@ -86,9 +94,11 @@ export type ApiErrorCode =
   | "AUTH_REQUIRED" //     401 — no X-User-Id header
   | "UNKNOWN_USER" //      401 — X-User-Id not in users; client clears identity
   | "FORBIDDEN" //         403 — wrong role, or not the owning organizer
+  | "ACCOUNT_SUSPENDED" // 403 — an admin suspended this account; client clears identity
   | "NOT_FOUND" //         404
   | "EVENT_FULL" //        409 — lost the race for the last seat (S1)
   | "EVENT_STARTED" //     409 — event is in the past
+  | "EVENT_CANCELLED" //   409 — an admin cancelled the event; no new RSVPs
   | "RSVP_UNAVAILABLE" //  503 — DO/D1 write failed; safe to retry (PUT/DELETE are idempotent)
   | "INTERNAL"; //         500
 
@@ -105,4 +115,85 @@ export interface ApiErrorBody {
     message: string;
     details?: ApiFieldError[];
   };
+}
+
+// ------------------------------------------------------------------- admin --
+// `/api/admin/*`, role `admin` only. Timestamps are ISO-8601 UTC.
+
+/** Offset pagination; `hasNext` comes from fetching pageSize + 1 rows. */
+export interface Page<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  hasNext: boolean;
+}
+
+export interface AdminUser extends User {
+  createdAt: string;
+  suspendedAt: string | null;
+  suspendedReason: string | null;
+  rsvpCount: number;
+  hostedCount: number;
+}
+
+export interface AdminEvent extends EventSummary {
+  organizerId: string;
+  createdAt: string;
+  cancelledAt: string | null;
+}
+
+export interface AdminEventDetail extends AdminEvent {
+  attendees: Attendee[];
+}
+
+/** One row per distinct failure (fingerprint = scope + normalised message). */
+export interface ErrorEntry {
+  id: string;
+  fingerprint: string;
+  scope: string;
+  message: string;
+  stack: string | null;
+  metadata: Record<string, unknown> | null;
+  count: number;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  resolvedAt: string | null;
+}
+
+export type AuditAction =
+  | "user.suspended"
+  | "user.unsuspended"
+  | "event.updated"
+  | "event.cancelled"
+  | "event.restored"
+  | "event.attendee_removed"
+  | "error.resolved"
+  | "error.dismissed";
+
+export interface AuditEntry {
+  id: string;
+  actorId: string;
+  actorName: string;
+  action: AuditAction;
+  targetType: "user" | "event" | "error";
+  targetId: string;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+export interface DayCount {
+  /** "YYYY-MM-DD" (UTC). */
+  day: string;
+  count: number;
+}
+
+export interface AdminOverview {
+  users: { total: number; players: number; organizers: number; admins: number; suspended: number; newLast7d: number };
+  events: { upcoming: number; full: number; cancelled: number; past: number };
+  rsvps: { total: number; last24h: number; last7d: number };
+  errors: { open: number; last24h: number };
+  /** 14 entries, oldest first, zero-filled. */
+  signupsByDay: DayCount[];
+  rsvpsByDay: DayCount[];
+  recentActions: AuditEntry[];
 }

@@ -41,12 +41,24 @@ export interface SeededUser {
   role: Role;
 }
 
+/** Matches the id prefixes the seed and `POST /api/users` use, per role. */
+const ID_PREFIX: Record<Role, string> = { player: "u", organizer: "org", admin: "adm" };
+const ROLE_LABEL: Record<Role, string> = { player: "Player", organizer: "Org", admin: "Admin" };
+
 export async function seedUser(options: { role?: Role; name?: string } = {}): Promise<SeededUser> {
   const role = options.role ?? "player";
-  const id = uid(role === "organizer" ? "org" : "u");
-  const name = options.name ?? `${role === "organizer" ? "Org" : "Player"} ${id.slice(-6)}`;
+  const id = uid(ID_PREFIX[role]);
+  const name = options.name ?? `${ROLE_LABEL[role]} ${id.slice(-6)}`;
   await env.DB.prepare("INSERT INTO users (id, name, role) VALUES (?1, ?2, ?3)").bind(id, name, role).run();
   return { id, name, role };
+}
+
+/**
+ * An admin, which no API route can create — `SIGNUP_ROLES` excludes the role on
+ * purpose, so the only way in is the database, exactly as in production.
+ */
+export function seedAdmin(options: { name?: string } = {}): Promise<SeededUser> {
+  return seedUser({ ...options, role: "admin" });
 }
 
 export async function seedUsers(count: number, options: { role?: Role } = {}): Promise<SeededUser[]> {

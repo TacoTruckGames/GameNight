@@ -16,23 +16,16 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 
 import type { RsvpResponse } from "../../shared/api-types";
-import type { CancelOutcome, EventRoom, RsvpOutcome } from "../do/EventRoom";
+import type { CancelOutcome, RsvpOutcome } from "../do/EventRoom";
 import { getEventRow, type EventRow } from "../db/queries";
 import type { AppEnv } from "../lib/context";
 import { ApiError } from "../lib/errors";
+import { reportError } from "../lib/report";
+import { roomFor } from "../lib/room";
 import { nowIso } from "../lib/time";
 import { requirePlayer } from "../middleware/auth";
 
 export const rsvp = new Hono<AppEnv>();
-
-/**
- * The room name is `${eventId}:${room_key}`. The salt means an event can be
- * given a fresh, empty room by rotating one column — it re-hydrates from D1 on
- * the next call — without inventing a new event id.
- */
-function roomFor(env: Env, event: EventRow): DurableObjectStub<EventRoom> {
-  return env.EVENT_ROOM.get(env.EVENT_ROOM.idFromName(`${event.id}:${event.room_key}`));
-}
 
 async function loadEvent(c: Context<AppEnv>, id: string): Promise<EventRow> {
   const row = await getEventRow(c.env.DB, id);
@@ -53,9 +46,17 @@ function toResponse(status: RsvpResponse["status"], outcome: RsvpOutcome | Cance
  * A DO or D1 failure is a 503, never a 500: nothing was written that the caller
  * needs to reason about, and the verb is idempotent, so "try again" is honest
  * and safe advice.
+ *
+ * Because it is a handled 503 it never reaches `onError`'s reporting branch, so
+ * it records itself — a room that has started failing is precisely what an
+ * operator wants on the Errors page.
  */
-function unavailable(error: unknown): ApiError {
-  console.error("EventRoom call failed", error);
+async function unavailable(
+  db: D1Database,
+  error: unknown,
+  metadata: Record<string, unknown>,
+): Promise<ApiError> {
+  await reportError(db, "rsvp.room", error, metadata);
   return new ApiError(503, "RSVP_UNAVAILABLE", "Could not save your RSVP, please retry.");
 }
 
@@ -69,11 +70,17 @@ rsvp.put("/events/:id/rsvp", async (c) => {
     throw new ApiError(409, "EVENT_STARTED", "This event has already started.");
   }
 
+  // An admin called this one off. Cancelling an existing RSVP still works (see
+  // the DELETE below) — only taking a new seat is refused.
+  if (event.status === "cancelled") {
+    throw new ApiError(409, "EVENT_CANCELLED", "This event was cancelled.");
+  }
+
   let outcome: RsvpOutcome;
   try {
     outcome = await roomFor(c.env, event).rsvp(event.id, player.id);
   } catch (error) {
-    throw unavailable(error);
+    throw await unavailable(c.env.DB, error, { eventId: event.id, playerId: player.id, op: "rsvp" });
   }
 
   switch (outcome.kind) {
@@ -96,7 +103,7 @@ rsvp.delete("/events/:id/rsvp", async (c) => {
   try {
     outcome = await roomFor(c.env, event).cancel(event.id, player.id);
   } catch (error) {
-    throw unavailable(error);
+    throw await unavailable(c.env.DB, error, { eventId: event.id, playerId: player.id, op: "cancel" });
   }
 
   return c.json(toResponse(outcome.kind === "cancelled" ? "cancelled" : "not_attending", outcome), 200);

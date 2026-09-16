@@ -52,7 +52,12 @@ export function AttendeesPage() {
           {event.location}
         </p>
         <div>
-          <SeatChip seatsLeft={event.seatsLeft} capacity={event.capacity} isFull={event.isFull} />
+          <SeatChip
+            seatsLeft={event.seatsLeft}
+            capacity={event.capacity}
+            isFull={event.isFull}
+            status={event.status}
+          />
         </div>
       </div>
 

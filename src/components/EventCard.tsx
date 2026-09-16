@@ -39,6 +39,7 @@ export function EventCard({
           capacity={event.capacity}
           isFull={event.isFull}
           joined={joined}
+          status={event.status}
         />
         {showRsvp ? (
           <RsvpButton
@@ -47,6 +48,7 @@ export function EventCard({
             isFull={event.isFull}
             joined={joined}
             startsAt={event.startsAt}
+            status={event.status}
           />
         ) : null}
       </div>

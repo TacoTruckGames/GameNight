@@ -176,7 +176,8 @@ ICONS = [("search", "a magnifying glass"),
          ("mine", "an admission ticket"), ("organize", "a clipboard with a checkmark"),
          ("seat", "a simple chair seen from the front"), ("full", "a closed padlock"),
          ("in", "a bold checkmark inside a circle"), ("empty", "two dice"),
-         ("alert", "a warning triangle with an exclamation mark")]
+         ("alert", "a warning triangle with an exclamation mark"),
+         ("shield", "a simple shield")]
 
 
 def cmd_logo():

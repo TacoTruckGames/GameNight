@@ -60,10 +60,17 @@ export type CreateEventInput = z.infer<CreateEventSchema>;
 
 // -------------------------------------------------------- POST /api/users --
 
-/** One tuple, so the zod enum and the `Role` union cannot drift apart. */
-export const ROLES = ["player", "organizer"] as const satisfies readonly Role[];
+/**
+ * The roles self-signup may create. `admin` is deliberately absent: it exists in
+ * the `Role` union and the database, but only the operator (seed / SQL) can
+ * grant it. `satisfies` keeps the tuple inside the union.
+ */
+export const SIGNUP_ROLES = ["player", "organizer"] as const satisfies readonly Role[];
 
-export const roleSchema = z.enum(ROLES);
+export const roleSchema = z.enum(SIGNUP_ROLES);
+
+/** Every role, for admin-side filters. */
+export const ALL_ROLES = ["player", "organizer", "admin"] as const satisfies readonly Role[];
 
 /**
  * Self-signup. `role` is optional and defaults to `player`, so a caller that
@@ -100,3 +107,56 @@ export const eventsQuerySchema = z
 
 export type EventsQuery = z.infer<typeof eventsQuerySchema>;
 export type EventsQueryInput = z.input<typeof eventsQuerySchema>;
+
+// ------------------------------------------------------------ /api/admin --
+
+export const SUSPEND_REASON_MAX = 200;
+export const ADMIN_PAGE_SIZE = 50;
+
+/** Blank query-string values normalise to `undefined`, as in `eventsQuerySchema`. */
+const blankToUndefined = (value: unknown) => (typeof value === "string" && value.trim() === "" ? undefined : value);
+
+const pageSchema = z.preprocess(
+  (value) => (typeof value === "string" && value !== "" ? Number(value) : value),
+  z.int().min(1).optional(),
+);
+
+export const suspendSchema = z.object({
+  reason: z.string().trim().max(SUSPEND_REASON_MAX, `Reason must be ${SUSPEND_REASON_MAX} characters or fewer`).optional(),
+});
+export type SuspendInput = z.infer<typeof suspendSchema>;
+
+export const adminUsersQuerySchema = z.object({
+  q: z.preprocess(blankToUndefined, z.string().trim().max(SEARCH_MAX).optional()),
+  role: z.preprocess(blankToUndefined, z.enum(ALL_ROLES).optional()),
+  status: z.preprocess(blankToUndefined, z.enum(["active", "suspended"]).optional()),
+  page: pageSchema,
+});
+export type AdminUsersQuery = z.infer<typeof adminUsersQuerySchema>;
+
+export const adminEventsQuerySchema = z.object({
+  q: z.preprocess(blankToUndefined, z.string().trim().max(SEARCH_MAX).optional()),
+  when: z.preprocess(blankToUndefined, z.enum(["upcoming", "past", "all"]).optional()),
+  status: z.preprocess(blankToUndefined, z.enum(["scheduled", "cancelled"]).optional()),
+  page: pageSchema,
+});
+export type AdminEventsQuery = z.infer<typeof adminEventsQuerySchema>;
+
+export const adminErrorsQuerySchema = z.object({
+  status: z.preprocess(blankToUndefined, z.enum(["open", "resolved", "all"]).optional()),
+});
+export type AdminErrorsQuery = z.infer<typeof adminErrorsQuerySchema>;
+
+/**
+ * Admin edit of an event: every create field, each optional, same rules. The
+ * capacity floor (not below the current attendee count) needs the database and
+ * is enforced in the route, not here.
+ */
+export function adminEventPatchSchema(now: Date) {
+  return createEventSchema(now)
+    .partial()
+    .refine((patch) => Object.values(patch).some((value) => value !== undefined), {
+      message: "Change at least one field",
+    });
+}
+export type AdminEventPatch = z.infer<ReturnType<typeof adminEventPatchSchema>>;
