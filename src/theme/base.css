@@ -823,38 +823,6 @@ a {
   color: var(--color-muted);
 }
 
-.who__option {
-  width: 100%;
-  min-height: var(--tap-target);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-  font-weight: 600;
-  text-align: left;
-  cursor: pointer;
-}
-
-/* Picking a row arms the Join button rather than signing you straight in, so
-   the row has to look chosen — colour alone would not say that. */
-.who__option[aria-pressed="true"] {
-  border-color: var(--color-accent);
-  background: var(--color-accent-soft);
-  color: var(--color-accent-strong);
-}
-
-.who__option-end {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
 .modal {
   position: fixed;
   inset: 0;
@@ -1390,13 +1358,6 @@ a {
     gap: var(--space-4);
   }
 
-  /* Eight seeded profiles in one column are taller than a 900px window, which
-     pushes "Join as Player" off the bottom edge. Two columns halve the height;
-     the grid overrides `.stack`'s flex column and inherits its gap. */
-  .who__options {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 /* The month grid is the one element that genuinely wants more than 640px, so

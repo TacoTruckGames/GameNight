@@ -24,21 +24,37 @@ import { createUserSchema, NAME_MAX } from "../../shared/schemas";
 import { useCreateUser, useUsers } from "../api/hooks";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBanner } from "../components/ErrorBanner";
-import { Icon } from "../components/Icon";
 import { Logo } from "../components/Logo";
 import { Skeleton } from "../components/Skeleton";
 import { useIdentity } from "./IdentityContext";
 
+// `article` is carried rather than derived: "a"/"an" from a first letter is a
+// rule with exceptions, and there are exactly two nouns here.
 const TABS = [
-  { role: "player", label: "Player", noun: "player", join: "Join as Player", hint: "Browse events and RSVP." },
+  {
+    role: "player",
+    label: "Player",
+    noun: "player",
+    article: "a",
+    join: "Join as Player",
+    hint: "Browse events and RSVP.",
+  },
   {
     role: "organizer",
     label: "Organizer",
     noun: "organizer",
+    article: "an",
     join: "Join as Organizer",
     hint: "Post events and see who is coming.",
   },
-] as const satisfies readonly { role: Role; label: string; noun: string; join: string; hint: string }[];
+] as const satisfies readonly {
+  role: Role;
+  label: string;
+  noun: string;
+  article: string;
+  join: string;
+  hint: string;
+}[];
 
 /** The roles this picker offers. An admin signing in lands on the player tab. */
 type PickerRole = (typeof TABS)[number]["role"];
@@ -64,12 +80,12 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
   const baseId = useId();
   const panelId = `${baseId}-panel`;
   const nameInputId = `${baseId}-name`;
+  const pickerId = `${baseId}-picker`;
   const errorId = `${baseId}-error`;
   const headingId = `${baseId}-heading`;
   const tabId = (value: Role) => `${baseId}-tab-${value}`;
 
   const tabRefs = useRef<Record<PickerRole, HTMLButtonElement | null>>({ player: null, organizer: null });
-  const submitRef = useRef<HTMLButtonElement | null>(null);
   const isModal = onClose !== undefined;
 
   useEffect(() => {
@@ -104,13 +120,10 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
   }
 
   function pick(id: string) {
-    setSelectedId(id);
-    setName("");
+    // "" is the placeholder option: choosing it means "no one yet", not a person.
+    setSelectedId(id === "" ? null : id);
+    if (id !== "") setName("");
     setFormError(null);
-    // Eight names push the button off a phone screen, and picking a row is only
-    // half the job now — so bring the half that finishes it into view. `nearest`
-    // makes this a no-op when the button is already visible.
-    submitRef.current?.scrollIntoView({ block: "nearest" });
   }
 
   const tab = TABS.find((item) => item.role === role) ?? TABS[0];
@@ -143,7 +156,7 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
     const picked =
       people.find((person) => person.id === selectedId) ?? (user?.id === selectedId ? user : undefined);
     if (!picked) {
-      setFormError(`Pick a ${tab.noun} above, or type a name to join as someone new.`);
+      setFormError(`Pick ${tab.article} ${tab.noun} above, or type a name to join as someone new.`);
       return;
     }
     setFormError(null);
@@ -180,9 +193,7 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
 
         {users.isPending ? (
           <div className="stack" role="status" aria-busy="true" aria-label="Loading people">
-            <Skeleton height={56} />
-            <Skeleton height={56} />
-            <Skeleton height={56} />
+            <Skeleton height={44} />
           </div>
         ) : users.isError ? (
           <ErrorBanner error={users.error} onRetry={() => void users.refetch()} />
@@ -192,27 +203,28 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
             hint="Type a name below to be the first."
           />
         ) : (
-          <ul className="stack who__options">
-            {people.map((person) => {
-              const isSelected = person.id === selectedId;
-              return (
-                <li key={person.id}>
-                  <button
-                    type="button"
-                    className="who__option"
-                    aria-pressed={isSelected}
-                    onClick={() => pick(person.id)}
-                  >
-                    <span>{person.name}</span>
-                    <span className="who__option-end">
-                      {person.id === user?.id ? <span className="text-sm muted">Current</span> : null}
-                      {isSelected ? <Icon name="in" size={20} label="Selected" /> : null}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+          // A select, not a row of buttons: the demo board seeds 28 players, and
+          // 28 tappable rows pushed the join button several screens down a phone.
+          // The native picker is one line however long the list gets.
+          <div className="field">
+            <label className="field__label" htmlFor={pickerId}>
+              Pick {tab.article} {tab.noun}
+            </label>
+            <select
+              id={pickerId}
+              className="select"
+              value={selectedId ?? ""}
+              onChange={(event) => pick(event.target.value)}
+            >
+              <option value="">Choose {tab.article} {tab.noun}…</option>
+              {people.map((person) => (
+                <option key={person.id} value={person.id}>
+                  {person.name}
+                  {person.id === user?.id ? " (current)" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
         )}
 
         <form className="stack" onSubmit={submit} noValidate>
@@ -245,7 +257,6 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
           </div>
           {createUser.error ? <ErrorBanner error={createUser.error} /> : null}
           <button
-            ref={submitRef}
             type="submit"
             className="btn btn--block"
             disabled={createUser.isPending || !canJoin}
