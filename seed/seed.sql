@@ -485,6 +485,155 @@ INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, cap
    'cancelled', strftime('%Y-%m-%dT%H:%M:%SZ','now','-14 days'),
    NULL, NULL, NULL, NULL, NULL);
 
+-- --------------------------------------------------------- descriptions ----
+-- Applied as one UPDATE pass keyed by id, for the same reason `rsvp_count` is
+-- derived at the foot of this file rather than typed into each row: a 15th
+-- column threaded through four multi-row INSERTs is four places to miscount
+-- commas, and the prose stops being readable the moment it is wedged between a
+-- capacity and a `randomblob`. Keeping it as a block means the demo copy can be
+-- read, and rewritten, as copy.
+--
+-- Length is bounded by `DESCRIPTION_MAX` (500) — the API rejects anything
+-- longer, so a seed row that sailed past it would be a fixture the product
+-- itself would refuse to create. Everything below sits in the 180-260 range:
+-- two or three sentences, which is what an organizer actually writes.
+--
+-- **Nine events deliberately have none, and that is a fixture, not a gap.**
+-- A description is nullable because a house game posted in a hurry has no
+-- description, and the detail page, the card and the admin table all have to
+-- render that state without an empty box or the word "undefined". Blank must be
+-- NULL and never `''`, so those nine are simply absent from the list below
+-- rather than carrying an empty string. They are spread on purpose — six
+-- upcoming, two past, one cancelled — so a reviewer meets the no-description
+-- case without hunting for it:
+--
+--   evt_dnd_curse_amber, evt_pauper_league, evt_rpg_open_table,
+--   evt_commander_budget, evt_draft_chaos_cube, evt_prerelease_draft,
+--   evt_past_warhammer_league, evt_past_thursday_draft, evt_cancel_snow_draft
+--
+-- Every id below must exist. The UPDATE matches on id, so a misspelt id is not
+-- an error — it is simply a description that quietly never appears, which is the
+-- one failure mode of doing it this way. The check is one query:
+-- `SELECT COUNT(description) FROM events` must be 55, out of 64 rows.
+WITH descriptions (id, body) AS (VALUES
+  -- upcoming ----------------------------------------------------------------
+  ('evt_friday_draft',
+   'Eight-person booster draft, three rounds of Swiss, packs provided. Bring a deck box and sleeves if you have them; everything else is on the shop. Doors at 7:30 for registration, first pack cracked at 8. We are usually done by 11.'),
+  ('evt_commander_pod',
+   'One four-player pod at casual power level — precons and lightly upgraded precons, nothing that wins on turn four. Bring your own deck. We play two or three games depending on how long the first one runs.'),
+  ('evt_dnd_sunken_vault',
+   'A self-contained 5e one-shot for levels 3-5, about three hours at the table. Pre-generated characters and dice are provided, so there is nothing to bring and nothing to prepare. New players are welcome; we teach the rules as we go.'),
+  ('evt_board_game_meetup',
+   'Open tables in the Ballard branch meeting room. We bring a shelf of modern games — Azul, Wingspan, Cascadia and a few heavier boxes — and will teach anything you want to try. Drop in any time; games run 45 minutes to two hours.'),
+  ('evt_warhammer_open',
+   'Open play: no tournament, no list restrictions. Bring your army, dice and a tape measure; we set up the terrain and three tables in the main hall. Pick-up games all evening at whatever points level you and your opponent agree on.'),
+  ('evt_learn_magic',
+   'A ground-up introduction to Magic for people who have never shuffled a deck. Loaner decks are provided and we cover the turn, combat and the stack over about two hours. Nothing to buy. Building 30 is in from the Sand Point Way entrance.'),
+  ('evt_midweek_modern',
+   'Modern night, four rounds of Swiss. Bring a 60-card deck and a sideboard. The field is usually half brews and half real decks, so it is a friendly place to try something. Prizes in store credit; rounds are 50 minutes and start on time.'),
+  ('evt_catan_tournament',
+   'Four tables of Catan over three rounds, with points carried between games. Copies are supplied, so just turn up. Rules refresher at 7 for anyone who has not played since college. Expect to finish a little after 10.'),
+  ('evt_kill_team_night',
+   'Kill Team skirmishes on compact boards, so a game takes about 90 minutes and most people get two in. Bring a team, painted or not, and your own dice; terrain is already set up. Newer players get a walkthrough before the first game.'),
+  ('evt_board_game_potluck',
+   'Bring a game and bring a dish. The meeting room has a counter but no kitchen, so cold or room-temperature food works best. We eat first and then split into tables by whatever turned up. Families welcome, kids with an adult.'),
+  ('evt_commander_precon',
+   'Two pods of four, precon decks only — play one straight out of the box or make up to ten swaps. No infinite combos and no mass land destruction. If you do not own a precon, say so when you sign up and we will lend you one.'),
+  ('evt_draft_set_release',
+   'Draft the new set the week it lands: three packs each, three rounds, and you keep everything you open. Entry covers the packs. If you have never drafted, tell us and we will seat you next to someone who will talk through the picks.'),
+  ('evt_dnd_gilded_fox',
+   'A tomb-crawl one-shot for 5e, levels 4-6, with more traps and puzzles than fighting. Pre-made characters are available or bring your own at level 5. Roughly three and a half hours. Room 4A backs onto the quiet floor, so voices down.'),
+  ('evt_wargame_intro',
+   'No models, no rulebook, no problem. We hand you a small painted force and run a short demo so you can see how movement, shooting and morale actually work. About two hours, and nobody will ask you to buy anything afterwards.'),
+  ('evt_family_game_hour',
+   'An early, quieter session built for families. Games are chosen for ages six and up — Ticket to Ride First Journey, Sushi Go, Dragomino — and every table has someone who can teach. One adult per group, please. Runs about an hour.'),
+  ('evt_commander_chaos',
+   'Four pods of four with a house twist rolled at the start of each game: shared monarch, free mulligans, that sort of thing. Bring any Commander deck you like the look of. Power level is mid — not the night for a turn-three win.'),
+  ('evt_draft_vintage_cube',
+   'Powered singleton cube, 540 cards, eight seats. The cube belongs to the shop so there is nothing to bring but sleeves. The draft alone takes about 45 minutes and then we play three rounds, so plan on a long evening.'),
+  ('evt_fest_warhammer_tourney',
+   'Three rounds, 2000 points, matched play missions. Bring a printed list and a fully assembled army; painting is encouraged but not required. Tables and terrain are provided. Rounds run two hours with a short break between them.'),
+  ('evt_fest_flagship_draft',
+   'The big one: four pods of eight drafting at once, then three rounds inside your pod. Packs are included and you keep your cards. Seating closes when the last pod fills, so get there by 6:15 if you want a specific table.'),
+  ('evt_fest_commander_gauntlet',
+   'Five pods, three rounds, and you change table between each one. Bring a single deck and stick with it. Mid power is the sweet spot — upgraded precons and homebrews. Winners of each pod meet at the final table to close it out.'),
+  ('evt_fest_dnd_marathon',
+   'One long 5e adventure run straight through, roughly five hours with a break in the middle. Levels 5-8; pre-made characters are provided if you would rather not build one. Two tables run the same story, so the endings differ.'),
+  ('evt_fest_board_library',
+   'Several hundred games on open shelves. Borrow any of them for the evening and return it to the cart when you are done. Volunteers circulate to teach. No ticket beyond a seat here — come for twenty minutes or stay until we pack up.'),
+  ('evt_fest_learn_anything',
+   'Tell a volunteer roughly what you are in the mood for and they will find a game and teach it, from ten-minute card games to a two-hour Euro. Built for the people who came with a friend who plays and have no idea where to start.'),
+  ('evt_fest_sealed_finals',
+   'Six packs each, 30 minutes to build a 40-card deck, then five rounds of Swiss to close the weekend. Open to anyone, not just the festival regulars. Deck-building help is on hand for first-timers, and you keep everything you open.'),
+  ('evt_fest_indie_rpg',
+   'Short demos of small-press roleplaying games — Blades in the Dark, Honey Heist, Brindlewood Bay — in 45-minute slots, so you can try three in one evening. Everything is provided and no system knowledge is assumed.'),
+  ('evt_fest_closing_pods',
+   'The last thing that happens at the festival. Three pods, one game each, nobody keeping score. Bring whichever deck you have been carrying all weekend. We start late and finish when the games finish, so do not plan anything after.'),
+  ('evt_kids_board_club',
+   'For ages eight to thirteen, with a parent or carer staying in the room. We play in short rounds so nobody is stuck in a two-hour game, and tables rotate halfway through. Library rules apply, which means water only, no snacks.'),
+  ('evt_warhammer_narrative',
+   'Session one of a six-week narrative campaign. Bring a 1000-point force you are happy to keep playing, because it will gain and lose things as the story goes. Losing a battle never knocks you out, and missing a week is fine.'),
+  ('evt_draft_two_headed',
+   'Two-Headed Giant draft: pick a teammate, draft side by side, then play as one. Turn up alone and we will pair you with someone else who did. Six teams, three rounds, packs included. The friendliest draft format we run.'),
+  ('evt_dnd_west_marches',
+   'Session twelve of an ongoing West Marches game. The table changes week to week, so new characters can join at level 6 — bring a sheet and a reason to be heading into the hills. We recap at the start; nothing to read in advance.'),
+  ('evt_library_game_day',
+   'An all-evening open table in Room 2B. We bring about sixty games, teach anything on the shelf, and seat anyone arriving alone at a table that needs one more. Free, no ticket, and you can leave whenever your game ends.'),
+  ('evt_league_finals_draft',
+   'The last night of the eight-week draft league. Standings carry in and the top four seats play for the prize pool. Finals seats are for league members, but anyone is welcome to come and watch the last round with the rest of us.'),
+  ('evt_warhammer_doubles',
+   'Two players a side, 1000 points each, activations alternating across the pair. Bring a partner or let us match you with one on the night. Three short games over the evening, and the terrain stays set between rounds.'),
+  ('evt_puzzle_night',
+   'Co-operative games only — everyone wins or everyone loses. We run The Crew, Mysterium and one longer escape-room box, and nobody is eliminated from anything. Good if competitive tables put you off. About two and a half hours.'),
+  ('evt_dnd_saltmarsh',
+   'A nautical 5e campaign, five sessions in and running at level 5. One seat has opened up, so a new character can join this week. Bring a sheet, or ask and we will help you roll one up before we start.'),
+  ('evt_board_heavy_euro',
+   'Long games with long rulebooks: Brass, Gaia Project, Arcs and whatever else people carry up the stairs. Rules are taught but the teaching is not short, so come at 6:30 if you need one. Expect to play one game, not three.'),
+  ('evt_commander_cedh',
+   'Competitive Commander practice pods ahead of the regional. Optimised lists, fast combos and turn-three wins expected — this is the one night we do not ask anyone to pull their punches. Two pods of four, proxies are fine.'),
+  ('evt_dnd_beginners',
+   'For people who have never played a roleplaying game and are not yet sure they want to. We explain what the dice do, hand you a character and run a short adventure. Two hours, nothing to bring, no commitment to come back.'),
+  ('evt_warhammer_paint',
+   'Bring models and brushes; we bring the tables, the lamps and a bottle of thinner to share. Half the room paints and half plays, and people swap over during the evening. No skill level assumed — someone will show you the basics.'),
+  ('evt_trivia_night',
+   'Six rounds of tabletop trivia: game history, rules minutiae, box art, dice odds. Teams of up to four, and if you turn up alone we will find you a team. About two hours, and the winning table picks a game off the shelf to keep.'),
+  ('evt_draft_team_league',
+   'Teams of three draft against each other and then play their opposite number. Sign up as a team or as a free agent and we will build a team around you. Six weeks, one night each, and you can miss a week without dropping out.'),
+  ('evt_board_game_swap',
+   'Bring games you no longer play and take home games someone else no longer plays. No money changes hands. Please check that every box is complete before you bring it, and be ready to take home anything nobody claims.'),
+  ('evt_commander_cracked_packs',
+   'Everyone opens the same set of packs, builds a Commander deck out of what they get, and then plays a pod. Chaotic, and almost no advantage to owning expensive cards. Building takes about 40 minutes, then one long game.'),
+  ('evt_dnd_campaign_finale',
+   'The last session of a campaign that has run for two years. Players from earlier arcs are welcome back for the ending even if you have not been at the table in months — bring your old sheet. Expect a long night, and cake.'),
+  -- past ---------------------------------------------------------------------
+  ('evt_last_week_draft',
+   'The regular Friday eight-person draft: three packs each, three rounds of Swiss, and everyone keeps what they open. Packs were included in entry and the shop put up store credit for the top two finishers.'),
+  ('evt_past_commander_league',
+   'Week six of the Commander league. Three pods, points for wins and for a handful of silly bonus objectives, all carried into the standings. Mid power decks, and the same pods stayed together for the whole evening.'),
+  ('evt_past_board_brunch',
+   'A slower, lighter session with coffee and pastries at the back of the room. Shorter games, plenty of teaching, and tables people drifted in and out of. Good for anyone who finds a full games night too much at once.'),
+  ('evt_past_dnd_icespire',
+   'Session four of Dragon of Icespire Peak, levels 3-4. A closed table: the same six players ran the campaign from the start, so the seats were spoken for from session one. Listed here so the campaign record stays complete.'),
+  ('evt_past_learn_rpg',
+   'One evening that took people from never having rolled a d20 to finishing a short adventure. Characters, dice and a two-page rules sheet were all supplied, and nobody had to read anything in advance.'),
+  ('evt_past_autumn_swap',
+   'An end-of-summer swap: bring what you no longer play, leave with something you have not tried, no money involved. Boxes were checked for missing pieces on the way in and the leftovers went to the library donation shelf.'),
+  -- cancelled ----------------------------------------------------------------
+  ('evt_cancel_late_pod',
+   'A late pod for people who finish work after everyone else has already started. Two tables of four, casual decks, and we go until the building closes. Sign up so we know whether to hold the back tables for you.'),
+  ('evt_cancel_grand_melee',
+   'A six-player free-for-all on one very large table, 750 points each, last army standing. Bring a force you do not mind losing badly with. Terrain is provided, and the melee usually takes about three hours to resolve.'),
+  ('evt_cancel_frostmaiden',
+   'Session one of Rime of the Frostmaiden, 5e, starting at level 1 and meant to run for months. New characters only — build one in advance or come early and we will do it together. Expect cold, dark and a slow burn.'),
+  ('evt_cancel_board_marathon',
+   'Games from six until the building closes, opening with short fillers and ending on whatever heavy box is still on the table. Bring something off your own shelf if you want it taught. Come for an hour or for the whole evening.'),
+  ('evt_cancel_midsummer',
+   'An outdoor social: lawn games, card games on picnic blankets, nothing that needs a table. Family friendly and free. Bring a blanket and something to drink. Building 30 has the shelter if the weather turns on us.')
+)
+UPDATE events
+   SET description = (SELECT body FROM descriptions d WHERE d.id = events.id)
+ WHERE id IN (SELECT id FROM descriptions);
+
 -- ---------------------------------------------------------------- rsvps ----
 -- created_at is staggered so the attendee list has a stable, meaningful order.
 --
