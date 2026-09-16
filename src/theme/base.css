@@ -613,6 +613,17 @@ a {
   font-size: var(--font-size-base); /* 16px: stops iOS Safari zooming on focus */
 }
 
+/* A textarea wears `.input` too, but two of that rule's single-line assumptions
+   leak through. `font: inherit` only reaches it because the class is on the
+   element — a textarea takes the browser's own font otherwise, which is why the
+   description would look nothing like the title above it. And the default
+   `resize: both` lets a drag pull the control wider than the card it sits in,
+   so only the useful direction survives; height is the form's to set with
+   `rows`. */
+textarea.input {
+  resize: vertical;
+  line-height: 1.5;
+}
 
 .input[aria-invalid="true"],
 .select[aria-invalid="true"] {
@@ -1124,6 +1135,16 @@ a {
 
 .text-sm {
   font-size: var(--font-size-sm);
+}
+
+/* Prose somebody typed into a box, shown back the way they typed it: the blank
+   line between two paragraphs is the only formatting they had, and stripping it
+   would run the door code into the parking directions. `pre-line` keeps those
+   breaks while still collapsing stray runs of spaces, and a long unbroken string
+   (a URL, a Discord invite) wraps rather than widening the card. */
+.text-lines {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 
 /* Counts that change under you (seat counts, day bars, pagers) must not make

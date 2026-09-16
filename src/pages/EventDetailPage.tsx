@@ -94,6 +94,10 @@ export function EventDetailPage() {
               <span className="visually-hidden"> — opens in Google Maps</span>
             </a>
           </div>
+          {/* The organizer's own words, and the reason this page is not just a
+              bigger card. Absent is the ordinary case, and an absent paragraph
+              renders as nothing at all — no heading left standing over it. */}
+          {detail.description !== null ? <p className="text-lines">{detail.description}</p> : null}
           <div>
             <SeatChip
               seatsLeft={detail.seatsLeft}

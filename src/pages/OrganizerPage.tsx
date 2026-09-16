@@ -16,6 +16,7 @@ import { GAME_TYPES, GAME_TYPE_LABELS, gameTypeLabel } from "../../shared/game-t
 import {
   CAPACITY_MAX,
   CAPACITY_MIN,
+  DESCRIPTION_MAX,
   LOCATION_MAX,
   TITLE_MAX,
   createEventSchema,
@@ -31,9 +32,11 @@ import { EventListSkeleton } from "../components/Skeleton";
 import { useToast } from "../components/Toast";
 import { defaultEventStartValue, formatEventDateTime, localInputToIso, toDateTimeAttr } from "../lib/datetime";
 
-type FieldErrors = Partial<Record<"title" | "gameType" | "startsAt" | "location" | "placeId" | "capacity", string>>;
+type FieldErrors = Partial<
+  Record<"title" | "gameType" | "startsAt" | "location" | "placeId" | "description" | "capacity", string>
+>;
 
-const FIELDS = new Set(["title", "gameType", "startsAt", "location", "placeId", "capacity"]);
+const FIELDS = new Set(["title", "gameType", "startsAt", "location", "placeId", "description", "capacity"]);
 
 function asFieldKey(path: string): keyof FieldErrors | null {
   const head = path.split(".")[0] ?? "";
@@ -48,6 +51,7 @@ function NewEventForm() {
     gameType: useId(),
     startsAt: useId(),
     location: useId(),
+    description: useId(),
     capacity: useId(),
   };
 
@@ -57,6 +61,7 @@ function NewEventForm() {
   const [location, setLocation] = useState("");
   const [placeId, setPlaceId] = useState<string | null>(null);
   const [placeSession, setPlaceSession] = useState<string | null>(null);
+  const [description, setDescription] = useState("");
   const [capacity, setCapacity] = useState("8");
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<unknown>(null);
@@ -81,6 +86,9 @@ function NewEventForm() {
       location,
       ...(placeId !== null ? { placeId } : {}),
       ...(placeSession !== null ? { placeSessionToken: placeSession } : {}),
+      // Always sent, blank included: the schema is the one place that decides
+      // what an empty description means (nothing at all).
+      description,
       capacity: capacity.trim() === "" ? Number.NaN : Number(capacity),
     });
 
@@ -106,6 +114,7 @@ function NewEventForm() {
         }
         setTitle("");
         setLocation("");
+        setDescription("");
         setPlaceId(null);
         setPlaceSession(null); // the billing session ends with the write it paid for
         setCapacity("8");
@@ -253,6 +262,32 @@ function NewEventForm() {
         ) : null}
         {errors.placeId ? <p className="field__error">{errors.placeId}</p> : null}
         {placeNote ? <p className="field__note">{placeNote}</p> : null}
+      </div>
+
+      <div className="field">
+        <label className="field__label" htmlFor={ids.description}>
+          Description
+        </label>
+        <textarea
+          id={ids.description}
+          className="input"
+          rows={4}
+          value={description}
+          onChange={(event) => {
+            setDescription(event.target.value);
+            clearError("description");
+          }}
+          maxLength={DESCRIPTION_MAX}
+          placeholder="Bring a deck if you have one — we have spares. Park behind the shop."
+          aria-invalid={errors.description !== undefined}
+          aria-describedby={describedBy("description", ids.description)}
+        />
+        <p className="text-sm muted">Optional. What to bring, what you'll play, how to find the table.</p>
+        {errors.description ? (
+          <p className="field__error" id={`${ids.description}-error`}>
+            {errors.description}
+          </p>
+        ) : null}
       </div>
 
       <div className="field">

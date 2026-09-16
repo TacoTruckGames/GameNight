@@ -18,7 +18,14 @@ import { Link, useParams } from "react-router";
 import type { AdminEventDetail } from "../../shared/api-types";
 import type { GameType } from "../../shared/game-types";
 import { GAME_TYPES, GAME_TYPE_LABELS, gameTypeLabel } from "../../shared/game-types";
-import { CAPACITY_MAX, CAPACITY_MIN, LOCATION_MAX, TITLE_MAX, adminEventPatchSchema } from "../../shared/schemas";
+import {
+  CAPACITY_MAX,
+  CAPACITY_MIN,
+  DESCRIPTION_MAX,
+  LOCATION_MAX,
+  TITLE_MAX,
+  adminEventPatchSchema,
+} from "../../shared/schemas";
 import type { AdminEventPatch } from "../../shared/schemas";
 import { ApiError } from "../api/client";
 import { EmptyState } from "../components/EmptyState";
@@ -37,9 +44,11 @@ import {
 import { AdminPage } from "./AdminNav";
 import { useAdminEvent, usePatchEvent, useRemoveAttendee, useSetEventStatus } from "./hooks";
 
-type FieldErrors = Partial<Record<"title" | "gameType" | "startsAt" | "location" | "placeId" | "capacity", string>>;
+type FieldErrors = Partial<
+  Record<"title" | "gameType" | "startsAt" | "location" | "placeId" | "description" | "capacity", string>
+>;
 
-const FIELDS = new Set(["title", "gameType", "startsAt", "location", "placeId", "capacity"]);
+const FIELDS = new Set(["title", "gameType", "startsAt", "location", "placeId", "description", "capacity"]);
 
 function asFieldKey(path: string): keyof FieldErrors | null {
   const head = path.split(".")[0] ?? "";
@@ -53,6 +62,7 @@ function EditForm({ event }: { event: AdminEventDetail }) {
     gameType: useId(),
     startsAt: useId(),
     location: useId(),
+    description: useId(),
     capacity: useId(),
   };
 
@@ -62,6 +72,9 @@ function EditForm({ event }: { event: AdminEventDetail }) {
   const [location, setLocation] = useState(event.location);
   const [placeId, setPlaceId] = useState<string | null>(event.place?.id ?? null);
   const [placeSession, setPlaceSession] = useState<string | null>(null);
+  // `null` and `""` are the same thing to a textarea, so the form works in
+  // strings and the diff below compares against the same normalisation.
+  const [description, setDescription] = useState(event.description ?? "");
   const [capacity, setCapacity] = useState(String(event.capacity));
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<unknown>(null);
@@ -77,12 +90,13 @@ function EditForm({ event }: { event: AdminEventDetail }) {
     setLocation(event.location);
     setPlaceId(event.place?.id ?? null);
     setPlaceSession(null); // the save consumed the autocomplete session
+    setDescription(event.description ?? "");
     setCapacity(String(event.capacity));
     // `event.place?.id`, not `event.place`: the dependency list is an explicit
     // field list, and the object is a fresh reference on every refetch — which
     // would re-run this effect (and stomp the admin's in-progress edit) on any
     // background refresh.
-  }, [event.title, event.gameType, event.startsAt, event.location, event.place?.id, event.capacity]);
+  }, [event.title, event.gameType, event.startsAt, event.location, event.place?.id, event.description, event.capacity]);
 
   function submit(formEvent: FormEvent<HTMLFormElement>) {
     formEvent.preventDefault();
@@ -105,6 +119,13 @@ function EditForm({ event }: { event: AdminEventDetail }) {
       patch["placeId"] = placeId;
       if (placeSession !== null) patch["placeSessionToken"] = placeSession;
     }
+    // Emptying the box is a *clear*, and the schema spells that `null` — the
+    // same convention as unlinking a venue. `""` would normalise to absent,
+    // which in a patch means "leave it alone", so the deletion would be
+    // silently dropped. Sent only when it differs from what is stored, like
+    // every other key here, so an untouched description stays out of the audit
+    // row's `changed` list.
+    if (description !== (event.description ?? "")) patch["description"] = description === "" ? null : description;
     if (capacityNumber !== event.capacity) patch["capacity"] = capacityNumber;
 
     if (Object.keys(patch).length === 0) {
@@ -257,6 +278,28 @@ function EditForm({ event }: { event: AdminEventDetail }) {
         >
           Remove venue link
         </button>
+      </div>
+
+      <div className="field">
+        <label className="field__label" htmlFor={ids.description}>
+          Description
+        </label>
+        <textarea
+          id={ids.description}
+          className="input"
+          rows={4}
+          value={description}
+          onChange={(changed) => setDescription(changed.target.value)}
+          maxLength={DESCRIPTION_MAX}
+          aria-invalid={errors.description !== undefined}
+          aria-describedby={describedBy("description", ids.description)}
+        />
+        <p className="text-sm muted">Optional. Empty it to take the description off the event's page.</p>
+        {errors.description ? (
+          <p className="field__error" id={`${ids.description}-error`}>
+            {errors.description}
+          </p>
+        ) : null}
       </div>
 
       <div className="field">
