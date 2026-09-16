@@ -35,6 +35,10 @@ const PAIRS = [
   // The operator bar is one fixed orange in both themes; audit it in both anyway,
   // so a future theme edit that redefines it gets caught here rather than in prod.
   ["--admin-bar-text", "--admin-bar-bg"],
+  // Role accents ride on the brand band as indicators, not as text, so 3:1.
+  ["--role-player", "--brand-bg", 3],
+  ["--role-organizer", "--brand-bg", 3],
+  ["--admin-bar-bg", "--brand-bg", 3],
   ["--color-focus", "--color-bg", 3],
   ["--color-focus", "--color-surface", 3],
 ];

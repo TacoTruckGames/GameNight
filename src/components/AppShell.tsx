@@ -19,6 +19,7 @@
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router";
 import { useIdentity } from "../identity/IdentityContext";
+import { ROLE_ICONS, ROLE_LABELS } from "../lib/roles";
 import { WhoAreYou } from "../identity/WhoAreYou";
 import { Icon } from "./Icon";
 import type { IconName } from "./Icon";
@@ -35,6 +36,7 @@ function Tab({ to, label, icon, end = false }: { to: string; label: string; icon
 
 export function AppShell() {
   const { user, isOrganizer, isAdmin } = useIdentity();
+  const role = user?.role ?? null;
   const [switching, setSwitching] = useState(false);
 
   return (
@@ -57,15 +59,25 @@ export function AppShell() {
           </nav>
           {/* The name *is* the control. A separate "Switch" button spent header
               width restating what tapping your own name obviously does, and on
-              a phone that width is what the name needed to stay readable. The
-              accessible name still says what the button does, since "Alice"
-              alone would not. */}
+              a phone that width is what the name needed to stay readable.
+              
+              It also carries the role, because nothing else on the board did:
+              the tab set is the only other signal and it sits at the bottom of
+              a phone. Icon and tint at every width, the word where there is
+              room for it, and the role in the accessible name always — so it is
+              never colour alone doing the work. */}
           <button
             type="button"
-            className="btn btn--sm btn--ghost shell__identity"
+            className={`btn btn--sm btn--ghost shell__identity${role ? ` shell__identity--${role}` : ""}`}
             onClick={() => setSwitching(true)}
-            aria-label={`Signed in as ${user ? user.name : "Guest"} — switch user`}
+            aria-label={
+              user && role
+                ? `Signed in as ${user.name}, ${ROLE_LABELS[role]} — switch user`
+                : "Choose who you are"
+            }
           >
+            {role ? <Icon name={ROLE_ICONS[role]} size={16} /> : null}
+            {role ? <span className="shell__identity-role">{ROLE_LABELS[role]} ·</span> : null}
             <span className="shell__identity-name">{user ? user.name : "Guest"}</span>
           </button>
         </div>

@@ -8,7 +8,7 @@
 
 import { useEffect, useId, useState } from "react";
 import { useSearchParams } from "react-router";
-import type { AdminUser, Role } from "../../shared/api-types";
+import type { AdminUser } from "../../shared/api-types";
 import { ALL_ROLES, SEARCH_MAX, SUSPEND_REASON_MAX } from "../../shared/schemas";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBanner } from "../components/ErrorBanner";
@@ -16,13 +16,13 @@ import { Icon } from "../components/Icon";
 import { Skeleton } from "../components/Skeleton";
 import { useIdentity } from "../identity/IdentityContext";
 import { formatEventDateTime, toDateTimeAttr } from "../lib/datetime";
+import { ROLE_LABELS } from "../lib/roles";
 import { AdminPage } from "./AdminNav";
 import { Pager } from "./Pager";
 import { useAdminUsers, useSuspendUser, useUnsuspendUser } from "./hooks";
 
 const DEBOUNCE_MS = 250;
 
-const ROLE_LABELS: Record<Role, string> = { player: "Player", organizer: "Organizer", admin: "Admin" };
 
 const STATUS_FILTERS = [
   { value: "", label: "Any status" },

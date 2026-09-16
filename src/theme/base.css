@@ -108,12 +108,53 @@ a {
   letter-spacing: -0.01em;
 }
 
-/* The identity button: a ghost button whose whole label is the signed-in name,
-   so it can shrink and ellipsise rather than pushing the wordmark off a phone. */
+/* The identity button: a ghost button whose label is the signed-in name, so it
+   can shrink and ellipsise rather than pushing the wordmark off a phone. It
+   also says which role you are browsing as — `--role-accent` paints both the
+   border and the icon from one declaration per role. */
 .shell__identity {
+  --role-accent: var(--brand-line);
   display: flex;
   align-items: center;
+  gap: var(--space-2);
   min-width: 0;
+}
+
+.shell__identity--player {
+  --role-accent: var(--role-player);
+}
+
+.shell__identity--organizer {
+  --role-accent: var(--role-organizer);
+}
+
+/* Orange is the operator's colour on the bar; it means the same thing here. */
+.shell__identity--admin {
+  --role-accent: var(--admin-bar-bg);
+}
+
+/* `.shell__header .btn--ghost` also sets `border-color`, at equal specificity
+   and further down the file, so it would win on order alone. Naming both
+   classes settles it here rather than making this rule's position load-bearing. */
+.shell__header .btn--ghost.shell__identity {
+  border-color: var(--role-accent);
+}
+
+/* `.icon` is a mask painted with `currentColor`, so the glyph takes the accent
+   while the name beside it keeps the button's white. `flex: none` so it is
+   never the thing that gives way when the name is long. */
+.shell__identity .icon {
+  color: var(--role-accent);
+  flex: none;
+}
+
+/* The word is for screens with room. On a phone the icon and the tint carry the
+   role, and the button's `aria-label` carries it at every width, so nothing is
+   lost by hiding it here. */
+.shell__identity-role {
+  display: none;
+  white-space: nowrap;
+  font-weight: 650;
 }
 
 /* Muted is right where the name is only a label (the admin shell prints it as
@@ -1321,6 +1362,11 @@ a {
   }
 
   /* Both of these were sized to clear the bottom bar that no longer exists. */
+  /* Room for the role in full, so the badge stops depending on icon + tint. */
+  .shell__identity-role {
+    display: inline;
+  }
+
   .shell__main {
     padding-bottom: var(--space-5);
   }

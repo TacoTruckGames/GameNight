@@ -49,10 +49,18 @@
   /* The operator bar. An environment marker, so it is the SAME orange in both
      themes and is never redefined below — you should not have to work out which
      theme you are in to know you are about to change live data. Its own text is
-     7.8:1 on it, and it is the one place this palette uses orange at all. */
+     7.8:1 on it. Orange means admin and nothing else in this palette: the bar,
+     and the admin's badge in the main site's header. */
   --admin-bar-bg: #f59e0b;
   --admin-bar-text: #2b1a05;
   --admin-bar-line: rgb(43 26 5 / 30%);
+  /* Role accents on the identity button. Non-text indicators — the label beside
+     them stays --brand-text white — so they answer to 3:1 against the band, not
+     4.5:1, and the audit checks them at that threshold in both themes. Admin
+     reuses the operator orange rather than inventing a third hue. */
+  --role-player: #7cc4ff;
+  --role-organizer: #5fd6b4;
+
   --brand-gradient: linear-gradient(180deg, var(--brand-bg) 0%, var(--brand-bg-deep) 100%);
   --brand-glow-gradient: radial-gradient(60% 80% at 50% 120%, rgb(2 145 255 / 55%), transparent 70%);
 
