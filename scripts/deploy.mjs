@@ -40,10 +40,20 @@ const childEnv = {
   CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: "false",
 };
 
-/** @param {string} label @param {string} bin @param {string[]} args */
-function run(label, bin, args) {
+/**
+ * @param {string} label @param {string} bin @param {string[]} args
+ * @param {{ input?: string }} [opts] — `input` is fed to stdin. `wrangler d1
+ *   migrations apply --remote` asks "continue?" and, unlike the local variant,
+ *   does not reliably auto-accept under CI=1, so the migration step answers it.
+ */
+function run(label, bin, args, opts = {}) {
   console.log(`\n▸ ${label}`);
-  const result = spawnSync(process.execPath, [bin, ...args], { stdio: "inherit", cwd: root, env: childEnv });
+  const result = spawnSync(process.execPath, [bin, ...args], {
+    stdio: [opts.input === undefined ? "inherit" : "pipe", "inherit", "inherit"],
+    input: opts.input,
+    cwd: root,
+    env: childEnv,
+  });
   if (result.error) throw result.error;
   if (result.status !== 0) {
     console.error(`\n${label} failed with exit code ${result.status}`);
@@ -53,7 +63,9 @@ function run(label, bin, args) {
 
 run("Typecheck", fileURLToPath(new URL("../node_modules/typescript/bin/tsc", import.meta.url)), ["-p", "tsconfig.worker.json", "--noEmit"]);
 run("Building client + worker", viteBin, ["build"]);
-run(`Applying migrations to remote D1 "${DB}"`, wranglerBin, ["d1", "migrations", "apply", DB, "--remote"]);
+run(`Applying migrations to remote D1 "${DB}"`, wranglerBin, ["d1", "migrations", "apply", DB, "--remote"], {
+  input: "y\n",
+});
 run("Deploying worker", wranglerBin, ["deploy"]);
 
 console.log(`\n✓ Deployed: ${URL_}`);

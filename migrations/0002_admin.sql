@@ -10,13 +10,20 @@
 -- `role` gains 'admin' and suspension is one nullable timestamp (a suspended
 -- account is refused at the auth resolver, so no route has to remember).
 --
--- SQLite cannot ALTER a CHECK constraint, so the table is rebuilt. D1 runs a
--- migration file as one transaction with foreign keys ON, and events/rsvps
--- reference users(id) — dropping the old table would trip those references
--- mid-transaction, so the check is deferred to COMMIT, by which time
--- `users_new` has been renamed into place with every id intact.
-PRAGMA defer_foreign_keys = true;
-
+-- SQLite cannot ALTER a CHECK constraint, so the table is rebuilt. That is
+-- harder than it looks: events/rsvps reference users(id) with foreign keys ON,
+-- and D1 does not allow `PRAGMA foreign_keys = OFF`. `PRAGMA defer_foreign_keys`
+-- does not help either — `DROP TABLE users` counts one deferred violation per
+-- child row, and renaming the new table into place never counts them back
+-- down, so the transaction still fails at COMMIT (it did, on production; D1
+-- rolled back). Miniflare accepts it, which is exactly the kind of local/prod
+-- gap this comment exists to remember.
+--
+-- So: park the child rows, empty the children, swap the parent, restore the
+-- children. Every statement is FK-consistent on its own. The copies have no
+-- constraints (CREATE TABLE … AS), and the events columns are added AFTER the
+-- restore so `INSERT … SELECT *` lines up. Fine at this scale; at the
+-- 12-month scale this is a maintenance-window migration, not a deploy-time one.
 CREATE TABLE users_new (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -29,8 +36,18 @@ CREATE TABLE users_new (
 INSERT INTO users_new (id, name, role, created_at)
   SELECT id, name, role, created_at FROM users;
 
+CREATE TABLE _rsvps_park AS SELECT * FROM rsvps;
+CREATE TABLE _events_park AS SELECT * FROM events;
+DELETE FROM rsvps;
+DELETE FROM events;
+
 DROP TABLE users;
 ALTER TABLE users_new RENAME TO users;
+
+INSERT INTO events SELECT * FROM _events_park;
+INSERT INTO rsvps SELECT * FROM _rsvps_park;
+DROP TABLE _events_park;
+DROP TABLE _rsvps_park;
 
 -- Admin "users" list: filter by role, newest first.
 CREATE INDEX idx_users_role ON users(role, created_at);
