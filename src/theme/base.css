@@ -395,8 +395,9 @@ a {
 
 /* ------------------------------------------------------- agenda + calendar -- */
 
-/* View and Sort are two captioned chip groups sharing one row: they wrap to
-   two rows on a narrow phone rather than squeezing. */
+/* The game-type dropdown and the View chips on one line — the filter is a
+   `<select>` precisely so the two fit. They wrap rather than squeeze if a long
+   game name and a narrow phone run out of room. */
 .filter-groups {
   display: flex;
   flex-wrap: wrap;
@@ -542,6 +543,13 @@ a {
   color: var(--color-text);
   font: inherit;
   font-size: var(--font-size-base); /* 16px: stops iOS Safari zooming on focus */
+}
+
+/* Forms want a full-width select; the filter row wants one only as wide as the
+   game it names. */
+.select--auto {
+  width: auto;
+  max-width: 100%;
 }
 
 .input[aria-invalid="true"],

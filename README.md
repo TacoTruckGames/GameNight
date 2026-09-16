@@ -141,7 +141,8 @@ half-second spinner.
   browser's local zone. Past events are hidden from the board and refuse RSVPs (`409 EVENT_STARTED`).
 - **Game type** is a small fixed enum (Magic Draft, Commander, D&D, Board games, Warhammer, Other),
   validated by zod, not by a DB constraint, so adding one is a code change rather than a migration. The
-  board offers all but "Board games" as filter chips — it is a real tag, just too broad to filter on.
+  board's filter is a native `<select>` — chips wrapped to two rows on a phone and pushed the first card
+  below the fold — and it offers all but "Board games", a real tag that is simply too broad to filter on.
 - **Search** is a case-insensitive `LIKE` over title and location plus the game-type filter — correct at
   50 events and at 5,000; full-text search would be gold-plating.
 - **Sort** (`?sort=`) is `date` (soonest first, the default) or `popular`: fullest-first by *ratio* of seats

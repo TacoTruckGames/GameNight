@@ -89,11 +89,11 @@ export function EventsPage() {
             autoComplete="off"
           />
         </div>
-        <GameTypeFilter value={gameType} onChange={setGameType} />
         <div className="filter-groups">
+          <GameTypeFilter value={gameType} onChange={setGameType} />
           <BoardViewSwitch value={view} onChange={setView} />
-          {view === "list" ? <EventSortControl value={sort} onChange={setSort} /> : null}
         </div>
+        {view === "list" ? <EventSortControl value={sort} onChange={setSort} /> : null}
       </div>
 
       {events.isPending ? (
