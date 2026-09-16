@@ -27,13 +27,22 @@ pnpm typecheck
 ```
 
 The first screen has a tab per role. **Player** (Alice, Bob, …) browses and RSVPs; **Organizer**
-(Cardboard Castle Games, Metro Meetup Crew) posts events and sees attendee lists. On either tab, pick someone
+(Cardboard Castle Games, Metro Meetup Crew, …) posts events and sees attendee lists. On either tab, pick someone
 who already exists or type a name to join as somebody new, then press **Join as Player** / **Join as
 Organizer** — so a reviewer can see both halves of the product without editing a database. Operator tools
 are not on this screen at all: they live at **/admin**, typed — see "Administration" below.
-The seed has seven events: one full (Commander Pod Night, 4/4), one with a single seat
-left (D&D One-Shot, 4/5 — Alice isn't in it, which makes it the hand-run race demo), a few partly filled, one
-empty, and one in the past that the board correctly hides.
+The seed is a board with some weather in it: **64 events and 28 players** — 50 upcoming over the next five
+weeks, 8 finished, 6 cancelled. The days are deliberately uneven, because a real community board is: a
+two-day "Game Fest" weekend carries 4 and 5 events at one venue, a league-finals night carries 4, several
+days carry one, and plenty carry none, so the month calendar has texture and a day cell has something to
+drill into. Fill levels are spread the same way — empty, one seat left, FULL, and everything between — and
+the fixtures the demo leans on are always there: **Commander Pod Night** is full (4/4), **D&D One-Shot** has
+a single seat left (4/5, and Alice isn't in it, which makes it the hand-run race demo), past events are
+hidden from the board but not from the admin list, and Alice holds a seat on a **cancelled** event so "My
+events" shows what that looks like. 64 rows is also one past the admin list's 50-row page, so pagination is
+exercised on a fresh database. Start times are written as **US Pacific evenings** (6-11 PM), because that is
+where the venues and the audience are — which means their UTC dates run a day ahead, and a reader in another
+zone sees them shifted. The seed file says so at length, so nobody “fixes” it back.
 
 ## How it works
 
