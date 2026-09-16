@@ -1,10 +1,15 @@
 /**
- * The frame every page sits in: who you are at the top, where you can go at
- * the bottom, one 640px column in between.
+ * The frame every page sits in: who you are and where you can go at the top,
+ * one 640px column below.
  *
- * Bottom tabs rather than a drawer or a top nav because the thumb is at the
- * bottom of the phone, and the tab set is role-dependent — a player never sees
- * organizer tools and vice versa.
+ * Bottom tabs rather than a drawer because the thumb is at the bottom of the
+ * phone, and the tab set is role-dependent — a player never sees organizer
+ * tools and vice versa.
+ *
+ * The <nav> lives inside the header in the markup but is pinned to the bottom
+ * of the phone by CSS; on a desktop-width screen it stays where it is written,
+ * inline in the header, where a mouse expects it. One DOM order, two layouts —
+ * so tab order is brand → nav → identity either way.
  *
  * Nothing here links to `/admin`, on purpose: the operator tools are reached by
  * typing the URL, and they have their own shell (`src/admin/AdminShell.tsx`).
@@ -40,6 +45,16 @@ export function AppShell() {
             <Logo />
             Game Night
           </span>
+          <nav className="shell__tabs" aria-label="Main">
+            <div className="shell__tabs-inner">
+              <Tab to="/" label="Events" icon="events" end />
+              {isOrganizer ? (
+                <Tab to="/organize" label="Organize" icon="organize" />
+              ) : isAdmin ? null : (
+                <Tab to="/me" label="My events" icon="mine" />
+              )}
+            </div>
+          </nav>
           <div className="shell__identity">
             <span className="shell__identity-name">{user ? user.name : "Guest"}</span>
             <button type="button" className="btn btn--sm btn--ghost" onClick={() => setSwitching(true)}>
@@ -52,17 +67,6 @@ export function AppShell() {
       <main className="shell__main">
         <Outlet />
       </main>
-
-      <nav className="shell__tabs" aria-label="Main">
-        <div className="shell__tabs-inner">
-          <Tab to="/" label="Events" icon="events" end />
-          {isOrganizer ? (
-            <Tab to="/organize" label="Organize" icon="organize" />
-          ) : isAdmin ? null : (
-            <Tab to="/me" label="My events" icon="mine" />
-          )}
-        </div>
-      </nav>
 
       {switching ? <WhoAreYou onClose={() => setSwitching(false)} /> : null}
     </div>

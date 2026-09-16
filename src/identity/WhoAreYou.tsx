@@ -192,7 +192,7 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
             hint="Type a name below to be the first."
           />
         ) : (
-          <ul className="stack">
+          <ul className="stack who__options">
             {people.map((person) => {
               const isSelected = person.id === selectedId;
               return (

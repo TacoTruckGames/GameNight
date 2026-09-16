@@ -1305,3 +1305,123 @@ a {
   padding: var(--space-2) var(--space-3);
   font-size: var(--font-size-sm);
 }
+
+/* ------------------------------------------------------------- desktop -- */
+
+/* Everything above is the phone, and stays the phone. These are the only two
+   width queries in the stylesheet: the mobile layout is the baseline, and each
+   rule below undoes exactly one thing that only made sense on a small screen.
+   Nothing here changes the 640px reading column — a list of cards is no easier
+   to read at 1200px — it changes the things that looked unfinished around it.
+   `100vw` appears nowhere: it counts the scrollbar and would overflow. */
+
+@media (min-width: 900px) {
+  /* Room for brand | nav | identity. Only the header widens; `.shell__main`
+     keeps `--page-max`. */
+  .shell__header-inner {
+    max-width: 1040px;
+  }
+
+  /* The tab bar stops being a bar. A fixed strip across a 1440px window spends
+     ~75px of height on two centred links, and a mouse does not need a thumb
+     rail — so the nav simply renders where it is written, in the header. */
+  .shell__tabs {
+    position: static;
+    background: transparent;
+    border-top: 0;
+    padding-bottom: 0;
+  }
+
+  .shell__tabs-inner {
+    max-width: none;
+    gap: var(--space-2);
+  }
+
+  /* On the brand band the tab labels sit on the dark gradient, not on a light
+     surface, so both states come from the `--brand-*` ramp: muted 10:1 for
+     inactive, white on a `--brand-line` pill for current. Icon beside the
+     label, not above it — a header row is wide and short. */
+  .tab {
+    flex: none;
+    flex-direction: row;
+    gap: var(--space-2);
+    padding-inline: var(--space-3);
+    border: 1px solid transparent;
+    border-radius: var(--radius-pill);
+    color: var(--brand-muted);
+  }
+
+  /* Pill + white text + a glow edge: three cues, so the current tab does not
+     rest on colour alone. The edge is 5.2:1 on the band, the label 7.7:1 on
+     the pill. */
+  .tab[aria-current="page"] {
+    background: var(--brand-line);
+    border-color: var(--brand-glow);
+    color: var(--brand-text);
+  }
+
+  /* Both of these were sized to clear the bottom bar that no longer exists. */
+  .shell__main {
+    padding-bottom: var(--space-5);
+  }
+
+  .toast-region {
+    bottom: var(--space-5);
+  }
+
+  /* A 640px "Cancel RSVP" gives a destructive action the weight of a primary
+     one, and a 640px "Directions" outweighs the address it belongs to. Sized
+     to their words and packed left instead.
+
+     `:not(form)` is load-bearing: the organizer's "Post event" and the admin
+     editor's "Save changes" are `.btn--block` submits inside `<form class=
+     "card">`, and a full-width submit closing a form is correct. */
+  .card:not(form) > .btn--block,
+  .venue__directions {
+    width: auto;
+    align-self: flex-start;
+  }
+
+  /* `space-between` put ~500px of nothing between "You're in · 3 of 8 left"
+     and "Cancel RSVP", and made an action-less card (an organizer's own) look
+     like a button had failed to render. The pair reads as one footer instead. */
+  .card__row {
+    justify-content: flex-start;
+    gap: var(--space-4);
+  }
+
+  /* Eight seeded profiles in one column are taller than a 900px window, which
+     pushes "Join as Player" off the bottom edge. Two columns halve the height;
+     the grid overrides `.stack`'s flex column and inherits its gap. */
+  .who__options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* The month grid is the one element that genuinely wants more than 640px, so
+   in calendar view the whole board widens to match — at its own, higher
+   breakpoint, because 1040px of content still needs a gutter.
+
+   The page widens, not the grid: heading, subtitle, filters and grid then share
+   one left and one right edge. Widening only the grid left it starting 200px
+   outside the heading above it, which read as two pages stacked. */
+@media (min-width: 1120px) {
+  /* Breakout, measured from the column rather than the viewport: half of the
+     container puts the element's centre on the column's centre, so it lands
+     1040px wide and centred with no `100vw` and no scrollbar. List view has no
+     `--wide`, so it keeps the 640px reading column at every width. */
+  .board--wide {
+    width: 1040px;
+    margin-inline: calc(50% - 520px);
+  }
+
+  /* Fills the widened board; the month grid and the selected day's cards sit
+     side by side instead of stacked. */
+  .board-calendar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-5);
+  }
+}

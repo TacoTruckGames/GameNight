@@ -87,8 +87,11 @@ export function EventsPage() {
     setGameType("");
   };
 
+  // One page width per view: the calendar's month grid wants more than the
+  // reading column, so on a wide screen the whole board widens with it rather
+  // than the grid alone breaking out from under the heading and the filters.
   return (
-    <>
+    <div className={view === "calendar" ? "board board--wide" : "board"}>
       <h1 className="page-title">Upcoming events</h1>
       <p className="page-subtitle">Find a table near you and grab a seat.</p>
 
@@ -182,6 +185,6 @@ export function EventsPage() {
           ))}
         </ul>
       )}
-    </>
+    </div>
   );
 }
