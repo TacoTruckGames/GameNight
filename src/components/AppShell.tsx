@@ -55,12 +55,19 @@ export function AppShell() {
               )}
             </div>
           </nav>
-          <div className="shell__identity">
+          {/* The name *is* the control. A separate "Switch" button spent header
+              width restating what tapping your own name obviously does, and on
+              a phone that width is what the name needed to stay readable. The
+              accessible name still says what the button does, since "Alice"
+              alone would not. */}
+          <button
+            type="button"
+            className="btn btn--sm btn--ghost shell__identity"
+            onClick={() => setSwitching(true)}
+            aria-label={`Signed in as ${user ? user.name : "Guest"} — switch user`}
+          >
             <span className="shell__identity-name">{user ? user.name : "Guest"}</span>
-            <button type="button" className="btn btn--sm btn--ghost" onClick={() => setSwitching(true)}>
-              Switch
-            </button>
-          </div>
+          </button>
         </div>
       </header>
 

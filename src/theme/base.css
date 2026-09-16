@@ -108,17 +108,18 @@ a {
   letter-spacing: -0.01em;
 }
 
+/* The identity button: a ghost button whose whole label is the signed-in name,
+   so it can shrink and ellipsise rather than pushing the wordmark off a phone. */
 .shell__identity {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-2);
   min-width: 0;
 }
 
-/* Switch is the target; it never gives up width to the name beside it. */
-.shell__identity > .btn {
-  flex: none;
+/* Muted is right where the name is only a label (the admin shell prints it as
+   plain text); inside the button it has to carry the button's own colour. */
+.shell__identity .shell__identity-name {
+  color: inherit;
 }
 
 .shell__identity-name {
