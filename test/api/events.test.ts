@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import type { ApiErrorBody, AttendeesResponse, EventDetail, EventSummary } from "../../shared/api-types";
-import { api, inDays, seedEvent, seedUser, seedUsers } from "../helpers";
+import { env } from "cloudflare:test";
+
+import { api, inDays, isoSeconds, seedEvent, seedUser, seedUsers } from "../helpers";
 
 /** The list is shared across tests, so always look for *our* event in it. */
 function find(list: EventSummary[], id: string): EventSummary | undefined {
@@ -18,6 +20,10 @@ describe("GET /api/events", () => {
     expect(status).toBe(200);
     expect(find(body, upcoming.id)).toBeDefined();
     expect(find(body, past.id)).toBeUndefined();
+    // No window is the upcoming board, whatever else is asked for: the other
+    // filters must not quietly open the list up to the past.
+    const filtered = await api<EventSummary[]>(`/api/events?q=${encodeURIComponent(past.title)}&sort=popular`);
+    expect(find(filtered.body, past.id)).toBeUndefined();
   });
 
   it("orders by start time, soonest first", async () => {
@@ -118,6 +124,107 @@ describe("GET /api/events", () => {
     expect(status).toBe(400);
     expect(body.error.code).toBe("VALIDATION_FAILED");
     expect(body.error.details?.[0]?.path).toBe("sort");
+  });
+
+  describe("?from=&to= (the date window)", () => {
+    /** Straight into D1, the way an admin cancellation leaves the row. */
+    async function cancel(eventId: string): Promise<void> {
+      await env.DB.prepare("UPDATE events SET status = 'cancelled', cancelled_at = ?2 WHERE id = ?1")
+        .bind(eventId, isoSeconds(new Date()))
+        .run();
+    }
+
+    it("returns events inside the window, past ones included", async () => {
+      const longAgo = await seedEvent({ startsAt: inDays(-40) });
+      const past = await seedEvent({ startsAt: inDays(-20) });
+      const upcoming = await seedEvent({ startsAt: inDays(20) });
+
+      const { status, body } = await api<EventSummary[]>(`/api/events?from=${inDays(-30)}&to=${inDays(30)}`);
+
+      expect(status).toBe(200);
+      // The whole point: a day behind today still has its events.
+      expect(find(body, past.id)).toBeDefined();
+      expect(find(body, upcoming.id)).toBeDefined();
+      expect(find(body, longAgo.id)).toBeUndefined();
+    });
+
+    it("excludes events outside the window, and is half-open at both ends", async () => {
+      const before = await seedEvent({ startsAt: inDays(-10) });
+      const after = await seedEvent({ startsAt: inDays(10) });
+      // Exactly on each boundary: `from` is inclusive, `to` is exclusive, so a
+      // month's last instant belongs to that month and the next month's first
+      // instant does not.
+      const onFrom = await seedEvent({ startsAt: inDays(-5) });
+      const onTo = await seedEvent({ startsAt: inDays(5) });
+
+      const { body } = await api<EventSummary[]>(`/api/events?from=${inDays(-5)}&to=${inDays(5)}`);
+
+      expect(find(body, onFrom.id)).toBeDefined();
+      expect(find(body, onTo.id)).toBeUndefined();
+      expect(find(body, before.id)).toBeUndefined();
+      expect(find(body, after.id)).toBeUndefined();
+    });
+
+    it("still hides cancelled events inside the window", async () => {
+      const cancelled = await seedEvent({ startsAt: inDays(-15) });
+      const kept = await seedEvent({ startsAt: inDays(-15) });
+      await cancel(cancelled.id);
+
+      const { body } = await api<EventSummary[]>(`/api/events?from=${inDays(-16)}&to=${inDays(-14)}`);
+
+      expect(find(body, kept.id)).toBeDefined();
+      expect(find(body, cancelled.id)).toBeUndefined();
+    });
+
+    it("combines with gameType and q", async () => {
+      const token = crypto.randomUUID().slice(0, 8);
+      const wanted = await seedEvent({ title: `${token} wanted`, gameType: "warhammer", startsAt: inDays(-8) });
+      const wrongType = await seedEvent({ title: `${token} wrong type`, gameType: "dnd", startsAt: inDays(-8) });
+      const wrongTerm = await seedEvent({ title: "unrelated past", gameType: "warhammer", startsAt: inDays(-8) });
+      const outside = await seedEvent({ title: `${token} outside`, gameType: "warhammer", startsAt: inDays(-80) });
+
+      const { status, body } = await api<EventSummary[]>(
+        `/api/events?from=${inDays(-9)}&to=${inDays(-7)}&gameType=warhammer&q=${token}`,
+      );
+
+      expect(status).toBe(200);
+      expect(find(body, wanted.id)).toBeDefined();
+      expect(find(body, wrongType.id)).toBeUndefined();
+      expect(find(body, wrongTerm.id)).toBeUndefined();
+      expect(find(body, outside.id)).toBeUndefined();
+    });
+
+    it("400s on half a window — `from` without `to`", async () => {
+      const { status, body } = await api<ApiErrorBody>(`/api/events?from=${inDays(-5)}`);
+      expect(status).toBe(400);
+      expect(body.error.code).toBe("VALIDATION_FAILED");
+      // Reported against the half that is missing, which is the one to add.
+      expect(body.error.details?.[0]?.path).toBe("to");
+    });
+
+    it("400s on half a window — `to` without `from`", async () => {
+      const { status, body } = await api<ApiErrorBody>(`/api/events?to=${inDays(5)}`);
+      expect(status).toBe(400);
+      expect(body.error.code).toBe("VALIDATION_FAILED");
+      expect(body.error.details?.[0]?.path).toBe("from");
+    });
+
+    it("400s on a window end that is not a date-time", async () => {
+      const { status, body } = await api<ApiErrorBody>(`/api/events?from=last-tuesday&to=${inDays(5)}`);
+      expect(status).toBe(400);
+      expect(body.error.details?.[0]?.path).toBe("from");
+    });
+
+    it("treats a blank window as no window at all", async () => {
+      const past = await seedEvent({ startsAt: inDays(-2) });
+      const upcoming = await seedEvent({ startsAt: inDays(2) });
+
+      const { status, body } = await api<EventSummary[]>("/api/events?from=&to=");
+
+      expect(status).toBe(200);
+      expect(find(body, upcoming.id)).toBeDefined();
+      expect(find(body, past.id)).toBeUndefined();
+    });
   });
 
   describe("?sort=popular", () => {

@@ -61,6 +61,13 @@ export interface EventsFilter {
   gameType?: string;
   /** Omitted means the server's default (`date`). */
   sort?: string;
+  /**
+   * The half-open date window (`from` inclusive, `to` exclusive), ISO-8601.
+   * Both or neither — the server 400s on half of one. Only the calendar sends
+   * it; without it the board is upcoming-only, which is what the list wants.
+   */
+  from?: string;
+  to?: string;
 }
 
 /** The admin lists are filtered entirely from the URL, so the key is the URL's query. */
@@ -81,7 +88,9 @@ export interface AdminEventsFilter {
 export const queryKeys = {
   users: ["users"] as const,
   eventList: (filter: EventsFilter) =>
-    ["events", "list", filter.q ?? "", filter.gameType ?? "", filter.sort ?? ""] as const,
+    // The window is part of the key: navigating the calendar to another month
+    // is a different question, so it refetches rather than reusing the answer.
+    ["events", "list", filter.q ?? "", filter.gameType ?? "", filter.sort ?? "", filter.from ?? "", filter.to ?? ""] as const,
   event: (id: string) => ["events", "detail", id] as const,
   attendees: (id: string) => ["events", "attendees", id] as const,
   myRsvps: (userId: string) => ["me", "rsvps", userId] as const,
@@ -127,6 +136,8 @@ export function useEvents(filter: EventsFilter): UseQueryResult<EventSummary[], 
       if (filter.q) params.set("q", filter.q);
       if (filter.gameType) params.set("gameType", filter.gameType);
       if (filter.sort) params.set("sort", filter.sort);
+      if (filter.from) params.set("from", filter.from);
+      if (filter.to) params.set("to", filter.to);
       const qs = params.toString();
       return apiFetch<EventSummary[]>(`/api/events${qs ? `?${qs}` : ""}`, { userId, signal });
     },

@@ -7,8 +7,9 @@
  * carries weekday, date and count ("Friday, September 18, 2 events"), which is
  * why the weekday header row is `aria-hidden`: it would otherwise be read seven
  * times over with nothing to attach to. Days with no events are `disabled`, so
- * Tab stops only on days you can actually open, and Prev is disabled in today's
- * month because the board only ever shows what is still ahead.
+ * Tab stops only on days you can actually open. Both month buttons always work:
+ * the page asks the server for whichever month is on screen, past ones included,
+ * so there is nothing behind Prev to protect the reader from.
  */
 
 import { useId } from "react";
@@ -17,8 +18,6 @@ import {
   eventCountLabel,
   formatDayLong,
   formatMonthLabel,
-  monthOf,
-  sameMonth,
   shiftMonth,
   weekdayLabels,
   WEEK_STARTS_ON,
@@ -49,7 +48,6 @@ export function MonthCalendar({
           type="button"
           className="btn btn--sm btn--secondary"
           aria-label="Previous month"
-          disabled={sameMonth(month, monthOf(todayKey))}
           onClick={() => onMonthChange(shiftMonth(month, -1))}
         >
           ‹ Prev

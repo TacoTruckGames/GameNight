@@ -130,11 +130,18 @@ function likePattern(term: string): string {
 }
 
 export interface EventFilters {
-  /** ISO-8601 UTC; events starting before this are "past" and excluded. */
+  /** ISO-8601 UTC. Used only when there is no window: events before it are "past" and excluded. */
   now: string;
   q?: string | undefined;
   gameType?: GameType | undefined;
   sort?: EventSort | undefined;
+  /**
+   * The optional date window, half-open: `from` inclusive, `to` exclusive, both
+   * ISO-8601 UTC in the storage format. Both or neither — a lone half is a
+   * caller bug the schema rejects before it gets here, and is ignored below.
+   */
+  from?: string | undefined;
+  to?: string | undefined;
 }
 
 /**
@@ -155,19 +162,37 @@ const ORDER_BY: Record<EventSort, string> = {
 };
 
 /**
- * Upcoming events, soonest first by default. `LIMIT 200` — no pagination at
+ * The board's events, soonest first by default. `LIMIT 200` — no pagination at
  * this scale.
  *
- * Cancelled events drop off the public board entirely; the people who already
- * hold a seat still see them (with the status) via `listPlayerRsvps`.
+ * Two modes, one query. Without a window this is the upcoming board: everything
+ * from `now` on, with no upper bound. With one (`from`/`to`, half-open) `now`
+ * stops applying and the span is whatever the caller asked for, past included —
+ * which is what the calendar's month grid needs to put counts on the days
+ * behind today. `?4` being NULL is what tells the two apart, in the same shape
+ * as the optional filters below it.
+ *
+ * A window rather than an "include past" flag: past-inclusive with
+ * `ORDER BY starts_at` would return oldest-first and could exhaust the 200 rows
+ * before reaching anything still joinable. A window is bounded by construction.
+ *
+ * Cancelled events drop off the public board entirely, in both modes; the
+ * people who already hold a seat still see them (with the status) via
+ * `listPlayerRsvps`.
  */
-export async function listUpcomingEvents(db: D1Database, filters: EventFilters): Promise<EventSummary[]> {
+export async function listEvents(db: D1Database, filters: EventFilters): Promise<EventSummary[]> {
+  // Both or neither: a half-specified window falls back to the upcoming board
+  // rather than inventing the end the caller did not send.
+  const { from, to } = filters;
+  const window = from !== undefined && to !== undefined ? { from, to } : null;
+
   const { results } = await db
     .prepare(
       `SELECT ${EVENT_COLUMNS}
          FROM events e
          JOIN users u ON u.id = e.organizer_id
         WHERE e.starts_at >= ?1
+          AND (?4 IS NULL OR e.starts_at < ?4)
           AND e.status = 'scheduled'
           AND (?2 IS NULL OR e.game_type = ?2)
           AND (?3 IS NULL OR e.title LIKE ?3 ESCAPE '\\' OR e.location LIKE ?3 ESCAPE '\\'
@@ -177,7 +202,12 @@ export async function listUpcomingEvents(db: D1Database, filters: EventFilters):
         ORDER BY ${ORDER_BY[filters.sort ?? DEFAULT_EVENT_SORT]}
         LIMIT 200`,
     )
-    .bind(filters.now, filters.gameType ?? null, filters.q === undefined ? null : likePattern(filters.q))
+    .bind(
+      window?.from ?? filters.now,
+      filters.gameType ?? null,
+      filters.q === undefined ? null : likePattern(filters.q),
+      window?.to ?? null,
+    )
     .all<EventRow>();
   return results.map(toEventSummary);
 }

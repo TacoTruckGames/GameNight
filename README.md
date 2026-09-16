@@ -162,10 +162,18 @@ half-second spinner.
   3 events"); `popular` stays flat because a rank has no day boundaries. Grouping is a client-side pass over
   the same list keyed by an `Intl`-derived local day, never by the UTC string — a 7 PM Pacific table must not
   land under Saturday.
-- **Calendar view** is a second rendering of the same `GET /api/events` result: no new endpoint, same search
-  and type filters, the 200-row cap is the board's cap. Month grid, Monday-first so the weekend sits
-  together, a count per day, tap a day to get the ordinary cards beneath — the card stays the RSVP surface
-  because a title does not fit a phone-width cell. Day cells are plain labelled buttons (empty days
+- **Calendar view** is the same `GET /api/events`, no new endpoint — asked a different question. A month
+  grid has to fill the days *behind* today, so calendar view sends a **date window**, `?from=&to=`,
+  half-open and covering exactly the month on screen; the list sends neither and keeps the endpoint's
+  upcoming-only default, which is both the cacheable one and the honest one for a view whose job is "find a
+  table you can still join". A window rather than an `includePast` flag: past-inclusive with
+  `ORDER BY starts_at` would come back oldest-first and could spend the 200-row cap before reaching anything
+  joinable, whereas a window is bounded by construction. Both ends or neither — half a window is a 400, not
+  a guess. Same search and type filters, same cap, and cancelled events stay off the board in both modes.
+  The two ends are computed in *local* time and sent as UTC, because the grid buckets by local day. Month
+  grid, Monday-first so the weekend sits together, a count per day, tap a day to get the ordinary cards
+  beneath — the card stays the RSVP surface because a title does not fit a phone-width cell. Past days list
+  normally, with the RSVP button reading "Started". Day cells are plain labelled buttons (empty days
   disabled), not an ARIA grid, because a list of buttons is correct with zero focus-management code. Sort is
   hidden in this view; the grid is chronological by construction.
 - **No pagination** (`LIMIT 200`); ~50 live events fit on one screen.

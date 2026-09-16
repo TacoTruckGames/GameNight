@@ -15,7 +15,7 @@ import {
   hasRsvp,
   insertEvent,
   listAttendees,
-  listUpcomingEvents,
+  listEvents,
   toEventSummary,
   type ResolvedPlace,
 } from "../db/queries";
@@ -70,10 +70,30 @@ async function resolveForCreate(
 /**
  * `?q=` matches title or location; `?gameType=` is the chip filter; `?sort=`
  * is `date` (default) or `popular`.
+ *
+ * `?from=&to=` is the optional date window, half-open (`from` inclusive, `to`
+ * exclusive). Without it the answer is the upcoming board — `starts_at >= now`,
+ * the default this endpoint can be edge-cached on. With it, `now` no longer
+ * applies and past events come back, which is what the calendar's month grid
+ * asks for. Both or neither: the schema 400s on half a window rather than
+ * guessing the end the caller left out.
+ *
+ * Both ends are normalised to the storage format (UTC, second precision)
+ * because `starts_at >=` is a *string* comparison — a client sending an offset
+ * or milliseconds must not quietly compare wrong. See `worker/lib/time.ts`.
  */
 events.get("/events", async (c) => {
-  const { q, gameType, sort } = parseQuery(c, eventsQuerySchema);
-  return c.json(await listUpcomingEvents(c.env.DB, { now: nowIso(), q, gameType, sort }));
+  const { q, gameType, sort, from, to } = parseQuery(c, eventsQuerySchema);
+  return c.json(
+    await listEvents(c.env.DB, {
+      now: nowIso(),
+      q,
+      gameType,
+      sort,
+      from: from === undefined ? undefined : toIsoSeconds(new Date(from)),
+      to: to === undefined ? undefined : toIsoSeconds(new Date(to)),
+    }),
+  );
 });
 
 events.post("/events", async (c) => {

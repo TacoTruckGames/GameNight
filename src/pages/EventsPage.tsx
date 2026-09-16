@@ -1,9 +1,14 @@
 /**
  * The board. Search + game-type chips, then the same list of RSVP-able cards
  * in one of two shapes: **List** (day-grouped under the default `date` sort,
- * flat under `popular` — a rank has no day boundaries) or **Calendar**, which
- * is not a second data source but the very same `useEvents` result re-rendered
- * as a month grid, so there is no new endpoint and no second cache to age.
+ * flat under `popular` — a rank has no day boundaries) or **Calendar**, a month
+ * grid built from the same `useEvents` hook and the same endpoint — no second
+ * data source — asked a different question: give me this month, `?from=&to=`,
+ * past days included. A month grid with nothing behind today is a grid you
+ * cannot page backwards through.
+ *
+ * List view sends no window on purpose, so it stays upcoming-only: its job is
+ * still "find a table you can still join".
  *
  * `GET /api/events` is deliberately user-independent (so it stays cacheable),
  * so "You're in" comes from `GET /api/me/rsvps` and is joined here on the
@@ -58,7 +63,27 @@ export function EventsPage() {
   // The grid is chronological by construction, so calendar view always asks for
   // the default sort — which also shares the query cache with the default list.
   const effectiveSort = view === "calendar" ? DEFAULT_EVENT_SORT : sort;
-  const events = useEvents({ q: debouncedSearch, gameType, sort: effectiveSort });
+
+  // Calendar view asks for exactly the month on screen; list view asks for
+  // nothing and gets the upcoming board.
+  //
+  // The two ends are computed in **local** time and handed over as UTC, because
+  // the grid buckets events by the reader's civil day: the month that starts at
+  // local midnight on the 1st is the month whose cells this grid draws, and a
+  // UTC-midnight window would push a late-evening event onto the wrong side of
+  // the boundary. `new Date(y, 12, 1)` rolls into next January on its own, so
+  // December needs no special case.
+  const monthWindow = useMemo(
+    () =>
+      view === "calendar"
+        ? {
+            from: new Date(month.year, month.month - 1, 1).toISOString(),
+            to: new Date(month.year, month.month, 1).toISOString(),
+          }
+        : {},
+    [view, month],
+  );
+  const events = useEvents({ q: debouncedSearch, gameType, sort: effectiveSort, ...monthWindow });
   const myRsvpIds = useMyRsvpIds();
   const filtered = debouncedSearch !== "" || gameType !== "";
 
@@ -123,7 +148,10 @@ export function EventsPage() {
         <EventListSkeleton />
       ) : events.isError ? (
         <ErrorBanner error={events.error} onRetry={() => void events.refetch()} />
-      ) : (events.data?.length ?? 0) === 0 ? (
+      ) : view === "list" && (events.data?.length ?? 0) === 0 ? (
+        // List view only: an empty *month* is an ordinary thing to navigate
+        // through, so the calendar keeps its controls on screen and says so in
+        // its own empty state below rather than replacing itself with this one.
         <EmptyState
           title={filtered ? "No upcoming events match" : "No upcoming events yet"}
           hint={filtered ? "Try a different search or clear the filters." : "Check back soon — organizers post new tables regularly."}
