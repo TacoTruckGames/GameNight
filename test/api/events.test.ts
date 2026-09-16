@@ -108,9 +108,68 @@ describe("GET /api/events", () => {
 
   it("ignores blank filters", async () => {
     const event = await seedEvent();
-    const { status, body } = await api<EventSummary[]>("/api/events?q=&gameType=");
+    const { status, body } = await api<EventSummary[]>("/api/events?q=&gameType=&sort=");
     expect(status).toBe(200);
     expect(find(body, event.id)).toBeDefined();
+  });
+
+  it("400s on an unknown sort", async () => {
+    const { status, body } = await api<ApiErrorBody>("/api/events?sort=alphabetical");
+    expect(status).toBe(400);
+    expect(body.error.code).toBe("VALIDATION_FAILED");
+    expect(body.error.details?.[0]?.path).toBe("sort");
+  });
+
+  describe("?sort=popular", () => {
+    /**
+     * Three tables that disagree about which is "first" under each ordering, all
+     * tagged with one search token so the shared database's other events cannot
+     * wander into the assertion.
+     *
+     * `cold` has *more* attendees than `hot` and fewer of its seats taken — it
+     * is there to prove the ranking is by ratio, not by head count.
+     */
+    async function seedTrio() {
+      const token = crypto.randomUUID().slice(0, 8);
+      const players = await seedUsers(4);
+      const ids = players.map((player) => player.id);
+      const full = await seedEvent({ title: `${token} full`, capacity: 2, rsvpPlayerIds: ids.slice(0, 2), startsAt: inDays(7) });
+      const cold = await seedEvent({ title: `${token} cold`, capacity: 8, rsvpPlayerIds: ids, startsAt: inDays(8) });
+      const hot = await seedEvent({ title: `${token} hot`, capacity: 4, rsvpPlayerIds: ids.slice(0, 3), startsAt: inDays(9) });
+      return { token, full, cold, hot };
+    }
+
+    it("ranks by how full a table is, not by attendee count", async () => {
+      const { token, full, cold, hot } = await seedTrio();
+
+      const { status, body } = await api<EventSummary[]>(`/api/events?q=${token}&sort=popular`);
+
+      expect(status).toBe(200);
+      // Fullest joinable table first; the full one sinks even though it starts soonest.
+      expect(body.map((event) => event.id)).toEqual([hot.id, cold.id, full.id]);
+      expect(find(body, cold.id)!.attendeeCount).toBeGreaterThan(find(body, hot.id)!.attendeeCount);
+    });
+
+    it("leaves ?sort=date (the default) ordering by start time", async () => {
+      const { token, full, cold, hot } = await seedTrio();
+
+      const byDate = await api<EventSummary[]>(`/api/events?q=${token}&sort=date`);
+      const byDefault = await api<EventSummary[]>(`/api/events?q=${token}`);
+
+      expect(byDate.body.map((event) => event.id)).toEqual([full.id, cold.id, hot.id]);
+      expect(byDefault.body.map((event) => event.id)).toEqual(byDate.body.map((event) => event.id));
+    });
+
+    it("breaks ties on start time, so equally full tables read soonest-first", async () => {
+      const token = crypto.randomUUID().slice(0, 8);
+      const players = await seedUsers(2);
+      const later = await seedEvent({ title: `${token} later`, capacity: 4, rsvpPlayerIds: [players[0]!.id], startsAt: inDays(21) });
+      const sooner = await seedEvent({ title: `${token} sooner`, capacity: 4, rsvpPlayerIds: [players[1]!.id], startsAt: inDays(20) });
+
+      const { body } = await api<EventSummary[]>(`/api/events?q=${token}&sort=popular`);
+
+      expect(body.map((event) => event.id)).toEqual([sooner.id, later.id]);
+    });
   });
 
   it("does not leak a per-caller field (the list is edge-cacheable by design)", async () => {

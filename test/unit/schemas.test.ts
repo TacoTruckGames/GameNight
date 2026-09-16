@@ -156,20 +156,27 @@ describe("createUserSchema", () => {
 
 describe("eventsQuerySchema", () => {
   it("normalises absent, blank and whitespace filters to undefined", () => {
-    expect(eventsQuerySchema.parse({})).toEqual({ q: undefined, gameType: undefined });
-    expect(eventsQuerySchema.parse({ q: "", gameType: "" })).toEqual({ q: undefined, gameType: undefined });
-    expect(eventsQuerySchema.parse({ q: "   " })).toEqual({ q: undefined, gameType: undefined });
+    expect(eventsQuerySchema.parse({})).toEqual({ q: undefined, gameType: undefined, sort: "date" });
+    expect(eventsQuerySchema.parse({ q: "", gameType: "" })).toEqual({ q: undefined, gameType: undefined, sort: "date" });
+    expect(eventsQuerySchema.parse({ q: "   " })).toEqual({ q: undefined, gameType: undefined, sort: "date" });
   });
 
   it("trims a search term and keeps a valid game type", () => {
     expect(eventsQuerySchema.parse({ q: "  draft  ", gameType: "commander" })).toEqual({
       q: "draft",
       gameType: "commander",
+      sort: "date",
     });
   });
 
-  it("rejects an unknown game type and an over-long search", () => {
+  it("defaults a blank or absent sort to date and keeps a valid one", () => {
+    expect(eventsQuerySchema.parse({ sort: "" }).sort).toBe("date");
+    expect(eventsQuerySchema.parse({ sort: "popular" }).sort).toBe("popular");
+  });
+
+  it("rejects an unknown game type, an unknown sort and an over-long search", () => {
     expect(eventsQuerySchema.safeParse({ gameType: "chess" }).success).toBe(false);
+    expect(eventsQuerySchema.safeParse({ sort: "alphabetical" }).success).toBe(false);
     expect(eventsQuerySchema.safeParse({ q: "x".repeat(81) }).success).toBe(false);
   });
 });

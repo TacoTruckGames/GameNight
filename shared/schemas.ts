@@ -7,6 +7,7 @@
 
 import { z } from "zod";
 import type { Role } from "./api-types";
+import { DEFAULT_EVENT_SORT, EVENT_SORTS } from "./event-sort";
 import { GAME_TYPES } from "./game-types";
 
 export const TITLE_MAX = 80;
@@ -17,6 +18,7 @@ export const CAPACITY_MIN = 1;
 export const CAPACITY_MAX = 500;
 
 export const gameTypeSchema = z.enum(GAME_TYPES);
+export const eventSortSchema = z.enum(EVENT_SORTS);
 
 // ------------------------------------------------------- POST /api/events --
 
@@ -99,10 +101,14 @@ export const eventsQuerySchema = z
   .object({
     q: z.string().max(SEARCH_MAX, `Search must be ${SEARCH_MAX} characters or fewer`).optional(),
     gameType: z.union([gameTypeSchema, z.literal("")]).optional(),
+    sort: z.union([eventSortSchema, z.literal("")]).optional(),
   })
-  .transform(({ q, gameType }) => ({
+  .transform(({ q, gameType, sort }) => ({
     q: q !== undefined && q.trim() !== "" ? q.trim() : undefined,
     gameType: gameType !== undefined && gameType !== "" ? gameType : undefined,
+    // `sort` is the one query param with a meaningful default rather than an
+    // "absent" case: a list always has an order.
+    sort: sort !== undefined && sort !== "" ? sort : DEFAULT_EVENT_SORT,
   }));
 
 export type EventsQuery = z.infer<typeof eventsQuerySchema>;

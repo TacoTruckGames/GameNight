@@ -34,3 +34,11 @@ export function isGameType(value: unknown): value is GameType {
 export function gameTypeLabel(value: string): string {
   return isGameType(value) ? GAME_TYPE_LABELS[value] : value;
 }
+
+/**
+ * The subset offered as chips on the public board. `board_games` is a valid
+ * tag (existing events carry it, and organizers can still choose it) but it is
+ * too broad to be a useful filter, so it is not a chip — those events are
+ * reached by search or by "All".
+ */
+export const FILTER_GAME_TYPES = GAME_TYPES.filter((type) => type !== "board_games");

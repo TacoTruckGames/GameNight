@@ -11,6 +11,7 @@
  *    not wildcards, so a search for `100%` cannot turn into a full scan match.
  */
 
+import { DEFAULT_EVENT_SORT, type EventSort } from "../../shared/event-sort";
 import { isGameType } from "../../shared/game-types";
 import type {
   AdminEvent,
@@ -107,10 +108,29 @@ export interface EventFilters {
   now: string;
   q?: string | undefined;
   gameType?: GameType | undefined;
+  sort?: EventSort | undefined;
 }
 
 /**
- * Upcoming events, soonest first. `LIMIT 200` — no pagination at this scale.
+ * The board's two orderings. Interpolated, never bound: SQLite cannot
+ * parameterise `ORDER BY`, so this is a lookup on a zod-validated enum and the
+ * only two strings that can reach the query are the two written here.
+ *
+ * `popular` reads as: joinable tables first (a full one cannot be RSVP'd to,
+ * so it sinks), then fullest-first by ratio rather than by raw head count — a
+ * 7-of-8 table is hotter than a 10-of-40 one — then soonest, then `id` so the
+ * order is total and the list is stable between refreshes.
+ *
+ * `capacity` is `CHECK (capacity BETWEEN 1 AND 500)`, so the division is safe.
+ */
+const ORDER_BY: Record<EventSort, string> = {
+  date: "e.starts_at, e.id",
+  popular: "(e.rsvp_count >= e.capacity), CAST(e.rsvp_count AS REAL) / e.capacity DESC, e.starts_at, e.id",
+};
+
+/**
+ * Upcoming events, soonest first by default. `LIMIT 200` — no pagination at
+ * this scale.
  *
  * Cancelled events drop off the public board entirely; the people who already
  * hold a seat still see them (with the status) via `listPlayerRsvps`.
@@ -125,7 +145,7 @@ export async function listUpcomingEvents(db: D1Database, filters: EventFilters):
           AND e.status = 'scheduled'
           AND (?2 IS NULL OR e.game_type = ?2)
           AND (?3 IS NULL OR e.title LIKE ?3 ESCAPE '\\' OR e.location LIKE ?3 ESCAPE '\\')
-        ORDER BY e.starts_at, e.id
+        ORDER BY ${ORDER_BY[filters.sort ?? DEFAULT_EVENT_SORT]}
         LIMIT 200`,
     )
     .bind(filters.now, filters.gameType ?? null, filters.q === undefined ? null : likePattern(filters.q))

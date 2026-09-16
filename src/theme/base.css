@@ -355,6 +355,21 @@ a {
   overflow: visible;
 }
 
+/* A captioned chip row (the board's sort control). Without the caption the
+   sort chips read as more filter chips. */
+.filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.filter-group__label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
 .chip {
   min-height: var(--tap-target);
   padding: var(--space-2) var(--space-3);

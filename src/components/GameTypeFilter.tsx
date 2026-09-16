@@ -3,7 +3,7 @@
  * select popover to fight with on a moving train.
  */
 
-import { GAME_TYPES, GAME_TYPE_LABELS } from "../../shared/game-types";
+import { FILTER_GAME_TYPES, GAME_TYPE_LABELS } from "../../shared/game-types";
 
 export function GameTypeFilter({ value, onChange }: { value: string; onChange: (next: string) => void }) {
   return (
@@ -14,9 +14,9 @@ export function GameTypeFilter({ value, onChange }: { value: string; onChange: (
         aria-pressed={value === ""}
         onClick={() => onChange("")}
       >
-        All games
+        All
       </button>
-      {GAME_TYPES.map((gameType) => (
+      {FILTER_GAME_TYPES.map((gameType) => (
         <button
           key={gameType}
           type="button"

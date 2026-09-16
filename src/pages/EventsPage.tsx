@@ -8,11 +8,13 @@
  */
 
 import { useEffect, useId, useState } from "react";
+import { DEFAULT_EVENT_SORT, type EventSort } from "../../shared/event-sort";
 import { SEARCH_MAX } from "../../shared/schemas";
 import { useEvents, useMyRsvpIds } from "../api/hooks";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { EventCard } from "../components/EventCard";
+import { EventSortControl } from "../components/EventSort";
 import { Icon } from "../components/Icon";
 import { GameTypeFilter } from "../components/GameTypeFilter";
 import { EventListSkeleton } from "../components/Skeleton";
@@ -25,6 +27,7 @@ export function EventsPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [gameType, setGameType] = useState("");
+  const [sort, setSort] = useState<EventSort>(DEFAULT_EVENT_SORT);
   const searchId = useId();
 
   // One request per pause in typing, not one per keystroke.
@@ -33,7 +36,7 @@ export function EventsPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const events = useEvents({ q: debouncedSearch, gameType });
+  const events = useEvents({ q: debouncedSearch, gameType, sort });
   const myRsvpIds = useMyRsvpIds();
   const filtered = debouncedSearch !== "" || gameType !== "";
 
@@ -62,6 +65,7 @@ export function EventsPage() {
           />
         </div>
         <GameTypeFilter value={gameType} onChange={setGameType} />
+        <EventSortControl value={sort} onChange={setSort} />
       </div>
 
       {events.isPending ? (

@@ -59,6 +59,8 @@ export function createQueryClient(): QueryClient {
 export interface EventsFilter {
   q?: string;
   gameType?: string;
+  /** Omitted means the server's default (`date`). */
+  sort?: string;
 }
 
 /** The admin lists are filtered entirely from the URL, so the key is the URL's query. */
@@ -78,7 +80,8 @@ export interface AdminEventsFilter {
 
 export const queryKeys = {
   users: ["users"] as const,
-  eventList: (filter: EventsFilter) => ["events", "list", filter.q ?? "", filter.gameType ?? ""] as const,
+  eventList: (filter: EventsFilter) =>
+    ["events", "list", filter.q ?? "", filter.gameType ?? "", filter.sort ?? ""] as const,
   event: (id: string) => ["events", "detail", id] as const,
   attendees: (id: string) => ["events", "attendees", id] as const,
   myRsvps: (userId: string) => ["me", "rsvps", userId] as const,
@@ -113,6 +116,7 @@ export function useEvents(filter: EventsFilter): UseQueryResult<EventSummary[], 
       const params = new URLSearchParams();
       if (filter.q) params.set("q", filter.q);
       if (filter.gameType) params.set("gameType", filter.gameType);
+      if (filter.sort) params.set("sort", filter.sort);
       const qs = params.toString();
       return apiFetch<EventSummary[]>(`/api/events${qs ? `?${qs}` : ""}`, { userId, signal });
     },

@@ -19,10 +19,13 @@ import { requireOrganizer } from "../middleware/auth";
 
 export const events = new Hono<AppEnv>();
 
-/** `?q=` matches title or location; `?gameType=` is the chip filter. */
+/**
+ * `?q=` matches title or location; `?gameType=` is the chip filter; `?sort=`
+ * is `date` (default) or `popular`.
+ */
 events.get("/events", async (c) => {
-  const { q, gameType } = parseQuery(c, eventsQuerySchema);
-  return c.json(await listUpcomingEvents(c.env.DB, { now: nowIso(), q, gameType }));
+  const { q, gameType, sort } = parseQuery(c, eventsQuerySchema);
+  return c.json(await listUpcomingEvents(c.env.DB, { now: nowIso(), q, gameType, sort }));
 });
 
 events.post("/events", async (c) => {
