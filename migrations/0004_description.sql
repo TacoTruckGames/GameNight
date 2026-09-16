@@ -1,0 +1,22 @@
+-- Game Night — what the evening is actually like.
+--
+-- `title` is the headline and `location` is the address; neither has room for
+-- the half-paragraph that decides whether a player shows up: which edition,
+-- whose decks, whether a beginner is welcome, where the door is after 7 PM.
+-- Organizers were putting that in the title until it ran past 80 characters.
+--
+-- Nullable, and that is not a compromise: D1 cannot add a NOT NULL column
+-- without a constant default to a table that already has rows, but even on an
+-- empty table this column would be nullable. "No description" is an ordinary
+-- state — the 64 seeded events and every event posted so far have none, and a
+-- terse "Commander night, bring a deck" is a complete listing. NULL says
+-- nothing was written; `''` would say something was written and then erased.
+-- Only the first is ever stored (see `createEventSchema` in shared/schemas.ts).
+--
+-- No length constraint here either. The 500-character cap is `DESCRIPTION_MAX`,
+-- enforced by zod on the one write path, where a violation can be reported
+-- against the field instead of arriving as an opaque 500 from a CHECK.
+ALTER TABLE events ADD COLUMN description TEXT;
+
+-- No index: nothing searches descriptions. `?q=` deliberately stays title,
+-- location and verified address — the three things a player scans a board for.

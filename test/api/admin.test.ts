@@ -29,6 +29,7 @@ import type {
   RsvpResponse,
   User,
 } from "../../shared/api-types";
+import { DESCRIPTION_MAX } from "../../shared/schemas";
 import {
   addRsvpsDirectly,
   api,
@@ -410,6 +411,112 @@ describe("editing an event", () => {
       body: { capacity: 3 },
     });
     expect(status).toBe(404);
+  });
+});
+
+// ------------------------------------------------------- editing the prose --
+
+describe("editing an event's description", () => {
+  /** The stored column, so "cleared" can be told from "set to an empty string". */
+  async function storedDescription(eventId: string): Promise<string | null | undefined> {
+    const row = await env.DB.prepare("SELECT description FROM events WHERE id = ?1")
+      .bind(eventId)
+      .first<{ description: string | null }>();
+    return row?.description;
+  }
+
+  it("adds a description to an event that had none", async () => {
+    const admin = await seedAdmin();
+    const event = await seedEvent();
+    const prose = "Bring a deck. Beginners welcome — we have loaners.";
+
+    const { status } = await api<AdminEvent>(`/api/admin/events/${event.id}`, {
+      method: "PATCH",
+      as: admin.id,
+      body: { description: `  ${prose}  ` },
+    });
+
+    expect(status).toBe(200);
+    // The patch response is the lean list shape; the detail route is where the
+    // prose lives, for both the admin and the player.
+    const detail = await api<AdminEventDetail>(`/api/admin/events/${event.id}`, { as: admin.id });
+    expect(detail.body.description).toBe(prose);
+
+    const rows = await auditFor(event.id);
+    expect(JSON.parse(rows[0]?.metadata ?? "null").changed).toEqual(["description"]);
+  });
+
+  it("clears one with an explicit null, the same way a venue is unlinked", async () => {
+    const admin = await seedAdmin();
+    const event = await seedEvent();
+    await api(`/api/admin/events/${event.id}`, {
+      method: "PATCH",
+      as: admin.id,
+      body: { description: "Something to erase." },
+    });
+
+    const { status } = await api<AdminEvent>(`/api/admin/events/${event.id}`, {
+      method: "PATCH",
+      as: admin.id,
+      body: { description: null },
+    });
+
+    expect(status).toBe(200);
+    // NULL, not `''`: the column never holds an empty string.
+    expect(await storedDescription(event.id)).toBeNull();
+    const detail = await api<AdminEventDetail>(`/api/admin/events/${event.id}`, { as: admin.id });
+    expect(detail.body.description).toBeNull();
+  });
+
+  it("leaves it alone in a patch that never mentions it", async () => {
+    const admin = await seedAdmin();
+    const event = await seedEvent();
+    await api(`/api/admin/events/${event.id}`, {
+      method: "PATCH",
+      as: admin.id,
+      body: { description: "Survives an unrelated edit." },
+    });
+
+    await api(`/api/admin/events/${event.id}`, { method: "PATCH", as: admin.id, body: { title: "Renamed" } });
+
+    const detail = await api<AdminEventDetail>(`/api/admin/events/${event.id}`, { as: admin.id });
+    expect(detail.body).toMatchObject({ title: "Renamed", description: "Survives an unrelated edit." });
+  });
+
+  it("treats a blank string as 'no change', not as a clear", async () => {
+    // `''` normalises to absent, and absent means "leave it alone" on a patch —
+    // so a blank-only patch is the empty patch, and 400s as one. An admin UI
+    // that wants to erase prose has to send `null`.
+    const admin = await seedAdmin();
+    const event = await seedEvent();
+    await api(`/api/admin/events/${event.id}`, {
+      method: "PATCH",
+      as: admin.id,
+      body: { description: "Still here." },
+    });
+
+    const blank = await api<ApiErrorBody>(`/api/admin/events/${event.id}`, {
+      method: "PATCH",
+      as: admin.id,
+      body: { description: "   " },
+    });
+    expect(blank.status).toBe(400);
+
+    expect(await storedDescription(event.id)).toBe("Still here.");
+  });
+
+  it(`400s past ${DESCRIPTION_MAX} characters, on the description field`, async () => {
+    const admin = await seedAdmin();
+    const event = await seedEvent();
+
+    const { status, body } = await api<ApiErrorBody>(`/api/admin/events/${event.id}`, {
+      method: "PATCH",
+      as: admin.id,
+      body: { description: "x".repeat(DESCRIPTION_MAX + 1) },
+    });
+
+    expect(status).toBe(400);
+    expect(body.error.details?.[0]?.path).toBe("description");
   });
 });
 

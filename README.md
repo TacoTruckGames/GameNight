@@ -21,7 +21,7 @@ migrations and re-seeds the demo board every time it starts (seed dates are rela
 and "one seat left" events are always there).
 
 ```sh
-pnpm test                        # 322 tests, incl. the concurrency proofs (~3 s)
+pnpm test                        # 340 tests, incl. the concurrency proofs (~3 s)
 pnpm stress [url] [--players 40] [--capacity 5]   # real-HTTP race against a running server
 pnpm typecheck
 ```
@@ -154,6 +154,17 @@ half-second spinner.
   below the fold — and it offers all but "Board games", a real tag that is simply too broad to filter on.
 - **Search** is a case-insensitive `LIKE` over title and location plus the game-type filter — correct at
   50 events and at 5,000; full-text search would be gold-plating.
+- **Description** (`events.description`, nullable, 500 characters, optional) is the half-paragraph a title
+  cannot hold: which edition, whose decks, whether a beginner is welcome, where the door is after 7 PM.
+  Three decisions about it. It is **detail-only** — the board is ~50 cards and this is its one open-ended
+  field, so shipping 50 × 500 characters to render prose no card has room for would be most of the payload
+  for none of the value; `EventSummary` deliberately has no `description`, and both detail routes add it
+  from the row. It is **nullable, and "none" is ordinary** — most events need no explanation, and a blank
+  textarea normalises to `undefined` and stores NULL, because `''` in the column would render as an empty
+  paragraph and read as a deliberate blank. And because the admin patch schema is the create schema
+  `.partial()`, absent already means "leave it alone", so **clearing is an explicit `null`** — the same
+  convention `placeId` uses to unlink a venue. Search still covers title, location and verified address
+  only: those are what a player scans a board for.
 - **Sort** (`?sort=`) is `date` (soonest first, the default) or `popular`: fullest-first by *ratio* of seats
   taken, so a 3-of-4 table outranks a 4-of-8 one, tie-broken by start time. Full tables sort last under
   `popular` — they are the most popular of all, but the top of the board should be seats you can still take.
@@ -280,7 +291,7 @@ The launch build already has the shape; here is exactly what changes at ~200k pl
 
 ## Testing
 
-`pnpm test` runs 322 tests *inside* the Workers runtime (`@cloudflare/vitest-plugin`) against a real local
+`pnpm test` runs 340 tests *inside* the Workers runtime (`@cloudflare/vitest-plugin`) against a real local
 D1 and real Durable Object instances — the same code paths as production, not mocks.
 
 | Suite | What it proves |

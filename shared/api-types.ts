@@ -59,6 +59,12 @@ export interface EventPlace {
   lng: number;
 }
 
+/**
+ * Note what is *not* here: `description`. The board is a 50-row list and the
+ * description is its one open-ended field — 50 × 500 characters would be most
+ * of the payload, for prose no card has room to show. It is a detail-page
+ * field, because the detail page is where someone decides.
+ */
 export interface EventSummary {
   id: string;
   title: string;
@@ -77,8 +83,14 @@ export interface EventSummary {
   organizerName: string;
 }
 
-/** `GET /api/events/:id`. `myRsvp` is null when the request is unauthenticated. */
-export type EventDetail = EventSummary & { myRsvp: boolean | null };
+/**
+ * `GET /api/events/:id`. `myRsvp` is null when the request is unauthenticated.
+ *
+ * `description` is null when the organizer wrote none, which is ordinary and
+ * not an error; it is also the only place the list's lean payload is paid back
+ * (see `EventSummary`).
+ */
+export type EventDetail = EventSummary & { description: string | null; myRsvp: boolean | null };
 
 export interface Attendee {
   playerId: string;
@@ -166,7 +178,9 @@ export interface AdminEvent extends EventSummary {
   cancelledAt: string | null;
 }
 
+/** Same split as the public API: the admin *list* is lean, the detail is whole. */
 export interface AdminEventDetail extends AdminEvent {
+  description: string | null;
   attendees: Attendee[];
 }
 

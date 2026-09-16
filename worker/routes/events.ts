@@ -115,6 +115,8 @@ events.post("/events", async (c) => {
     // Normalised to the one storage format, whatever offset the client sent.
     startsAt: toIsoSeconds(new Date(input.startsAt)),
     location: input.location,
+    // Already trimmed, and already `undefined` if the textarea was blank.
+    description: input.description,
     capacity: input.capacity,
     // Salts the Durable Object name. Rotating it hands the event a brand-new,
     // empty room that rehydrates from D1 — the manual recovery lever.
@@ -136,7 +138,10 @@ events.get("/events/:id", async (c) => {
   // things to the UI.
   const myRsvp = user && user.role === "player" ? await hasRsvp(c.env.DB, row.id, user.id) : null;
 
-  return c.json({ ...toEventSummary(row), myRsvp } satisfies EventDetail);
+  // `description` is added here rather than in `toEventSummary`, because this is
+  // the only public route that sends it — the board's cards have no room for
+  // prose and no reason to carry 50 of them. Null is the ordinary "none" case.
+  return c.json({ ...toEventSummary(row), description: row.description, myRsvp } satisfies EventDetail);
 });
 
 /** Owning organizer only — the door list is not public. */

@@ -47,6 +47,8 @@ export interface EventRow {
   room_key: string;
   status: string;
   organizer_name: string;
+  /** Null when the organizer wrote none. Never `''` — see `createEventSchema`. */
+  description: string | null;
   // The verified-venue half. All four, or none — see `toPlace`. `place_resolved_at`
   // is deliberately not selected: it is operational metadata, not wire data.
   place_id: string | null;
@@ -56,7 +58,7 @@ export interface EventRow {
 }
 
 const EVENT_COLUMNS = `e.id, e.organizer_id, e.title, e.game_type, e.starts_at, e.location,
-         e.capacity, e.rsvp_count, e.room_key, e.status,
+         e.capacity, e.rsvp_count, e.room_key, e.status, e.description,
          e.place_id, e.place_address, e.place_lat, e.place_lng,
          u.name AS organizer_name`;
 
@@ -85,7 +87,13 @@ function toPlace(row: EventRow): EventPlace | null {
   return { id, address, lat, lng };
 }
 
-/** Row → wire shape. `seatsLeft`/`isFull` are derived here so no client re-does it. */
+/**
+ * Row → wire shape. `seatsLeft`/`isFull` are derived here so no client re-does it.
+ *
+ * `description` is deliberately *not* emitted: this is the list mapper, and the
+ * list stays lean (see `EventSummary`). The two detail routes add it from the
+ * row themselves, which is the only place it is ever sent.
+ */
 export function toEventSummary(row: EventRow): EventSummary {
   return {
     id: row.id,
@@ -233,6 +241,8 @@ export interface NewEvent {
   location: string;
   capacity: number;
   roomKey: string;
+  /** Absent, `null` and `''` all store NULL — the schema normalises before we get here. */
+  description?: string | null;
   /**
    * Resolved server-side from a place id the client sent, or `null` — which is
    * both "the organizer typed free text" and "Google was unreachable". Creating
@@ -248,11 +258,16 @@ export interface ResolvedPlace extends EventPlace {
 
 export async function insertEvent(db: D1Database, event: NewEvent): Promise<void> {
   const place = event.place ?? null;
+  // The column holds prose or NULL, never `''`. The schema already normalises a
+  // blank textarea away; this is the braces to that belt, so the invariant holds
+  // for any caller, not only the route.
+  const description = event.description === "" ? null : (event.description ?? null);
   await db
     .prepare(
-      `INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, capacity, rsvp_count, room_key,
+      `INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, description,
+                           capacity, rsvp_count, room_key,
                            place_id, place_address, place_lat, place_lng, place_resolved_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, ?8, ?9, ?10, ?11, ?12, ?13)`,
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 0, ?9, ?10, ?11, ?12, ?13, ?14)`,
     )
     .bind(
       event.id,
@@ -261,6 +276,7 @@ export async function insertEvent(db: D1Database, event: NewEvent): Promise<void
       event.gameType,
       event.startsAt,
       event.location,
+      description,
       event.capacity,
       event.roomKey,
       place?.id ?? null,
@@ -479,14 +495,15 @@ export async function adminSetSuspended(
 
 // ----------------------------------------------------------- admin: events --
 
-interface AdminEventRow extends EventRow {
+export interface AdminEventRow extends EventRow {
   created_at: string;
   cancelled_at: string | null;
 }
 
 const ADMIN_EVENT_COLUMNS = `${EVENT_COLUMNS}, e.created_at, e.cancelled_at`;
 
-function toAdminEvent(row: AdminEventRow): AdminEvent {
+/** Exported for the detail route, which pairs it with the row's `description`. */
+export function toAdminEvent(row: AdminEventRow): AdminEvent {
   return {
     ...toEventSummary(row),
     organizerId: row.organizer_id,
@@ -600,6 +617,11 @@ export async function adminUpdateEvent(
   assign("startsAt", "starts_at", patch.startsAt);
   assign("location", "location", patch.location);
   assign("capacity", "capacity", patch.capacity);
+  // `assign` skips only `undefined`, so an explicit `null` writes NULL — which
+  // is exactly how an admin clears a description, the same convention `placeId`
+  // uses to unlink a venue. A blank textarea normalises to `undefined` in the
+  // schema and therefore means "no change", not "erase it".
+  assign("description", "description", patch.description);
 
   // Five columns, but **one** audit entry. `place` is a separate parameter
   // rather than five more `assign` calls precisely so that `changed` stays a

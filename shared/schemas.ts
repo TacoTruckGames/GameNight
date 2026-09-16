@@ -12,6 +12,12 @@ import { GAME_TYPES } from "./game-types";
 
 export const TITLE_MAX = 80;
 export const LOCATION_MAX = 120;
+/**
+ * Long enough for the paragraph that decides whether someone comes — the
+ * edition, the skill level, the door code — and short enough that the detail
+ * page stays a page rather than a document.
+ */
+export const DESCRIPTION_MAX = 500;
 /** Google documents no maximum for a place id; 512 is generous and bounds the column. */
 export const PLACE_ID_MAX = 512;
 /** A uuid in practice, but kept loose — see `placeSessionToken` below. */
@@ -54,6 +60,27 @@ export function createEventSchema(now: Date) {
       .trim()
       .min(1, "Location is required")
       .max(LOCATION_MAX, `Location must be ${LOCATION_MAX} characters or fewer`),
+    /**
+     * Optional prose. Three states, and they are genuinely different:
+     *
+     * - **absent** — the field was not sent. On a create that is "no
+     *   description"; on an admin patch it is "leave it alone".
+     * - **`""`** — a textarea the organizer never typed in. It normalises to
+     *   `undefined` rather than being stored, because an empty string in the
+     *   column would render as an empty paragraph and read as "the organizer
+     *   wrote nothing on purpose". The column stores NULL or real prose,
+     *   never the empty string.
+     * - **`null`** — an explicit clear, the same convention `placeId` uses for
+     *   unlinking a venue. This is the one an admin sends to remove a
+     *   description, because `""` means "no change" once `.partial()` has
+     *   turned absence into the default.
+     */
+    description: z
+      .string()
+      .trim()
+      .max(DESCRIPTION_MAX, `Description must be ${DESCRIPTION_MAX} characters or fewer`)
+      .nullish()
+      .transform((value) => (value === "" ? undefined : value)),
     /**
      * The only piece of place data a client may send. The server resolves the
      * address and coordinates itself — a client-supplied latitude is not
@@ -210,6 +237,12 @@ export type AdminErrorsQuery = z.infer<typeof adminErrorsQuerySchema>;
  * Admin edit of an event: every create field, each optional, same rules. The
  * capacity floor (not below the current attendee count) needs the database and
  * is enforced in the route, not here.
+ *
+ * Because it is `createEventSchema(now).partial()`, "absent" always means
+ * "leave it alone" — so the two fields that can be *removed* rather than
+ * changed, `placeId` and `description`, are removed by sending an explicit
+ * `null`. Sending `""` for a description is not a clear; it normalises to
+ * absent, which here is a no-op (and a 400 if it was the only field sent).
  */
 export function adminEventPatchSchema(now: Date) {
   return createEventSchema(now)

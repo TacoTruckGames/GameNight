@@ -44,6 +44,7 @@ import {
   listAudit,
   listErrors,
   resolveError,
+  toAdminEvent,
   type PlaceUpdate,
 } from "../db/queries";
 import { audit } from "../lib/audit";
@@ -208,10 +209,17 @@ admin.get("/admin/events/:id", async (c) => {
   requireAdmin(c);
   const id = c.req.param("id");
 
-  const event = await adminGetEvent(c.env.DB, id);
-  if (!event) throw new ApiError(404, "NOT_FOUND", "That event does not exist.");
+  // The row rather than `adminGetEvent`, because `description` never travels on
+  // a list shape — the admin list is lean for the same reason the board is — and
+  // this is the route that has to show the operator the whole event.
+  const row = await adminGetEventRow(c.env.DB, id);
+  if (!row) throw new ApiError(404, "NOT_FOUND", "That event does not exist.");
 
-  return c.json({ ...event, attendees: await listAttendees(c.env.DB, id) } satisfies AdminEventDetail);
+  return c.json({
+    ...toAdminEvent(row),
+    description: row.description,
+    attendees: await listAttendees(c.env.DB, id),
+  } satisfies AdminEventDetail);
 });
 
 admin.patch("/admin/events/:id", async (c) => {

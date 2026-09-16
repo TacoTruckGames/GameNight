@@ -588,6 +588,7 @@ describe("toEventSummary — the place invariant", () => {
       room_key: "k",
       status: "scheduled",
       organizer_name: "Metro Meetup Crew",
+      description: null,
       place_id: "place-central",
       place_address: "1000 4th Ave, Seattle, WA 98104, USA",
       place_lat: 47.6067,

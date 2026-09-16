@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { ApiErrorBody, AttendeesResponse, EventDetail, EventSummary } from "../../shared/api-types";
 import { env } from "cloudflare:test";
 
+import { DESCRIPTION_MAX } from "../../shared/schemas";
 import { api, inDays, isoSeconds, seedEvent, seedUser, seedUsers } from "../helpers";
 
 /** The list is shared across tests, so always look for *our* event in it. */
@@ -546,5 +547,80 @@ describe("GET /api/events?q= — searching the verified address", () => {
     const event = await seedEvent({ location: "The back room", place: PIKE, startsAt: inDays(5) });
     const { body } = await api<EventDetail>(`/api/events/${event.id}`);
     expect(body.place).toEqual(PIKE);
+  });
+});
+
+// ------------------------------------------------------------- description --
+
+describe("event descriptions", () => {
+  /** Posts a valid event as a fresh organizer, with whatever `description` is given. */
+  async function post(overrides: Record<string, unknown>) {
+    const organizer = await seedUser({ role: "organizer" });
+    return api<EventSummary>("/api/events", {
+      method: "POST",
+      as: organizer.id,
+      body: {
+        title: "Described Night",
+        gameType: "commander",
+        startsAt: inDays(5),
+        location: "Somewhere",
+        capacity: 6,
+        ...overrides,
+      },
+    });
+  }
+
+  async function storedDescription(id: string): Promise<string | null | undefined> {
+    const row = await env.DB.prepare("SELECT description FROM events WHERE id = ?1")
+      .bind(id)
+      .first<{ description: string | null }>();
+    return row?.description;
+  }
+
+  it("returns the description on the detail route", async () => {
+    const prose = "Casual Commander, decks provided for beginners. Ring the bell after 7.";
+    const { status, body } = await post({ description: `  ${prose}  ` });
+
+    expect(status).toBe(201);
+    const detail = await api<EventDetail>(`/api/events/${body.id}`);
+    expect(detail.body.description).toBe(prose); // trimmed, like title and location
+  });
+
+  it("is null when the organizer wrote none", async () => {
+    const { body } = await post({});
+    const detail = await api<EventDetail>(`/api/events/${body.id}`);
+    expect(detail.body.description).toBeNull();
+  });
+
+  it("stores a blank textarea as NULL, never as an empty string", async () => {
+    // The difference matters: `''` would render as an empty paragraph and read
+    // as a deliberate blank, when nothing was ever typed.
+    const { body } = await post({ description: "   " });
+
+    expect(await storedDescription(body.id)).toBeNull();
+    expect((await api<EventDetail>(`/api/events/${body.id}`)).body.description).toBeNull();
+  });
+
+  it(`400s past ${DESCRIPTION_MAX} characters, on the description field`, async () => {
+    const { status, body } = await post({ description: "x".repeat(DESCRIPTION_MAX + 1) });
+    const error = body as unknown as ApiErrorBody;
+
+    expect(status).toBe(400);
+    expect(error.error.code).toBe("VALIDATION_FAILED");
+    expect(error.error.details?.[0]?.path).toBe("description");
+
+    // …and exactly at the cap is fine.
+    expect((await post({ description: "x".repeat(DESCRIPTION_MAX) })).status).toBe(201);
+  });
+
+  it("never appears on the list, not even as null", async () => {
+    // A deliberate payload decision, pinned: the board is 50 rows and this is
+    // its one unbounded field. The detail page is where someone decides.
+    const { body } = await post({ description: "Prose that the board has no room for." });
+
+    const list = await api<EventSummary[]>("/api/events");
+    const card = find(list.body, body.id);
+    expect(card).toBeDefined();
+    expect(card && "description" in card).toBe(false);
   });
 });
