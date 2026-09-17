@@ -8,6 +8,7 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { gameTypeLabel } from "../../shared/game-types";
+import { attendanceLabel } from "../lib/attendance";
 import { mapsDirectionsUrl } from "../../shared/maps-links";
 import { useEvent, useMapsConfig, useMyRsvpIds } from "../api/hooks";
 import { ErrorBanner } from "../components/ErrorBanner";
@@ -72,6 +73,8 @@ export function EventDetailPage() {
         <div className="stack">
           <p>
             <time dateTime={toDateTimeAttr(detail.startsAt)}>{formatEventDateTimeLong(detail.startsAt)}</time>
+            {" · "}
+            {attendanceLabel(detail.attendeeCount)}
           </p>
           {/* The venue block: the label you can tap, the address Google
               confirmed (only when it adds something the label does not already
