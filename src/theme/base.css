@@ -1151,8 +1151,18 @@ textarea.input {
   opacity: 0.35;
 }
 
+/* On the band the light-theme muted grey is unreadable, so both of these take
+   the brand ramp's own muted ink — the same one the empty state uses. They used
+   to be in the `--brand-danger` rule below, which painted the sign-in page's
+   subtitle and its "Players"/"Organizers" headings salmon: a colour the rest of
+   the app spends only on errors, on the two lines that are simply telling you
+   where you are. */
 .who--full .page-subtitle,
-.who--full .who__group-title,
+.who--full .who__group-title {
+  color: var(--brand-muted);
+}
+
+/* Errors only. */
 .who--full .field__error {
   color: var(--brand-danger);
 }

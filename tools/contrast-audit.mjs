@@ -37,6 +37,9 @@ const PAIRS = [
   ["--color-success", "--color-surface"],
   ["--brand-text", "--brand-bg"],
   ["--brand-muted", "--brand-bg"],
+  // Field errors on the sign-in band. It is the only thing left wearing this
+  // colour there, so it is the only thing that has to clear on it.
+  ["--brand-danger", "--brand-bg"],
   // The operator bar is one fixed orange in both themes; audit it in both anyway,
   // so a future theme edit that redefines it gets caught here rather than in prod.
   ["--admin-bar-text", "--admin-bar-bg"],
