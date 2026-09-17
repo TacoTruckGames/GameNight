@@ -9,7 +9,7 @@
  *     state and the card only changes once the server has spoken. The 201 /
  *     200 / 409 is always the truth;
  *   - after any write we invalidate `["events"]` and `["me"]` — the card, the
- *     detail page and "My events" can never disagree;
+ *     detail page and "My RSVP" can never disagree;
  *   - a 409 `EVENT_FULL` toasts "Just filled up" and refreshes, which is the
  *     honest story for someone who tapped a stale card.
  *
@@ -334,7 +334,7 @@ function useAfterWrite() {
 
 /**
  * An admin write can move anything: a suspension changes `/api/users` (the
- * picker), a cancelled event changes the board and everyone's "My events", and
+ * picker), a cancelled event changes the board and everyone's "My RSVP", and
  * every mutation adds an audit row to the overview. So it clears all four
  * prefixes rather than trying to be clever about which one moved.
  */

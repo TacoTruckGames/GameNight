@@ -49,7 +49,7 @@ zone sees them shifted. The seed file says so at length, so nobody “fixes” i
 ```
  phone / laptop
    React + Vite SPA  ──HTTP /api/*──▶  Cloudflare Worker (Hono, TypeScript)
-                                           │  reads: list / detail / my events / attendees
+                                           │  reads: list / detail / my RSVPs / attendees
                                            ▼
                                         D1 (SQLite)  ◀── write-through ──┐
                                            ▲                             │
@@ -133,7 +133,7 @@ traffic").
 ### Counts and freshness (S3)
 
 `events.rsvp_count` is a write-through projection: it is recomputed from the `rsvps` rows inside the same
-atomic D1 batch that inserts or deletes an RSVP, so it cannot drift. Every read (list, detail, my events,
+atomic D1 batch that inserts or deletes an RSVP, so it cannot drift. Every read (list, detail, my RSVPs,
 attendees) reads that column straight from D1 with no server-side cache — a count is exact as of the moment
 the query ran. The only staleness is client-side: the list is considered fresh for 10 seconds and is
 refetched on navigation, on window focus, and after every RSVP or cancel. A count you see is therefore at

@@ -276,7 +276,7 @@ admin.patch("/admin/events/:id", async (c) => {
 /**
  * Cancel and restore, both idempotent. Cancelling is a status change, never a
  * delete: the RSVP rows stay so the people who were coming still see the event
- * (marked cancelled) in "My events", and the audit trail keeps its target.
+ * (marked cancelled) in "My RSVP", and the audit trail keeps its target.
  */
 admin.post("/admin/events/:id/cancel", async (c) => {
   const actor = requireAdmin(c);

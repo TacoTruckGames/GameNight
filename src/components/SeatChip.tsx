@@ -3,7 +3,7 @@
  *
  * "You're in" leads once you have a seat — but it no longer *replaces* the
  * count. How full the table is stays useful after you join: it is what you
- * check before telling a friend to grab a seat, and the board, My events and
+ * check before telling a friend to grab a seat, and the board, My RSVP and
  * the detail page all render this same chip.
  *
  * The icon repeats what the leading word says so the states are still distinct

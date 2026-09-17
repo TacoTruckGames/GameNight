@@ -23,7 +23,7 @@ import { useIdentity } from "./identity/IdentityContext";
 import { AttendeesPage } from "./pages/AttendeesPage";
 import { EventDetailPage } from "./pages/EventDetailPage";
 import { EventsPage } from "./pages/EventsPage";
-import { MyEventsPage } from "./pages/MyEventsPage";
+import { MyRsvpPage } from "./pages/MyRsvpPage";
 import { OrganizerPage } from "./pages/OrganizerPage";
 
 /** An admin on the main site is just a reader: send them to the board, not to `/admin`. */
@@ -47,7 +47,7 @@ export function AppRoutes() {
           path="me"
           element={
             <PlayerOnly>
-              <MyEventsPage />
+              <MyRsvpPage />
             </PlayerOnly>
           }
         />

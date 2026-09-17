@@ -439,7 +439,7 @@ INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, cap
 -- to show that. Four upcoming and two past:
 --
 --   * `evt_cancel_late_pod` is the important one. Alice holds a seat on it, so
---     "My events" renders a cancelled card — the case `listPlayerRsvps` is
+--     "My RSVP" renders a cancelled card — the case `listPlayerRsvps` is
 --     deliberately not status-filtered for. It must NOT appear on the public
 --     board.
 --   * `evt_cancel_grand_melee` sits inside the Game Fest weekend: the calendar

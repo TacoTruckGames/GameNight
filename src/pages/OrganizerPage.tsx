@@ -337,7 +337,7 @@ function HostedEvents() {
   const window = useMemo(() => (view === "week" ? weekWindow(weekStart) : undefined), [view, weekStart]);
   const hosted = useHostedEvents(window);
 
-  // Same day headings as the board and My events; `data` is a stable reference
+  // Same day headings as the board and My RSVP; `data` is a stable reference
   // between renders, so the memo actually holds.
   const events = hosted.data;
   const groups = useMemo(() => groupByDay(events ?? []), [events]);

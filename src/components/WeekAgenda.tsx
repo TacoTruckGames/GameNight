@@ -2,7 +2,7 @@
  * The week shell both personal agendas wear: a strip of seven days, and the
  * one day you picked, underneath.
  *
- * It owns no data. My events and the organizer's list fetch their own rows for
+ * It owns no data. My RSVP and the organizer's list fetch their own rows for
  * their own window and hand them in, with the card as a render prop — same
  * division of labour as `DayGroupedList`, which this reuses for the pane, so
  * the day heading below the strip is the same heading the list view writes.

@@ -23,7 +23,7 @@ import { EventListSkeleton } from "../components/Skeleton";
 import { WeekAgenda, weekWindow } from "../components/WeekAgenda";
 import { dayKey, groupByDay, shiftDays, startOfWeek, type DayKey } from "../lib/calendar";
 
-export function MyEventsPage() {
+export function MyRsvpPage() {
   const [view, setView] = useState<AgendaView>(DEFAULT_AGENDA_VIEW);
   const [weekStart, setWeekStart] = useState<DayKey>(() => startOfWeek(dayKey(new Date())!));
 
@@ -31,11 +31,11 @@ export function MyEventsPage() {
   // nothing and gets the upcoming seats. Both ends are local and handed over as
   // UTC — see `weekWindow`.
   const window = useMemo(() => (view === "week" ? weekWindow(weekStart) : undefined), [view, weekStart]);
-  const myEvents = useMyRsvps(window);
+  const myRsvps = useMyRsvps(window);
 
   // Memoised on the query's own `data` reference, which is stable between
   // renders — `?? []` inline would be a new array every time and defeat both.
-  const events = myEvents.data;
+  const events = myRsvps.data;
   const groups = useMemo(() => groupByDay(events ?? []), [events]);
   // Every event on this page is one the player holds a seat on — that is what
   // the endpoint returns — so the card's "You're in" state is not a lookup.
@@ -89,11 +89,11 @@ export function MyEventsPage() {
           leaking into the unwindowed list for one fetch. In week view the stale
           week is the better thing to show — the pane keeps its shape and the
           strip never flashes empty. */}
-      {myEvents.isPending || (view === "list" && myEvents.isPlaceholderData) ? (
+      {myRsvps.isPending || (view === "list" && myRsvps.isPlaceholderData) ? (
         <EventListSkeleton label="Loading your events" />
-      ) : myEvents.isError ? (
-        <ErrorBanner error={myEvents.error} onRetry={() => void myEvents.refetch()} />
-      ) : view === "list" && (myEvents.data?.length ?? 0) === 0 ? (
+      ) : myRsvps.isError ? (
+        <ErrorBanner error={myRsvps.error} onRetry={() => void myRsvps.refetch()} />
+      ) : view === "list" && (myRsvps.data?.length ?? 0) === 0 ? (
         <EmptyState
           title="You haven't RSVP'd to anything yet"
           hint="Browse the board and grab a seat."
@@ -108,14 +108,14 @@ export function MyEventsPage() {
           events={events ?? []}
           weekStart={weekStart}
           onWeekChange={showWeek}
-          busy={myEvents.isFetching}
-          loading={myEvents.isPlaceholderData}
+          busy={myRsvps.isFetching}
+          loading={myRsvps.isPlaceholderData}
           emptyWeek={emptyWeek}
         >
           {(event) => <EventCard event={event} joined={joinedIds.has(event.id)} showRsvp />}
         </WeekAgenda>
       ) : (
-        <AgendaList groups={groups} myRsvpIds={joinedIds} showRsvp busy={myEvents.isFetching} />
+        <AgendaList groups={groups} myRsvpIds={joinedIds} showRsvp busy={myRsvps.isFetching} />
       )}
     </>
   );

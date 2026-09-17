@@ -2,14 +2,14 @@
  * A list of events under day headings — "Fri, Sep 18 · 3 events".
  *
  * Only the grouping shell lives here, because the three lists that want it do
- * not agree on the card. A player's board and My events render an `EventCard`
+ * not agree on the card. A player's board and My RSVP render an `EventCard`
  * that links to the public detail page and carries an RSVP button; the
  * organizer's own list renders a card that links to the door list and counts
  * attendees instead. Same headings, different rows, so the row is a render
  * prop and the heading is written once.
  *
  * The alternative — copying six lines of `.agenda` markup into each page — is
- * how the board and My events drifted apart for a week in the first place.
+ * how the board and My RSVP drifted apart for a week in the first place.
  */
 
 import type { ReactNode } from "react";
