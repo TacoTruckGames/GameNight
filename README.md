@@ -331,16 +331,20 @@ half-second spinner.
   confirm inline rather than through `window.confirm`, which cannot be styled, cannot name the count, and
   on a phone arrives looking like a system error.
 - **The sheet is a sheet, not a 1400px panel.** Below 900px it is full-bleed, as a bottom sheet should be.
-  Past it, it takes the reading column's width and centres — centred with `margin-inline`, never
-  `translateX(-50%)`, because the drag writes `transform: translateY(...)` inline and would throw a centring
-  transform to the left edge mid-gesture. It also gains a **close button**, top right: a drag is a thumb
-  gesture and the grip that advertises it means nothing to a mouse, which otherwise leaves only Escape and
-  clicking the dim. The phone keeps the grip and no button. The **door list goes two columns** there — the
-  event on the left, who's coming on the right — because they are two things you read against each other
-  ("twelve going, four seats left, do I open more?"), and stacking them puts a map and a paragraph between
-  the question and its answer. That also gives back what edit mode had to take on a phone: beside the form
-  there is room for the guest list, so on a desktop it stays up while you edit. Maps cap at **640px**, the
-  size they are actually fetched at; past that they were being upscaled.
+  Past it, it takes a column and centres — centred with `margin-inline`, never `translateX(-50%)`, because
+  the drag writes `transform: translateY(...)` inline and would throw a centring transform to the left edge
+  mid-gesture. It also gains a **close button**, top right: a drag is a thumb gesture and the grip that
+  advertises it means nothing to a mouse, which otherwise leaves only Escape and clicking the dim. The phone
+  keeps the grip and no button. The **door list goes two columns** there — the event on the left, who's
+  coming on the right — because they are two things you read against each other ("twelve going, four seats
+  left, do I open more?"), and stacking them puts a map and a paragraph between the question and its answer.
+  That also gives back what edit mode had to take on a phone: beside the form there is room for the guest
+  list, so on a desktop it stays up while you edit. Maps cap at **640px**, the size they are actually fetched
+  at; past that they were being upscaled.
+- **The tab bar stays at the bottom at every width.** It used to move into the header past 900px, on the
+  reasoning that a mouse needs no thumb rail — true, and it made the desktop a different app: the same two
+  tabs in a different place, shape and palette, so nothing learned on one transferred to the other. One
+  interface is worth more than the 53px.
 - Validation runs twice on purpose — the shared zod schema in the browser to skip a round-trip, and the same
   schema on the server, which is the one that counts.
 

@@ -1978,57 +1978,21 @@ textarea.input {
     max-width: 1040px;
   }
 
-  /* The tab bar stops being a bar. A fixed strip across a 1440px window spends
-     ~75px of height on two centred links, and a mouse does not need a thumb
-     rail — so the nav simply renders where it is written, in the header. */
-  .shell__tabs {
-    position: static;
-    background: transparent;
-    border-top: 0;
-    padding-bottom: 0;
-  }
+  /* **The tab bar stays at the bottom, at every width.** It used to move into
+     the header past this breakpoint, on the reasoning that a mouse needs no
+     thumb rail — true, and it made the desktop a different app from the phone:
+     the same two tabs in a different place, a different shape and a different
+     palette, so nothing learned on one transferred to the other. One interface
+     is worth more than the ~53px the relocation saved.
 
-  .shell__tabs-inner {
-    max-width: none;
-    gap: var(--space-2);
-    /* The pill's breathing room belongs to the bottom bar, which is gone here. */
-    padding: 0;
-  }
+     Which is why the whole block that did it is gone, `.tab`'s brand-band
+     styling with it: on the bottom bar the tabs sit on a light surface and take
+     the ordinary `--color-*` ramp, which is what the phone already used and
+     what the contrast audit already checks. */
 
-  /* On the brand band the tab labels sit on the dark gradient, not on a light
-     surface, so both states come from the `--brand-*` ramp: muted 10:1 for
-     inactive, white on a `--brand-line` pill for current. The icon already sits
-     beside the label everywhere — this block used to be the only place it did. */
-  .tab {
-    flex: none;
-    padding-inline: var(--space-3);
-    border: 1px solid transparent;
-    border-radius: var(--radius-pill);
-    color: var(--brand-muted);
-  }
-
-  /* Pill + white text + a light-purple edge: three cues, so the current tab does
-     not rest on colour alone. The edge is on the palette rather than on the
-     band's blue light source, which read as a borrowed colour outlining a
-     control; both clear 3:1 on the band and the label is 7.7:1 on the pill. */
-  .tab[aria-current="page"] {
-    background: var(--brand-line);
-    border-color: var(--brand-edge);
-    color: var(--brand-text);
-  }
-
-  /* Both of these were sized to clear the bottom bar that no longer exists. */
   /* Room for the role in full, so the badge stops depending on icon + tint. */
   .shell__identity-role {
     display: inline;
-  }
-
-  .shell__main {
-    padding-bottom: var(--space-5);
-  }
-
-  .toast-region {
-    bottom: var(--space-5);
   }
 
   /* A 640px "Cancel RSVP" gives a destructive action the weight of a primary
