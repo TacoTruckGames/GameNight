@@ -33,6 +33,16 @@ export function RsvpButton({
   joined: boolean;
   startsAt: string;
   status?: EventStatus;
+  /**
+   * The button has a row to itself.
+   *
+   * Also what decides the cancel label. "Cancel" is a shortening, made because
+   * the card's action slot is 44px wide in a 50px-rail grid and "Cancel RSVP"
+   * is the only two-word label that has to fit in it. On the sheet the button
+   * spans the panel, so there is nothing to shorten for and the full phrase is
+   * the clearer one — a bare "Cancel" under an event's details reads as "close
+   * this", not "give up my seat".
+   */
   block?: boolean;
 }) {
   const rsvp = useRsvp(eventId);
@@ -63,12 +73,11 @@ export function RsvpButton({
         onClick={() => cancel.mutate()}
         disabled={pending}
         aria-busy={pending}
-        // One word on screen — it is the only two-word label in the card's action
-        // slot, and the slot is 44px in a 50px-rail grid. The accessible name is
-        // the whole sentence, so nothing is lost where it matters.
+        // The accessible name is the whole sentence either way, so a screen
+        // reader hears which event it is even where the card shows one word.
         aria-label={`Cancel your RSVP for ${title}`}
       >
-        {cancel.isPending ? "Cancelling…" : "Cancel"}
+        {cancel.isPending ? "Cancelling…" : block ? "Cancel RSVP" : "Cancel"}
       </button>
     );
   }
