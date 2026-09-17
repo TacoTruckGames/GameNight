@@ -37,7 +37,6 @@ const TABS = [
     noun: "player",
     article: "a",
     join: "Join as Player",
-    hint: "Browse events and RSVP.",
   },
   {
     role: "organizer",
@@ -45,7 +44,6 @@ const TABS = [
     noun: "organizer",
     article: "an",
     join: "Join as Organizer",
-    hint: "Post events and see who is coming.",
   },
 ] as const satisfies readonly {
   role: Role;
@@ -53,7 +51,6 @@ const TABS = [
   noun: string;
   article: string;
   join: string;
-  hint: string;
 }[];
 
 /** The roles this picker offers. An admin signing in lands on the player tab. */
@@ -189,7 +186,6 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
       </div>
 
       <div className="stack stack--loose" role="tabpanel" id={panelId} aria-labelledby={tabId(role)}>
-        <p className="who__hint">{tab.hint}</p>
 
         {users.isPending ? (
           <div className="stack" role="status" aria-busy="true" aria-label="Loading people">
@@ -272,8 +268,11 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
     return (
       <main className="who who--full">
         <div>
+          {/* The mark loses its `title` here: the wordmark beside it now carries
+              the name, and two accessible names for one lockup reads it twice. */}
           <span className="who__mark">
-            <Logo size={40} title="Game Night" />
+            <Logo size={40} />
+            Game Night
           </span>
           <h1 className="page-title" id={headingId}>
             Who's playing?

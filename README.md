@@ -150,7 +150,7 @@ half-second spinner.
   without it they stay upcoming-only, exactly as they were.
 - **Timestamps** are stored and transmitted as UTC ISO-8601 at second precision and displayed in the
   browser's local zone. Past events are hidden from the board and refuse RSVPs (`409 EVENT_STARTED`) — but
-  My events and the organizer's list can page back a week to see what you went to.
+  My RSVP and the organizer's list can page back a week to see what you went to.
 - **Game type** is a category of night — Card games, Board games, RPG, Miniatures, Other — not a game and
   not a format. The specific game belongs in the title ("Friday Night Draft", "Pokémon League"). The first
   cut mixed three levels (a Magic format, one specific RPG, a whole category) and had no home for a Pokémon
@@ -202,7 +202,7 @@ half-second spinner.
   buttons (empty days disabled), not an ARIA grid, because a list of buttons is correct with zero
   focus-management code. Only the month grid earns the wide page at ≥1120px; a week is one row and fits the
   reading column at every width.
-- **Week agenda** is that same week strip on the two personal pages, `My events` and the organizer's
+- **Week agenda** is that same week strip on the two personal pages, `My RSVP` and the organizer's
   `Your events`, which open on it. One `WeekStrip` and one `WeekAgenda` shell serve all three pages: the
   strip is the month grid's own cells in a single row — same `.cal__day` button, same count, same
   tap-a-day-for-the-cards pane — and the personal pages ask `/api/me/rsvps` and `/api/me/hosted` the
@@ -295,7 +295,7 @@ person to the picker. A capacity change **rotates the event's `room_key`**, beca
 goes **through the room's `cancel()`** so its member set never drifts from D1; and capacity can't be set
 below the current attendee count (a field error, not a constraint crash). Cancelling is a status, not a
 delete — the board hides the event and refuses new RSVPs (`409 EVENT_CANCELLED`), but seat-holders still see
-it, marked, in My events. Every admin mutation writes an `audit_log` row with the actor.
+it, marked, in My RSVP. Every admin mutation writes an `audit_log` row with the actor.
 
 Backend errors: unexpected throws are `console.error`'d first (Workers Logs is the floor), then upserted
 into `error_log` keyed by a fingerprint of scope + normalised message, so a hot failure loop is one row with
@@ -363,7 +363,7 @@ the next section calls beyond the brief.
 | **Review pass** (UX) | 60 screenshots × 2 critic passes, 11 defects fixed, the desktop breakpoint | 2 h |
 | **Data & content** | 64-event seed with clusters/past/cancelled, descriptions, game-type taxonomy research | 2 h |
 | **Polish** (frontend) | Name-as-button header, role badge, segmented View/Sort, description field end to end, head count | 1.5 h |
-| **Week agenda** (frontend + windowed `/me` endpoints) | Week strip + day pane on My events, Organize and the board, past attendance, shared segmented control | 2.5 h |
+| **Week agenda** (frontend + windowed `/me` endpoints) | Week strip + day pane on My RSVP, Organize and the board, past attendance, shared segmented control | 2.5 h |
 
 Roughly **20 hours** all told, of which the core the brief asked for was the first four.
 
@@ -408,7 +408,7 @@ cares about — S1–S4 are the same code and the same tests they were at hour f
   shell and is reached only by URL.
 - **Calendar, agenda, sort** — because with fifty live events (the launch target) a flat list stops
   answering "what is on this Saturday", and the calendar reuses the same endpoint with a date window — and
-  a week agenda on My events / Organize.
+  a week agenda on My RSVP / Organize.
 - **Venues** — because an address a phone can navigate to is the difference between a listing and an
   event you attend; it is keyless-safe and its whole cost surface is capped in D1.
 - **The review pass and desktop breakpoint** — because "a stranger could open it and use it" is a claim

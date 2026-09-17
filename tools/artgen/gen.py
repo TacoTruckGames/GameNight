@@ -173,7 +173,9 @@ LOGOS = ["a twenty-sided die seen face-on with a small round table under it",
 ICONS = [("search", "a magnifying glass"),
          ("events", "a calendar page with a small die on it, only two or three large grid squares, "
                     "very simple, no dense grid of tiny squares"),
-         ("mine", "an admission ticket"), ("organize", "a clipboard with a checkmark"),
+         ("player", "a person's head and shoulders as one solid filled silhouette, front view, "
+                     "no facial features, no neck gap"),
+         ("organize", "a clipboard with a checkmark"),
          ("seat", "a simple chair seen from the front"), ("full", "a closed padlock"),
          ("in", "a bold checkmark inside a circle"), ("empty", "two dice"),
          ("alert", "a warning triangle with an exclamation mark"),

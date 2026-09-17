@@ -78,7 +78,7 @@ export function MyEventsPage() {
 
   return (
     <>
-      <h1 className="page-title">My events</h1>
+      <h1 className="page-title">My RSVP</h1>
       <p className="page-subtitle">Seats you're holding, by day.</p>
 
       <div className="filters">

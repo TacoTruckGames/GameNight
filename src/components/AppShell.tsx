@@ -53,7 +53,7 @@ export function AppShell() {
               {isOrganizer ? (
                 <Tab to="/organize" label="Organize" icon="organize" />
               ) : isAdmin ? null : (
-                <Tab to="/me" label="My events" icon="mine" />
+                <Tab to="/me" label="My RSVP" icon="player" />
               )}
             </div>
           </nav>

@@ -121,8 +121,7 @@ export function EventsPage() {
   // one row of seven cells and fits the column at every width.
   return (
     <div className={view === "month" ? "board board--wide" : "board"}>
-      <h1 className="page-title">Upcoming events</h1>
-      <p className="page-subtitle">Find a table near you and grab a seat.</p>
+      <h1 className="page-title">Upcoming Events</h1>
 
       <div className="filters">
         <div className="search">

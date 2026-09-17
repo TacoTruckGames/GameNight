@@ -198,6 +198,10 @@ a {
   max-width: var(--page-max);
   margin: 0 auto;
   display: flex;
+  gap: var(--space-1);
+  /* Room for the selected tab's pill to sit inside the bar rather than bleed
+     into its edges. */
+  padding: var(--space-1);
 }
 
 .tab {
@@ -213,10 +217,20 @@ a {
   text-decoration: none;
   font-size: var(--font-size-sm);
   font-weight: 600;
+  border-radius: var(--radius-sm);
 }
 
+/* Selected is a filled pill, not a shade of the same grey. Accent-on-muted was
+   one cue and a weak one — in dark mode the accent sits close to the bar it is
+   painted on, and a soft tint measured 1.18:1 against a white bar in light,
+   which is a pill you cannot see. This is the accent fill the segmented
+   controls already use for the same job, so "selected" reads one way across
+   the app, and `--color-accent-text` on `--color-accent` is a pair the contrast
+   audit checks in both themes. */
 .tab[aria-current="page"] {
-  color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  font-weight: 700;
 }
 
 /* ------------------------------------------------------------------ icons -- */
@@ -847,10 +861,6 @@ textarea.input {
 
 .who--full .page-subtitle,
 .who--full .who__group-title,
-.who--full .who__hint {
-  color: var(--brand-muted);
-}
-
 .who--full .field__error {
   color: var(--brand-danger);
 }
@@ -864,9 +874,16 @@ textarea.input {
   color: var(--brand-text);
 }
 
+/* The lockup on the sign-in screen: the mark and the name, as in the app's own
+   header. An icon alone leaves the first screen a stranger sees unnamed. */
 .who__mark {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   margin-bottom: var(--space-3);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .who__group-title {
@@ -914,11 +931,6 @@ textarea.input {
 .segmented__option[aria-pressed="true"] {
   background: var(--color-accent);
   color: var(--color-accent-text);
-}
-
-.who__hint {
-  font-size: var(--font-size-sm);
-  color: var(--color-muted);
 }
 
 .modal {
@@ -1411,6 +1423,8 @@ textarea.input {
   .shell__tabs-inner {
     max-width: none;
     gap: var(--space-2);
+    /* The pill's breathing room belongs to the bottom bar, which is gone here. */
+    padding: 0;
   }
 
   /* On the brand band the tab labels sit on the dark gradient, not on a light
