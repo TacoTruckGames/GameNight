@@ -91,10 +91,17 @@ a {
   flex: none;
 }
 
-.shell__header-inner > .shell__identity,
+.shell__header-inner > .shell__identity-anchor,
 .shell__header-inner > .shell__identity-name {
   flex: 0 1 auto;
   min-width: 0;
+}
+
+/* The switcher's positioning context. `display: flex` so the wrapper is exactly
+   the button's size and `right: 0` below means the button's right edge. */
+.shell__identity-anchor {
+  position: relative;
+  display: flex;
 }
 
 /* Logo + wordmark lockup: header, identity screen and the boot screens all show
@@ -951,38 +958,81 @@ textarea.input {
   cursor: pointer;
 }
 
-.who__tab[aria-selected="true"],
 .segmented__option[aria-pressed="true"] {
   background: var(--color-accent);
   color: var(--color-accent-text);
 }
 
-.modal {
+/* The role tabs carry an icon, so they are a row rather than a block of text. */
+.who__tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+/* Player blue and organizer green are the two hues the header badge already
+   uses for the same fact, so the picker says it the same way: the live tab and
+   the button that commits it are both painted in the role you are choosing.
+   The ink is the brand's own near-black: both fills are light, so one dark ink
+   serves both, at 8.95:1 and 9.41:1 in light and a shade better in dark — the
+   four pairs are in `tools/contrast-audit.mjs` and checked on every build. */
+.who--player {
+  --role-fill: var(--role-player);
+}
+
+.who--organizer {
+  --role-fill: var(--role-organizer);
+}
+
+.who__tab[aria-selected="true"],
+.who__join {
+  background: var(--role-fill);
+  color: var(--brand-bg);
+}
+
+/* `.btn` sets its own border; the fill is the edge here. */
+.who__join {
+  border-color: transparent;
+}
+
+/* The mask glyph paints with `currentColor`, so it darkens with the label when
+   the tab fills and stays the tab's own colour when it does not. */
+.who__tab .icon {
+  flex: none;
+}
+
+/* "Anywhere outside". Transparent on purpose — the switcher hangs off a button
+   rather than taking the screen, and dimming the page would claim otherwise.
+   It also covers the header, which is what makes a second tap on the name close
+   the panel instead of reopening it. */
+.popover__scrim {
   position: fixed;
   inset: 0;
   z-index: 10;
-  background: var(--color-overlay);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
 }
 
-.modal__panel {
-  background: var(--color-bg);
-  width: 100%;
-  max-width: var(--page-max);
-  max-height: 88dvh;
+/* Hangs from the name button: `right: 0` is that button's right edge, which on
+   every width is the content's right edge, so the panel can never sit off the
+   page. It sets its own `color` and `background` because it is drawn inside the
+   dark header, whose text colour it must not inherit. */
+.popover {
+  position: absolute;
+  z-index: 11;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  width: min(22rem, calc(100vw - 2 * var(--space-4)));
+  max-height: calc(100dvh - 8rem);
   overflow-y: auto;
-  border-radius: var(--radius) var(--radius) 0 0;
-  padding: var(--space-4) var(--space-4) calc(var(--space-5) + env(safe-area-inset-bottom));
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  color: var(--color-text);
   box-shadow: var(--shadow-lift);
 }
 
-.modal__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
+.popover__title {
   margin-bottom: var(--space-4);
 }
 

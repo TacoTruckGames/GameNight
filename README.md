@@ -228,6 +228,14 @@ half-second spinner.
   every date. An empty week says "nothing this week" rather than "you have never RSVP'd": a window cannot know
   more than the window, and a second unwindowed request on every visit to earn the stronger sentence is not
   a trade worth making — list view still says it.
+- **Switching identity** hangs off the name button in the header rather than rising from the bottom of the
+  screen. A sheet that arrives from somewhere else has to say where it came from, and carry a Close control
+  to send it back; a panel that drops from the control you pressed needs neither — press the name again,
+  press anywhere outside, or press Escape, and focus goes home to the button. Both role tabs carry the
+  role's icon, and the live tab and its commit button are painted in that role's colour: **player blue**
+  and **organizer green**, the same two hues the header badge uses for the same fact, so "who am I about to
+  become" looks like "who am I" will. The ink on those fills is the brand near-black at 8.95:1 and 9.41:1,
+  audited in both themes like every other pair.
 - **Search and the type filter share one line**, and every view is chronological, so the board's chrome is
   two rows before the first event instead of four.
 - **No pagination** (`LIMIT 200`); ~50 live events fit on one screen.
@@ -375,13 +383,14 @@ the next section calls beyond the brief.
 | **Admin / operations** | Dashboard (suspend accounts, fix events, backend error log, audit log), its own orange-bar shell, FK-safe users-table rebuild | 3 h |
 | **Board** (frontend + API) | Sort by date/popular, day-grouped agenda, month calendar with a windowed `?from=&to=` query for past months, filter dropdown | 3 h |
 | **Board trim** (frontend) | Sort control retired, deselectable day cells, whole-span upcoming pane, filter row on one line | 0.5 h |
+| **Identity switcher** (frontend) | Anchored dropdown off the name button, role colours and icons, focus return | 0.5 h |
 | **Venues** (backend) | Google Places proxied through the Worker, server-resolved coordinates, D1 spend ceiling, mini map, tap-to-navigate | 2 h |
 | **Review pass** (UX) | 60 screenshots × 2 critic passes, 11 defects fixed, the desktop breakpoint | 2 h |
 | **Data & content** | 64-event seed with clusters/past/cancelled, descriptions, game-type taxonomy research | 2 h |
 | **Polish** (frontend) | Name-as-button header, role badge, segmented View switch, description field end to end, head count | 1.5 h |
 | **Week agenda** (frontend + windowed `/me` endpoints) | Week strip + day pane on My RSVP, Organize and the board, past attendance, shared segmented control | 2.5 h |
 
-Roughly **20.5 hours** all told, of which the core the brief asked for was the first four.
+Roughly **21 hours** all told, of which the core the brief asked for was the first four.
 
 ## How it was built
 

@@ -1,15 +1,21 @@
 /**
  * The identity picker.
  *
- * Full-screen when nobody is signed in, and the same component in a sheet when
- * you tap "Switch" in the header — which is how a reviewer demonstrates the
- * race: two profiles, same event, two taps.
+ * Full-screen when nobody is signed in, and the same component hanging off the
+ * header's name button when you tap it — which is how a reviewer demonstrates
+ * the race: two profiles, same event, two taps. It drops from the button rather
+ * than rising from the bottom of the screen because it belongs to that button:
+ * a sheet that arrives from somewhere else has to explain where it came from,
+ * and a Close control to send it back. This one needs neither. Tap the name
+ * again, tap anywhere outside, or press Escape.
  *
  * One tab per role, because the roles see different apps and the choice should
  * be made before you are dropped into one of them. Each tab is the same
  * two-step form: pick someone who already exists or type a new name, then
  * commit. The commit button is deliberate — "Join as Organizer" names the
- * consequence, which a bare list of names never did.
+ * consequence, which a bare list of names never did. Both carry the role's own
+ * colour and icon, the same two the header badge uses, so the answer to "who am
+ * I about to become" is the same shape before and after the switch.
  *
  * There is deliberately no Admin tab. The main site carries no route into the
  * operator tools at all — you reach them by typing `/admin`, which has its own
@@ -24,8 +30,10 @@ import { createUserSchema, NAME_MAX } from "../../shared/schemas";
 import { useCreateUser, useUsers } from "../api/hooks";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBanner } from "../components/ErrorBanner";
+import { Icon } from "../components/Icon";
 import { Logo } from "../components/Logo";
 import { Skeleton } from "../components/Skeleton";
+import { ROLE_ICONS } from "../lib/roles";
 import { useIdentity } from "./IdentityContext";
 
 // `article` is carried rather than derived: "a"/"an" from a first letter is a
@@ -83,7 +91,14 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
   const tabId = (value: Role) => `${baseId}-tab-${value}`;
 
   const tabRefs = useRef<Record<PickerRole, HTMLButtonElement | null>>({ player: null, organizer: null });
+  const panelRef = useRef<HTMLDivElement>(null);
   const isModal = onClose !== undefined;
+
+  // Opening moves focus into the panel, so the next Tab lands on the role tabs
+  // rather than back in the page behind them. `AppShell` sends it home again.
+  useEffect(() => {
+    if (isModal) panelRef.current?.focus();
+  }, [isModal]);
 
   useEffect(() => {
     if (!isModal || !onClose) return;
@@ -161,8 +176,10 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
     onClose?.();
   }
 
+  // The tint is set once on the container and read by the selected tab and the
+  // commit button, so "which role am I choosing" is one declaration, not two.
   const body = (
-    <div className="stack stack--loose">
+    <div className={`stack stack--loose who--${role}`}>
       <div className="who__tabs" role="tablist" aria-label="Join as">
         {TABS.map((item) => (
           <button
@@ -180,6 +197,7 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
             onClick={() => selectRole(item.role)}
             onKeyDown={onTabKeyDown}
           >
+            <Icon name={ROLE_ICONS[item.role]} size={16} />
             {item.label}
           </button>
         ))}
@@ -254,7 +272,7 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
           {createUser.error ? <ErrorBanner error={createUser.error} /> : null}
           <button
             type="submit"
-            className="btn btn--block"
+            className="btn btn--block who__join"
             disabled={createUser.isPending || !canJoin}
           >
             {createUser.isPending ? "Joining…" : tab.join}
@@ -286,25 +304,26 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
     );
   }
 
+  // The scrim is what "anywhere outside" means, and it is also what makes the
+  // name button close rather than reopen: it covers the header, so that click
+  // lands here. Transparent, not dimmed — this hangs off a control, it has not
+  // taken over the screen.
   return (
-    <div className="modal" onClick={() => onClose?.()}>
+    <>
+      <div className="popover__scrim" onClick={() => onClose?.()} />
       <div
-        className="modal__panel"
+        className="popover"
         role="dialog"
         aria-modal="true"
         aria-labelledby={headingId}
-        onClick={(event) => event.stopPropagation()}
+        ref={panelRef}
+        tabIndex={-1}
       >
-        <div className="modal__head">
-          <h2 className="page-title" id={headingId}>
-            Switch user
-          </h2>
-          <button type="button" className="btn btn--sm btn--secondary" onClick={() => onClose?.()}>
-            Close
-          </button>
-        </div>
+        <h2 className="page-title popover__title" id={headingId}>
+          Switch User
+        </h2>
         {body}
       </div>
-    </div>
+    </>
   );
 }

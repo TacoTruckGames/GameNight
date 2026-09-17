@@ -16,7 +16,7 @@
  * An admin signed in on the main site is just a reader of the board.
  */
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { NavLink, Outlet } from "react-router";
 import { useIdentity } from "../identity/IdentityContext";
 import { ROLE_ICONS, ROLE_LABELS } from "../lib/roles";
@@ -38,6 +38,14 @@ export function AppShell() {
   const { user, isOrganizer, isAdmin } = useIdentity();
   const role = user?.role ?? null;
   const [switching, setSwitching] = useState(false);
+  const identityRef = useRef<HTMLButtonElement>(null);
+
+  // Closing sends focus back to the button that opened it — a keyboard user who
+  // presses Escape should not be dropped at the top of the document.
+  const closeSwitcher = () => {
+    setSwitching(false);
+    identityRef.current?.focus();
+  };
 
   return (
     <div className="shell">
@@ -66,28 +74,37 @@ export function AppShell() {
               a phone. Icon and tint at every width, the word where there is
               room for it, and the role in the accessible name always — so it is
               never colour alone doing the work. */}
-          <button
-            type="button"
-            className={`btn btn--sm btn--ghost shell__identity${role ? ` shell__identity--${role}` : ""}`}
-            onClick={() => setSwitching(true)}
-            aria-label={
-              user && role
-                ? `Signed in as ${user.name}, ${ROLE_LABELS[role]} — switch user`
-                : "Choose who you are"
-            }
-          >
-            {role ? <Icon name={ROLE_ICONS[role]} size={16} /> : null}
-            {role ? <span className="shell__identity-role">{ROLE_LABELS[role]} ·</span> : null}
-            <span className="shell__identity-name">{user ? user.name : "Guest"}</span>
-          </button>
+          {/* The switcher hangs off this button, so it lives in the button's own
+              positioning context rather than in a sheet at the bottom of the
+              screen. Reopening is a toggle here only as a backstop: while it is
+              open the switcher's scrim covers the header, so a click meant to
+              close it lands there and never reaches this button. */}
+          <div className="shell__identity-anchor">
+            <button
+              ref={identityRef}
+              type="button"
+              className={`btn btn--sm btn--ghost shell__identity${role ? ` shell__identity--${role}` : ""}`}
+              onClick={() => setSwitching((open) => !open)}
+              aria-haspopup="dialog"
+              aria-expanded={switching}
+              aria-label={
+                user && role
+                  ? `Signed in as ${user.name}, ${ROLE_LABELS[role]} — switch user`
+                  : "Choose who you are"
+              }
+            >
+              {role ? <Icon name={ROLE_ICONS[role]} size={16} /> : null}
+              {role ? <span className="shell__identity-role">{ROLE_LABELS[role]} ·</span> : null}
+              <span className="shell__identity-name">{user ? user.name : "Guest"}</span>
+            </button>
+            {switching ? <WhoAreYou onClose={closeSwitcher} /> : null}
+          </div>
         </div>
       </header>
 
       <main className="shell__main">
         <Outlet />
       </main>
-
-      {switching ? <WhoAreYou onClose={() => setSwitching(false)} /> : null}
     </div>
   );
 }

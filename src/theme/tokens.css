@@ -33,7 +33,6 @@
      read as an edge at all, so this one carries the difference. */
   --color-border-strong: #bdb8d6;
   --color-focus: #6e64da;
-  --color-overlay: rgb(15 5 28 / 55%);
 
   /* brand band — the dark header and identity screen, same in both themes */
   --brand-bg: #290d4a;
@@ -110,7 +109,6 @@
     --color-border: #332c4d;
     --color-border-strong: #6c6494;
     --color-focus: #a49fda;
-    --color-overlay: rgb(0 0 0 / 65%);
 
     /* the header sits a step lighter than the page so it still reads as a band */
     --brand-bg: #1a1030;

@@ -42,6 +42,10 @@ const PAIRS = [
   // Role accents ride on the brand band as indicators, not as text, so 3:1.
   ["--role-player", "--brand-bg", 3],
   ["--role-organizer", "--brand-bg", 3],
+  // ...but in the identity picker they are fills with a label on them, and the
+  // label is the brand's near-black. Both are light, so one ink serves both.
+  ["--brand-bg", "--role-player"],
+  ["--brand-bg", "--role-organizer"],
   ["--admin-bar-bg", "--brand-bg", 3],
   ["--color-focus", "--color-bg", 3],
   ["--color-focus", "--color-surface", 3],
