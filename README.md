@@ -272,12 +272,21 @@ Worker's own Place Details call, so a forged latitude is not a thing that exists
 Google at all — autocomplete and the map image are both proxied — which keeps the key a Worker secret, keeps
 the SPA's zero-cross-origin-requests property, and means a future CSP needs no allowlist entry.
 
+**Turning it on.** One key, two APIs — **Places API (New)** and **Maps Static API** — on a billed Google
+Cloud project, restricted to those two. The Worker reads it as `GOOGLE_MAPS_API_KEY`, and because `.env` is
+for the deploy scripts rather than for the Worker, it goes in two places: `.dev.vars` for `pnpm dev`, and
+`wrangler secret put GOOGLE_MAPS_API_KEY` for production. `GET /api/places/config` answers `{suggest, map}`
+and is the one honest signal that it worked. No client-side key exists: the key reaches a request header and
+the Static Maps URL, both inside the Worker, and `redact()` keeps it out of every log and error report.
+The live demo has it configured; a fresh clone does not, and that is a supported state —
+
 **It degrades, always.** With no `GOOGLE_MAPS_API_KEY` configured — which is what you get cloning this repo —
 the typeahead is an ordinary text input, there is no mini map, and the address deep-links still work, because
 Maps URLs are free and need no key. If Google is down or over budget when an event is posted, the event still
-posts with the address as typed; a venue lookup is an enhancement, never a gate. The one deliberate exception
-is the **admin** edit, which fails loudly with a 503: an operator re-pointing a venue is doing only that, and
-telling them "saved" when nothing changed is a lie in an operator tool.
+posts with the address as typed; a venue lookup is an enhancement, never a gate. The deliberate exception is
+**editing** a venue — by an admin or by the owning organizer — which fails loudly with a 503: someone
+re-pointing a venue is doing only that, and telling them "saved" when nothing changed is the lie
+`resolvePlaceForPatch` exists to avoid.
 
 **What it costs, and why it is ~$0.** Free tier is 10,000 calls/month per Essentials SKU; beyond that
 autocomplete is $2.83/1k, Place Details Essentials $5.00/1k and Static Maps $2.00/1k (0–100K band). A month
