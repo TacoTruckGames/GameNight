@@ -115,9 +115,21 @@ export function toEventSummary(row: EventRow): EventSummary {
 
 // ------------------------------------------------------------------ users --
 
-export async function listUsers(db: D1Database): Promise<User[]> {
+/**
+ * Bounded, and in signup order — *which* users come back is decided here (the
+ * first `limit` to register, so the seeded personas lead), and the picker sorts
+ * the handful it gets by name for display. `ORDER BY role, name` over the whole
+ * table was fine at 33 rows and a full scan plus a sort at 2,000.
+ */
+export async function listUsers(db: D1Database, options: { role?: Role; limit: number }): Promise<User[]> {
   const { results } = await db
-    .prepare("SELECT id, name, role FROM users ORDER BY role, name COLLATE NOCASE, id")
+    .prepare(
+      `SELECT id, name, role FROM users
+        WHERE (?1 IS NULL OR role = ?1)
+        ORDER BY created_at, id
+        LIMIT ?2`,
+    )
+    .bind(options.role ?? null, options.limit)
     .all<{ id: string; name: string; role: string }>();
   return results.map((row) => ({ id: row.id, name: row.name, role: row.role as Role }));
 }

@@ -181,8 +181,7 @@ async function main(): Promise<void> {
 
   // -- setup -----------------------------------------------------------------
   // Organizers are seed-only, so borrow one rather than inventing one.
-  const everyone = expectStatus(await request<User[]>("/api/users"), 200, "GET /api/users");
-  const organizer = everyone.find((user) => user.role === "organizer");
+  const [organizer] = expectStatus(await request<User[]>("/api/users?role=organizer&limit=1"), 200, "GET /api/users");
   if (!organizer) fail("no organizer in /api/users — seed the database first (pnpm db:reset:local)");
 
   const startsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();

@@ -61,6 +61,9 @@ const TABS = [
   join: string;
 }[];
 
+/** How many of a role the picker lists. The API's default; stated here so the note under the select agrees with it. */
+const PICKER_LIMIT = 50;
+
 /** The roles this picker offers. An admin signing in lands on the player tab. */
 type PickerRole = (typeof TABS)[number]["role"];
 
@@ -70,7 +73,6 @@ function pickerRoleFor(role: Role | undefined): PickerRole {
 
 export function WhoAreYou({ onClose }: { onClose?: () => void }) {
   const { user, signIn } = useIdentity();
-  const users = useUsers();
   const createUser = useCreateUser();
 
   // Open on the tab you are already signed in under, with yourself preselected.
@@ -81,6 +83,12 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
   );
   const [name, setName] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+
+  // One role's first fifty, not the table: at launch scale the table is 2,000
+  // players, and a 2,001-option select is not a picker. Signup order decides
+  // which fifty (the seeded personas registered first); name order is for
+  // finding one of them.
+  const users = useUsers({ role, limit: PICKER_LIMIT });
 
   const baseId = useId();
   const panelId = `${baseId}-panel`;
@@ -139,7 +147,8 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
   }
 
   const tab = TABS.find((item) => item.role === role) ?? TABS[0];
-  const people = (users.data ?? []).filter((person) => person.role === role);
+  const people = [...(users.data ?? [])].sort((a, b) => a.name.localeCompare(b.name));
+  const capped = people.length >= PICKER_LIMIT;
   const canJoin = name.trim() !== "" || selectedId !== null;
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -238,6 +247,11 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
                 </option>
               ))}
             </select>
+            {capped ? (
+              <p className="field__note">
+                The first {PICKER_LIMIT} {tab.noun}s to sign up. Anyone else joins as someone new, below.
+              </p>
+            ) : null}
           </div>
         )}
 

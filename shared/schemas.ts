@@ -210,6 +210,25 @@ export const dateWindowQuerySchema = z
  *
  * `from`/`to` are the shared date window above, rule and all.
  */
+/**
+ * `GET /api/users` is a picker, not a directory. Unbounded, it grew with the
+ * board — at 2,000 registered players it was 170 KB and a 2,001-option
+ * `<select>` on the landing page — so it is capped, and ordered by signup so the
+ * seeded personas (the people a reviewer is looking for) come first.
+ */
+export const USERS_LIMIT_DEFAULT = 50;
+export const USERS_LIMIT_MAX = 200;
+
+export const usersQuerySchema = z
+  .object({
+    role: z.union([z.enum(["player", "organizer", "admin"]), z.literal("")]).optional(),
+    limit: z.coerce.number().int().min(1).max(USERS_LIMIT_MAX, `limit must be ${USERS_LIMIT_MAX} or fewer`).optional(),
+  })
+  .transform(({ role, limit }) => ({
+    role: role !== undefined && role !== "" ? role : undefined,
+    limit: limit ?? USERS_LIMIT_DEFAULT,
+  }));
+
 export const eventsQuerySchema = z
   .object({
     q: z.string().max(SEARCH_MAX, `Search must be ${SEARCH_MAX} characters or fewer`).optional(),

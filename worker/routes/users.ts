@@ -10,14 +10,17 @@
 
 import { Hono } from "hono";
 
-import { createUserSchema } from "../../shared/schemas";
+import { createUserSchema, usersQuerySchema } from "../../shared/schemas";
 import { insertUser, listUsers } from "../db/queries";
 import type { AppEnv } from "../lib/context";
-import { parseJson } from "../lib/validate";
+import { parseJson, parseQuery } from "../lib/validate";
 
 export const users = new Hono<AppEnv>();
 
-users.get("/users", async (c) => c.json(await listUsers(c.env.DB)));
+// `?role=` and `?limit=` (default 50, max 200): the picker asks for one role's
+// first fifty, the operator tools for the one admin, a script for what it
+// needs — nobody gets the table.
+users.get("/users", async (c) => c.json(await listUsers(c.env.DB, parseQuery(c, usersQuerySchema))));
 
 users.post("/users", async (c) => {
   const { name, role } = await parseJson(c, createUserSchema);

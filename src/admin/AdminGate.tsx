@@ -28,11 +28,11 @@ import { useIdentity } from "../identity/IdentityContext";
 
 export function AdminGate() {
   const { signIn } = useIdentity();
-  const users = useUsers();
-  // The seed provisions one; `SIGNUP_ROLES` excludes `admin`, so the API cannot
-  // mint another. More than one is an operator decision made in SQL, and the
-  // first is as good an answer as any — this screen is not a picker.
-  const operator = (users.data ?? []).find((person) => person.role === "admin") ?? null;
+  // Just the operator account, not the users table: `SIGNUP_ROLES` excludes
+  // `admin`, so the API cannot mint another, and more than one is a decision
+  // made in SQL — the first is as good an answer as any. Not a picker.
+  const users = useUsers({ role: "admin", limit: 1 });
+  const operator = users.data?.[0] ?? null;
 
   // `signIn` clears the query cache, which unmounts the query feeding this
   // component; without the latch its refetch would sign in again on arrival.

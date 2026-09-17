@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import type { ApiErrorBody, User } from "../../shared/api-types";
-import { api, seedUser } from "../helpers";
+import { env } from "cloudflare:test";
+
+import { api, seedUser, seedUsers } from "../helpers";
 
 describe("GET /api/users", () => {
   it("lists users with their roles", async () => {
@@ -13,6 +15,45 @@ describe("GET /api/users", () => {
     expect(status).toBe(200);
     expect(body).toContainEqual({ id: player.id, name: player.name, role: "player" });
     expect(body).toContainEqual({ id: organizer.id, name: organizer.name, role: "organizer" });
+  });
+
+  it("filters by role", async () => {
+    await seedUser({ role: "player" });
+    const organizer = await seedUser({ role: "organizer" });
+
+    const { status, body } = await api<User[]>("/api/users?role=organizer");
+
+    expect(status).toBe(200);
+    expect(body.length).toBeGreaterThan(0);
+    expect(body.every((user) => user.role === "organizer")).toBe(true);
+    expect(body).toContainEqual({ id: organizer.id, name: organizer.name, role: "organizer" });
+  });
+
+  // A picker, not a directory: the board holds 2,000 players at launch and the
+  // landing page must not download them all to offer a dropdown.
+  it("is bounded — 50 by default, in signup order, never more than 200", async () => {
+    await seedUsers(60, { role: "player" });
+    // `created_at` is second-precision and sixty inserts land in the same one,
+    // so the order under test is pinned with explicit timestamps at both ends.
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO users (id, name, role, created_at) VALUES ('u_first', 'Earliest', 'player', '2000-01-01T00:00:00Z')"),
+      env.DB.prepare("INSERT INTO users (id, name, role, created_at) VALUES ('u_last', 'Latest', 'player', '2099-01-01T00:00:00Z')"),
+    ]);
+
+    const { body: page } = await api<User[]>("/api/users?role=player");
+    expect(page).toHaveLength(50);
+    expect(page[0]).toEqual({ id: "u_first", name: "Earliest", role: "player" });
+    expect(page.some((user) => user.id === "u_last")).toBe(false);
+
+    const { body: one } = await api<User[]>("/api/users?role=player&limit=1");
+    expect(one).toEqual([{ id: "u_first", name: "Earliest", role: "player" }]);
+
+    const { body: more } = await api<User[]>("/api/users?role=player&limit=200");
+    expect(more.length).toBeGreaterThan(50);
+    expect(more.some((user) => user.id === "u_last")).toBe(true);
+
+    const { status } = await api<ApiErrorBody>("/api/users?limit=201");
+    expect(status).toBe(400);
   });
 });
 

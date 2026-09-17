@@ -26,7 +26,7 @@ import type {
   EventSummary,
   RsvpResponse,
   User,
-} from "../../shared/api-types";
+ Role } from "../../shared/api-types";
 import type { CreateEventInput, CreateUserInput, EventPatch } from "../../shared/schemas";
 import { ApiError, NetworkError, apiFetch } from "./client";
 import { SUSPENDED_MESSAGE, useIdentity } from "../identity/IdentityContext";
@@ -140,10 +140,22 @@ export const queryKeys = {
 
 // ----------------------------------------------------------------- queries --
 
-export function useUsers(): UseQueryResult<User[], unknown> {
+export interface UsersQuery {
+  role?: Role;
+  limit?: number;
+}
+
+/** A bounded slice of the users list — see `usersQuerySchema` for why bounded. */
+export function useUsers(query: UsersQuery = {}): UseQueryResult<User[], unknown> {
+  const params = new URLSearchParams();
+  if (query.role) params.set("role", query.role);
+  if (query.limit) params.set("limit", String(query.limit));
+  const search = params.size > 0 ? `?${params.toString()}` : "";
   return useQuery({
-    queryKey: queryKeys.users,
-    queryFn: ({ signal }) => apiFetch<User[]>("/api/users", { signal }),
+    // Prefix-keyed, so `invalidateQueries({ queryKey: queryKeys.users })` still
+    // reaches every slice after a signup.
+    queryKey: [...queryKeys.users, query],
+    queryFn: ({ signal }) => apiFetch<User[]>(`/api/users${search}`, { signal }),
   });
 }
 
