@@ -207,8 +207,12 @@ half-second spinner.
   behind today — the pane says "Nothing upcoming" rather than "no events", which the numbered cells directly
   above it would contradict. Day cells are plain labelled
   buttons (empty days disabled), not an ARIA grid, because a list of buttons is correct with zero
-  focus-management code. Only the month grid earns the wide page at ≥1120px; a week is one row and fits the
-  reading column at every width.
+  focus-management code. At ≥1120px the whole page widens and each view spends the width its own way: the
+  month grid and the week strip become navigators, with the open day's cards beside them instead of beneath;
+  the list keeps its days in one chronological column and pairs the cards *within* a day two across. The
+  split never crosses a heading — a run of days dealt into two columns reads Monday, Wednesday, Tuesday,
+  whichever direction the columns fill — but two cards under one date already share that date, so they can
+  sit side by side and be read left then right.
 - **Week agenda** is that same week strip on the two personal pages, `My RSVP` and the organizer's
   `Your events`, which open on it. One `WeekStrip` and one `WeekAgenda` shell serve all three pages: the
   strip is the month grid's own cells in a single row — same `.cal__day` button, same count, same

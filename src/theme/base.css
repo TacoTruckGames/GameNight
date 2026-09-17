@@ -1516,26 +1516,23 @@ textarea.input {
     gap: var(--space-5);
   }
 
-  /* A list has no navigator, so the cards themselves take both columns. Multi-
-     column rather than a two-track grid on purpose: a grid fills row-wise, which
-     would run a chronological list left, right, left, right — you would read
-     Monday, then Wednesday, then Tuesday. Columns fill top-to-bottom, so the
-     order survives the second column. `display: block` because a flex container
-     has no columns to give.
+  /* A list has no navigator, so the cards themselves take the width — but the
+     *days* stay in one column, running top to bottom. The second column always
+     belongs to the heading above it, never to the next day: split a chronological
+     list of days across two columns and it reads Monday, Wednesday, Tuesday,
+     whichever direction the columns fill. So the split happens one level down,
+     inside a single day's card list, where everything sharing a row already
+     shares the date written above it.
 
-     Direct children only: the day pane *inside* a week agenda is the right-hand
-     column already, and must not split again. */
-  .page--wide > .day-groups {
-    display: block;
-    columns: 2;
-    column-gap: var(--space-5);
-  }
+     Row-wise here, for the same reason it was wrong a level up: a day holds a
+     handful of cards, and a pair under one heading is read left then right.
 
-  /* `break-inside` keeps a day — heading and its cards — whole in one column,
-     and the margin replaces the flex `gap` that `display: block` just turned
-     off. */
-  .page--wide > .day-groups > .agenda {
-    break-inside: avoid;
-    margin-bottom: var(--space-4);
+     Direct children only — the day pane inside a week strip or a month grid is
+     the right-hand column already, and must not split again. */
+  .page--wide > .day-groups > .agenda > .stack {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: var(--space-4);
+    align-items: start;
   }
 }
