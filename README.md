@@ -253,10 +253,14 @@ half-second spinner.
   hooks must be, and each is disabled for the role it does not serve, so exactly one request goes out.
   `/api/me/hosted` takes a window and nothing else, so for an organizer the search and type filters run on
   the client — affordable precisely because that endpoint is already capped at 200 rows, which makes it a
-  filter over one organizer's own events rather than over a database. **The door list is a sheet too**, with
-  the same shape as the player's — game type, date, venue, map, description — and the guest list where a
-  player gets a seat. It also carries **Edit Event**, which it has to: the board's cards open this page now,
-  so without it an organizer could only edit by typing the player's URL for their own event.
+  filter over one organizer's own events rather than over a database. A card's action is the head count and
+  a person icon rather than "N seats", because the slot is 70px and the icon says the noun in less room than
+  the noun does; the accessible name keeps the whole phrase. **The door list is a sheet too**, with the same
+  shape as the player's — game type, date, venue, map, description — and the guest list where a player gets
+  a seat. It also carries **Edit Event**, which it has to: the board's cards open this page now, so without
+  it an organizer could only edit by typing the player's URL for their own event. And an open day offers
+  **“+ New Event”**, which opens the form on that evening — the day was chosen by looking at it, and making
+  someone retype it is the small rudeness a calendar exists to avoid.
 - **RSVP lives on the card**, not behind the detail page: the primary user is on a phone on a commute, so the
   decision happens where the information is.
 - **The card is 88px, and was 223px.** Measured at 390×844: 66px of the old card was padding and gaps, and

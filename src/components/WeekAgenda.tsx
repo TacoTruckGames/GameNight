@@ -60,6 +60,7 @@ export function WeekAgenda<T extends { id: string; startsAt: string }>({
   busy,
   loading,
   emptyWeek,
+  dayAction,
   children,
 }: {
   events: readonly T[];
@@ -75,6 +76,13 @@ export function WeekAgenda<T extends { id: string; startsAt: string }>({
    */
   loading?: boolean;
   emptyWeek: ReactNode;
+  /**
+   * Drawn above the open day's cards, given that day. The organizer's board
+   * uses it for "+ New Event": the day you are looking at is the day you would
+   * be adding to, and making them retype it is the kind of small rudeness a
+   * calendar exists to avoid.
+   */
+  dayAction?: (day: DayKey) => ReactNode;
   /** Renders one event's card. Called once per event in the open day, in order. */
   children: (event: T) => ReactNode;
 }) {
@@ -125,6 +133,7 @@ export function WeekAgenda<T extends { id: string; startsAt: string }>({
         onSelectDay={(key) => setTap(key === effectiveDay ? null : { week: weekStart, day: key })}
         onWeekChange={onWeekChange}
       />
+      {effectiveDay && dayAction ? dayAction(effectiveDay) : null}
       {selectedGroup ? (
         <DayGroupedList groups={[selectedGroup]} busy={busy}>
           {children}

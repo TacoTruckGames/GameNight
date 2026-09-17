@@ -498,6 +498,17 @@ a {
   border-color: var(--color-border-strong);
 }
 
+/* The count and its person, centred in the same 70px the other actions use. */
+.ecard__count {
+  gap: 5px;
+}
+
+/* "+ New Event", above the open day's cards. Left-aligned and small: it is an
+   offer, not the reason the day was opened. */
+.new-event {
+  align-self: flex-start;
+}
+
 /* Bottom-right, spanning the two short lines it sits beside. Matches both the
    player's `<button>` and the organizer's door-list `<a>`.
 

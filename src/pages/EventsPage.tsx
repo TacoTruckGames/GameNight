@@ -50,6 +50,7 @@ import { GameTypeFilter } from "../components/GameTypeFilter";
 import { MonthCalendar } from "../components/MonthCalendar";
 import { WeekAgenda, weekWindow } from "../components/WeekAgenda";
 import { EventListSkeleton } from "../components/Skeleton";
+import { Link } from "react-router";
 import { useIdentity } from "../identity/IdentityContext";
 import { upcomingGroups } from "../lib/datetime";
 import { PHONE_QUERY, useMediaQuery } from "../lib/media";
@@ -171,6 +172,16 @@ export function EventsPage() {
     ) : (
       <EventCard event={event} joined={myRsvpIds.has(event.id)} showRsvp={isPlayer} />
     );
+  // The day you have open is the day you would be adding to. Offered only to an
+  // organizer, and only for a day that has not already happened — a "+ New
+  // Event" on last Tuesday is a button whose only outcome is a validation error.
+  const newEventOn = (day: DayKey) =>
+    isOrganizer && day >= todayKey ? (
+      <Link className="btn btn--sm btn--secondary new-event" to={`/organize?date=${day}`}>
+        + New Event
+      </Link>
+    ) : null;
+
   const agenda = (dayGroups: typeof groups, busy?: boolean) =>
     isOrganizer ? (
       <DayGroupedList groups={dayGroups} busy={busy}>
@@ -256,6 +267,7 @@ export function EventsPage() {
           onWeekChange={setWeekStart}
           busy={events.isFetching}
           loading={events.isPlaceholderData}
+          dayAction={newEventOn}
           emptyWeek={
             <EmptyState
               title={weekStart === thisWeek ? "No events this week" : "No events that week"}
@@ -301,7 +313,10 @@ export function EventsPage() {
             onMonthChange={showMonth}
           />
           {selectedGroup ? (
-            agenda([selectedGroup], events.isFetching)
+            <>
+              {newEventOn(selectedGroup.key)}
+              {agenda([selectedGroup], events.isFetching)}
+            </>
           ) : events.isPlaceholderData ? (
             // Still last month's rows, and every one of them falls outside the
             // month now on screen — without this the pane would flash "no events"

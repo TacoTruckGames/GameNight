@@ -19,6 +19,7 @@ import type { EventSummary } from "../../shared/api-types";
 import { gameTypeLabel } from "../../shared/game-types";
 import { attendanceLabel } from "../lib/attendance";
 import { formatEventTime, isPastEvent, toDateTimeAttr } from "../lib/datetime";
+import { Icon } from "./Icon";
 import { MapLink } from "./MapLink";
 import { seatState } from "./SeatChip";
 
@@ -54,9 +55,18 @@ export function HostedEventCard({ event }: { event: EventSummary }) {
           the whole row opens the door list. */}
       <MapLink event={event} compact />
 
-      {/* Tense-neutral on purpose: this is the door list, before and after. */}
-      <Link className="btn btn--sm btn--secondary" to={door} state={{ backgroundLocation: location }}>
-        {event.attendeeCount === 1 ? "1 seat" : `${event.attendeeCount} seats`}
+      {/* A number and a person, because the slot is 70px and "10 attendees"
+          does not fit in it — and the icon says the noun in less room than the
+          noun does. Tense-neutral on purpose: this is the door list, before and
+          after. The accessible name keeps the whole phrase. */}
+      <Link
+        className="btn btn--sm btn--secondary ecard__count"
+        to={door}
+        state={{ backgroundLocation: location }}
+        aria-label={`${event.attendeeCount === 1 ? "1 person" : `${event.attendeeCount} people`} coming — open the door list`}
+      >
+        <span className="tnum">{event.attendeeCount}</span>
+        <Icon name="player" size={15} />
       </Link>
     </article>
   );

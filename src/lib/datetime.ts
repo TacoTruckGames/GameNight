@@ -140,6 +140,17 @@ export function isoToLocalInput(iso: string): string {
 const EVENING_HOUR = 19;
 
 /**
+ * 7pm on a given civil day, as a `datetime-local` value.
+ *
+ * For "+ New Event" on a day the organizer already has open: the day is the
+ * answer, the hour is the same evening default a fresh form starts on, and
+ * neither has to be typed.
+ */
+export function eveningOn(day: string): string {
+  return `${day}T${String(EVENING_HOUR).padStart(2, "0")}:00`;
+}
+
+/**
  * The "Starts" default: 7pm local on the day `hoursFromNow` lands on. Keeps the
  * must-be-future contract — an evening already gone rolls to the next one.
  */

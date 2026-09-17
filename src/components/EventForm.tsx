@@ -16,6 +16,7 @@
 
 import { useId, useState } from "react";
 import type { FormEvent } from "react";
+import { useSearchParams } from "react-router";
 import type { EventSummary } from "../../shared/api-types";
 
 /**
@@ -42,7 +43,7 @@ import { ErrorBanner } from "./ErrorBanner";
 import { PlaceCombobox } from "./PlaceCombobox";
 import { PlacePreviewMap } from "./PlacePreviewMap";
 import { useToast } from "./Toast";
-import { defaultEventStartValue, isoToLocalInput, localInputToIso } from "../lib/datetime";
+import { defaultEventStartValue, eveningOn, isoToLocalInput, localInputToIso } from "../lib/datetime";
 
 type FieldErrors = Partial<
   Record<"title" | "gameType" | "startsAt" | "location" | "placeId" | "description" | "capacity", string>
@@ -67,6 +68,12 @@ function fieldErrorsFrom(issues: readonly { path: string; message: string }[]): 
 
 export function EventForm({ event, onDone }: { event?: EditableEvent; onDone?: () => void }) {
   const editing = event !== undefined;
+  // `?date=` is set by "+ New Event" on the board: the organizer already chose
+  // the day by looking at it, so the form opens on that evening instead of on a
+  // default two days out. Read once, as an initial value — editing the field
+  // afterwards must not be undone by a re-render.
+  const [params] = useSearchParams();
+  const openOn = params.get("date");
   const toast = useToast();
   const createEvent = useCreateEvent();
   const updateEvent = useUpdateEvent(event?.id ?? "");
@@ -85,7 +92,11 @@ export function EventForm({ event, onDone }: { event?: EditableEvent; onDone?: (
   const [title, setTitle] = useState(event?.title ?? "");
   const [gameType, setGameType] = useState<GameType>(event?.gameType ?? "card");
   const [startsAtLocal, setStartsAtLocal] = useState(() =>
-    event ? isoToLocalInput(event.startsAt) : defaultEventStartValue(48),
+    event
+      ? isoToLocalInput(event.startsAt)
+      : openOn && /^\d{4}-\d{2}-\d{2}$/.test(openOn)
+        ? eveningOn(openOn)
+        : defaultEventStartValue(48),
   );
   const [location, setLocation] = useState(event?.location ?? "");
   const [placeId, setPlaceId] = useState<string | null>(event?.place?.id ?? null);
