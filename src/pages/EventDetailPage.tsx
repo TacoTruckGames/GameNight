@@ -84,6 +84,25 @@ export function EventDetailPage({ asSheet = false }: { asSheet?: boolean }) {
   // draw.
   const mine = user?.role === "organizer" && user.id === detail.organizerId;
 
+  // One action per reader, and for most states there is none: an organizer
+  // looking at someone else's event, a cancelled one, a night that has already
+  // happened (`RsvpButton` returns null for that itself).
+  const action = isPlayer ? (
+    <RsvpButton
+      eventId={detail.id}
+      title={detail.title}
+      isFull={detail.isFull}
+      joined={joined}
+      startsAt={detail.startsAt}
+      status={detail.status}
+      block
+    />
+  ) : mine && !cancelled ? (
+    <button type="button" className="btn btn--block" onClick={() => setEditing(true)}>
+      Edit Event
+    </button>
+  ) : null;
+
   const body = (
     <>
       {asSheet ? null : (
@@ -159,6 +178,13 @@ export function EventDetailPage({ asSheet = false }: { asSheet?: boolean }) {
               bigger card. Absent is the ordinary case, and an absent paragraph
               renders as nothing at all — no heading left standing over it. */}
           {detail.description !== null ? <p className="text-lines">{detail.description}</p> : null}
+          {/* The facts and the action share a row where there is room for one.
+              They are the two halves of the same decision — "four seats left,
+              twelve going" and the button that acts on it — and on a desktop a
+              full-width button on its own line put the width of the panel
+              between them. On a phone it is still a column: the button is a
+              thumb target and takes the whole line. */}
+          <div className="detail__act">
           {/* Three separate facts, because they are three: whether you have a
               seat, whether the table has any, and how many people that is. They
               used to be two, with the first two crammed into one pill. */}
@@ -176,27 +202,14 @@ export function EventDetailPage({ asSheet = false }: { asSheet?: boolean }) {
               {attendanceLabel(detail.attendeeCount, past)}
             </span>
           </div>
+          {action}
+          </div>
           {cancelled ? (
             <p className="text-sm muted">
               This event was cancelled. {joined ? "Your seat is gone — you can clear it from your list." : ""}
             </p>
           ) : null}
         </div>
-        {isPlayer ? (
-          <RsvpButton
-            eventId={detail.id}
-            title={detail.title}
-            isFull={detail.isFull}
-            joined={joined}
-            startsAt={detail.startsAt}
-            status={detail.status}
-            block
-          />
-        ) : mine && !cancelled ? (
-          <button type="button" className="btn btn--block" onClick={() => setEditing(true)}>
-            Edit Event
-          </button>
-        ) : null}
         <p className="detail__host">Hosted by {detail.organizerName}</p>
       </div>
       )}

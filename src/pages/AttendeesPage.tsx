@@ -146,16 +146,21 @@ export function AttendeesPage({ asSheet = false }: { asSheet?: boolean }) {
           {/* The organizer's own words, the same way the player's sheet shows
               them. Absent is ordinary and renders as nothing at all. */}
           {event.description !== null ? <p className="text-lines">{event.description}</p> : null}
-          {facts}
+          {/* Facts and action on one row where there is room, exactly as the
+              player's sheet does it — this is the same event seen from the
+              other side of the table, and it should not be a different shape.
+              The board's cards open this page now, not the public one, so this
+              is where Edit has to be: otherwise an organizer could only reach it
+              by typing the player's URL for their own event. */}
+          <div className="detail__act">
+            {facts}
+            {event.status === "cancelled" ? null : (
+              <button type="button" className="btn btn--block" onClick={() => setEditing(true)}>
+                Edit Event
+              </button>
+            )}
+          </div>
         </div>
-        {/* The board's cards open this page now, not the public one, so this is
-            where Edit has to be — otherwise an organizer could only reach it by
-            typing the player's URL for their own event. */}
-        {event.status === "cancelled" ? null : (
-          <button type="button" className="btn btn--block" onClick={() => setEditing(true)}>
-            Edit Event
-          </button>
-        )}
         <p className="detail__host">Hosted by {event.organizerName}</p>
       </div>
 
