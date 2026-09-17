@@ -126,7 +126,10 @@ export function seatLabel(state: SeatState, seatsLeft: number, capacity: number)
     case "past":
       return "Ended";
     case "joined":
-      return seatsLeft <= 0 ? "Going · table full" : `Going · ${seatsLeft} of ${capacity} left`;
+      // "Full", not "table full": it is the same fact the next case states, and
+      // a card that says one of them one way and the other another way reads as
+      // two different facts.
+      return seatsLeft <= 0 ? "Going · Full" : `Going · ${seatsLeft} of ${capacity} left`;
     case "full":
       return "Full";
     default:

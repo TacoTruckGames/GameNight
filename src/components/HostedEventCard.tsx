@@ -46,9 +46,15 @@ export function HostedEventCard({ event }: { event: EventSummary }) {
         {event.title}
       </Link>
 
+      {/* "8 Going · Full · Card games". The head count alone leaves the one
+          thing an organizer acts on to arithmetic — 8 of 8 is a table that
+          turns people away, and it looks exactly like 8 of 20 until you go and
+          find the capacity. "Full" is the word the player's card uses for the
+          same state, so it is the word here. Cancelled outranks it, and a
+          finished night is not a seating question at all. */}
       <span className={`ecard__meta ecard__meta--${state === "joined" ? "open" : state}`}>
-        {state === "cancelled" ? "Cancelled" : attendanceLabel(event.attendeeCount, past)} ·{" "}
-        {gameTypeLabel(event.gameType)}
+        {state === "cancelled" ? "Cancelled" : attendanceLabel(event.attendeeCount, past)}
+        {state === "full" ? " · Full" : ""} · {gameTypeLabel(event.gameType)}
       </span>
 
       {/* Covered by the title's stretched link, same as the player's card, so
