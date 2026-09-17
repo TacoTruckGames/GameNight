@@ -21,7 +21,7 @@ migrations and re-seeds the demo board every time it starts (seed dates are rela
 and "one seat left" events are always there).
 
 ```sh
-pnpm test                        # 340 tests, incl. the concurrency proofs (~3 s)
+pnpm test                        # 399 tests, incl. the concurrency proofs (~3 s)
 pnpm stress [url] [--players 40] [--capacity 5]   # real-HTTP race against a running server
 pnpm typecheck
 ```
@@ -145,9 +145,12 @@ half-second spinner.
 ### Other calls the brief left open
 
 - **The event list is user-independent** (`GET /api/events` carries no "am I in it" flag; the client joins
-  that from `/api/me/rsvps`). That is what makes the hot path cacheable later.
+  that from `/api/me/rsvps`). That is what makes the hot path cacheable later. `GET /api/me/rsvps` and
+  `GET /api/me/hosted` take the same optional `?from=&to=` window as the board — both ends or neither — and
+  without it they stay upcoming-only, exactly as they were.
 - **Timestamps** are stored and transmitted as UTC ISO-8601 at second precision and displayed in the
-  browser's local zone. Past events are hidden from the board and refuse RSVPs (`409 EVENT_STARTED`).
+  browser's local zone. Past events are hidden from the board and refuse RSVPs (`409 EVENT_STARTED`) — but
+  My events and the organizer's list can page back a week to see what you went to.
 - **Game type** is a category of night — Card games, Board games, RPG, Miniatures, Other — not a game and
   not a format. The specific game belongs in the title ("Friday Night Draft", "Pokémon League"). The first
   cut mixed three levels (a Magic format, one specific RPG, a whole category) and had no home for a Pokémon
@@ -193,6 +196,17 @@ half-second spinner.
   normally, with the RSVP button reading "Started". Day cells are plain labelled buttons (empty days
   disabled), not an ARIA grid, because a list of buttons is correct with zero focus-management code. Sort is
   hidden in this view; the grid is chronological by construction.
+- **Week agenda** is the same idea one level down, and it is what `My events` and the organizer's
+  `Your events` open on. The strip is the month grid's own cells in a single row — same `.cal__day` button,
+  same count, same tap-a-day-for-the-cards pane — and it asks `/api/me/rsvps` and `/api/me/hosted` the
+  windowed question the board asks `/api/events`: local Monday 00:00 to the next Monday, computed in the
+  reader's zone and sent as UTC, because the strip buckets by local day. Past weeks therefore show what you
+  went to, greyed as past cards with a "Past" badge and an "Ended" chip. **List** is the unwindowed,
+  upcoming-only agenda, unchanged and one tap away. Week leads because the question a personal agenda is
+  opened with is "am I double-booked on Saturday?", which a flat list makes you answer by reading every
+  date. An empty week says "nothing this week" rather than "you have never RSVP'd": a window cannot know
+  more than the window, and a second unwindowed request on every visit to earn the stronger sentence is not
+  a trade worth making — list view still says it.
 - **No pagination** (`LIMIT 200`); ~50 live events fit on one screen.
 - **RSVP lives on the card**, not behind the detail page: the primary user is on a phone on a commute, so the
   decision happens where the information is.
@@ -297,15 +311,15 @@ The launch build already has the shape; here is exactly what changes at ~200k pl
 
 ## Testing
 
-`pnpm test` runs 340 tests *inside* the Workers runtime (`@cloudflare/vitest-plugin`) against a real local
+`pnpm test` runs 399 tests *inside* the Workers runtime (`@cloudflare/vitest-plugin`) against a real local
 D1 and real Durable Object instances — the same code paths as production, not mocks.
 
 | Suite | What it proves |
 |---|---|
 | `test/unit/schemas` | every S4 rejection: capacity `0`/`-1`/`1.5`/`501`/`"8"`, past or malformed dates, blank titles, unknown game types |
 | `test/unit/event-room` | hydration from D1; the `changes = 0` self-healing path when D1 and the room disagree |
-| `test/unit/calendar` | local-day keys across the UTC-midnight boundary in both directions, grouping order, month grids for Sunday- and Monday-first weeks, leap February, today marking |
-| `test/api/*` | every route × every role × every error code; list ordering, filters, `%` escaping in search |
+| `test/unit/calendar` | local-day keys across the UTC-midnight boundary in both directions, grouping order, month grids for Sunday- and Monday-first weeks, leap February, today marking; week starts for Monday- and Sunday-first weeks incl. month/year boundaries, day shifts over month end, year end and Feb 29, week labels within/across a month and across a year |
+| `test/api/*` | every route × every role × every error code; list ordering, filters, `%` escaping in search; the `?from=&to=` window on the board and on both `/me` lists |
 | `test/concurrency/rsvp-race` | **S1:** 25 simultaneous RSVPs for 1 seat and for 5 seats → exactly `capacity` × 201, the rest 409, and `rsvps` rows == `rsvp_count` == DO members == capacity; then a cancel frees exactly one seat |
 | `test/concurrency/rsvp-idempotent` | **S2:** one player firing 10 identical RSVPs at once → one 201, nine 200s, one row; 10 concurrent cancels → all 200, zero rows; a mixed RSVP/cancel storm ends consistent |
 | `test/concurrency/hydration` | a full event seeded straight into SQL, never touched by a DO → the first RSVP is correctly refused |
@@ -341,8 +355,9 @@ the next section calls beyond the brief.
 | **Review pass** (UX) | 60 screenshots × 2 critic passes, 11 defects fixed, the desktop breakpoint | 2 h |
 | **Data & content** | 64-event seed with clusters/past/cancelled, descriptions, game-type taxonomy research | 2 h |
 | **Polish** (frontend) | Name-as-button header, role badge, segmented View/Sort, description field end to end, head count | 1.5 h |
+| **Week agenda** (frontend + windowed `/me` endpoints) | Week strip + day pane on My events and Organize, past attendance, shared segmented control | 2 h |
 
-Roughly **18 hours** all told, of which the core the brief asked for was the first four.
+Roughly **20 hours** all told, of which the core the brief asked for was the first four.
 
 ## How it was built
 
@@ -384,7 +399,8 @@ cares about — S1–S4 are the same code and the same tests they were at hour f
   account, fix a bad event and see the error log without a database console. It lives behind its own
   shell and is reached only by URL.
 - **Calendar, agenda, sort** — because with fifty live events (the launch target) a flat list stops
-  answering "what is on this Saturday", and the calendar reuses the same endpoint with a date window.
+  answering "what is on this Saturday", and the calendar reuses the same endpoint with a date window — and
+  a week agenda on My events / Organize.
 - **Venues** — because an address a phone can navigate to is the difference between a listing and an
   event you attend; it is keyless-safe and its whole cost surface is capped in D1.
 - **The review pass and desktop breakpoint** — because "a stranger could open it and use it" is a claim
