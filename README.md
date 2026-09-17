@@ -300,11 +300,13 @@ And the real cost lever is the **300 ms debounce**, not the session token: with 
 Google still bills the first 12 autocomplete requests of a session, so the token only pays off past ~4.2
 requests per session and a debounced session lands near 3.
 
-Demo data note: the seeded venues are **real public civic facilities** (library branches, a community centre,
-a park) so the map links resolve; the events, organizers and people are invented, and no real private
-business is implied to be hosting anything. The seeded place ids are obvious placeholders rather than
-fabricated Google-shaped ids, and the link builder drops them rather than asking Maps to disambiguate against
-an id Google never issued.
+Demo data note: the seeded venues are **real public civic facilities** — five Seattle library branches, three
+community centres, Magnuson Park and the Bellevue library — so the map links resolve; the events, organizers
+and people are invented, and no real private business is implied to be hosting anything. Their place ids,
+addresses and coordinates were resolved once from the Places API at authoring time and written into
+`seed.sql` by hand, so `pnpm db:reset:local` still runs offline, with no key, for free. Three events keep no
+venue on purpose — a house game and two rows at a shop nobody has indexed — because the free-text path has to
+stay visible beside the linked one, and a private home never gets a pin.
 
 ### Look and feel
 

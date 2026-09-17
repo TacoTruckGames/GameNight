@@ -38,18 +38,16 @@ function query(event: MappableEvent): string {
 /**
  * The place id to disambiguate with, or `null` to search by address alone.
  *
- * The demo seed stores `seed_place_*` placeholders rather than real ids: nobody
- * can call the Places API from a `.sql` file, and fabricating a Google-shaped id
- * would be a lie sitting in the database waiting for someone to trust it. But
- * handing such an id to Maps asks it to disambiguate against something Google
- * never issued, and the result is undefined. The address query on its own is
- * accurate, so placeholders are simply dropped from the link.
+ * This used to filter out `seed_place_*` ids. The demo seed carried those
+ * placeholders because nobody can call the Places API from a `.sql` file, and a
+ * fabricated Google-shaped id would have been a lie waiting to be trusted —
+ * handing one to Maps asks it to disambiguate against something Google never
+ * issued, and the result is undefined. The seed now carries ids Google really
+ * issued, resolved once at authoring time, so there is nothing left to filter
+ * and the guard would only be a rule with no case.
  */
-const PLACEHOLDER_ID = /^seed_place_/;
-
 function disambiguator(event: MappableEvent): string | null {
-  if (!event.place) return null;
-  return PLACEHOLDER_ID.test(event.place.id) ? null : event.place.id;
+  return event.place?.id ?? null;
 }
 
 /** Opens the venue in Maps. */

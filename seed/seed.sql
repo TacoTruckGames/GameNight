@@ -78,26 +78,32 @@ INSERT INTO users (id, name, role) VALUES
 -- --------------------------------------------------------------- events ----
 -- rsvp_count is left at 0 here and recomputed by the UPDATE at the bottom.
 --
--- **The venues are real; everything else is invented.** The four events below
--- with place columns are pinned to genuine public civic facilities in Seattle —
--- a central library, a branch library, a community centre and a city park —
--- because a demo board full of maps of nowhere proves nothing, and because a
--- public building cannot be misrepresented by a fictional game night the way a
--- named private business could. The organizers, the players, the games and the
--- room numbers are all made up.
+-- **The venues are real; everything else is invented.** Sixty-one of the
+-- sixty-four events below are pinned to genuine public civic facilities around
+-- Seattle — five library branches, three community centres, a park and the
+-- Bellevue library across the lake — because a demo board full of maps of
+-- nowhere proves nothing, and because a public building cannot be
+-- misrepresented by a fictional game night the way a named private business
+-- could. The organizers, the players, the games and the room numbers are all
+-- made up, and every venue is somewhere a group like this could really book a
+-- table: that is why the fictional shop and loft that used to host most of this
+-- board now host three events between them.
 --
--- Coordinates and addresses are hard-coded, never fetched: `pnpm db:reset:local`
--- must work offline, with no API key, and cost nothing. The `place_id` values
--- are deliberately obvious placeholders (`seed_place_…`) rather than
--- real-looking `ChIJ…` strings — a fabricated id in Google's own format would be
--- a small lie sitting in the database waiting to be trusted. They behave
--- correctly everywhere it matters: the mini map is rendered from the
--- coordinates, and `?v=` only has to match the stored value.
+-- `place_id`, address and coordinates are **real values, resolved once from the
+-- Places API at authoring time and written in here by hand** — ids Google
+-- actually issued for these buildings. An earlier pass used obvious
+-- `seed_place_…` placeholders, reasoning that a fabricated id in Google's own
+-- format would be a small lie sitting in the database waiting to be trusted.
+-- That was right about fabrication and is simply moot now: these are not
+-- invented, they are looked up. What has not changed is that nothing is fetched
+-- at seed time — `pnpm db:reset:local` still works offline, with no API key,
+-- and costs nothing.
 --
 -- Three events keep NULL place columns on purpose. That is not laziness, it is
--- the other half of the feature: a back room, a house game and a shop that is
--- not in anyone's index all have to stay postable and readable, and a reviewer
--- should see both modes on one screen.
+-- the other half of the feature: a house game and a shop that is not in
+-- anyone's index have to stay postable and readable, and a reviewer should see
+-- both modes on one screen. The house game is also the case that must never
+-- change — a private home does not get a pin, however good the autocomplete is.
 --
 -- ------------------------------------------------------------ about times --
 -- **Every start time is written as a US Pacific evening, and is deliberately
@@ -142,37 +148,41 @@ INSERT INTO users (id, name, role) VALUES
 INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, capacity, rsvp_count, room_key,
                     place_id, place_address, place_lat, place_lng, place_resolved_at) VALUES
   -- No verified place: a fictional shop, exactly as an organizer would type it.
+  -- One of only three such rows left on the board (with `evt_league_finals_draft`
+  -- and the house game `evt_dnd_curse_amber`), and the reason to keep any: the
+  -- free-text path has to stay visible next to the linked one.
   ('evt_friday_draft', 'org_cardboard', 'Friday Night Draft', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+2 days','+20 hours','+7 hours'),
    'Cardboard Castle, 114 Pike St', 8, 0, lower(hex(randomblob(8))),
    NULL, NULL, NULL, NULL, NULL),
 
-  -- No verified place.
+  -- Capitol Hill Branch (real public library).
   ('evt_commander_pod', 'org_cardboard', 'Commander Pod Night', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+3 days','+19.5 hours','+7 hours'),
-   'Cardboard Castle, 114 Pike St', 4, 0, lower(hex(randomblob(8))),
-   NULL, NULL, NULL, NULL, NULL),
+   'Capitol Hill Library, meeting room', 4, 0, lower(hex(randomblob(8))),
+   'ChIJ1Y9IDC4VkFQRteLhIs-Bf4I', '425 Harvard Ave E, Seattle, WA 98102, USA', 47.623, -122.322397,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- Seattle Central Library (real public library). The label keeps the room
   -- number the organizer cares about; the address is Google's canonical form.
   ('evt_dnd_sunken_vault', 'org_metro', 'D&D One-Shot: The Sunken Vault', 'rpg',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+4 days','+19.5 hours','+7 hours'),
    'Central Library, Room 2B', 5, 0, lower(hex(randomblob(8))),
-   'seed_place_spl_central', '1000 4th Ave, Seattle, WA 98104, USA', 47.6067, -122.3325,
+   'ChIJ55fLWVtBkFQR0v31eadEoLM', '1000 4th Ave, Seattle, WA 98104, USA', 47.606766, -122.332644,
    strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- Seattle Public Library, Ballard Branch (real public library).
   ('evt_board_game_meetup', 'org_metro', 'Board Game Meetup', 'board',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+6 days','+19 hours','+7 hours'),
    'Ballard Library, meeting room', 12, 0, lower(hex(randomblob(8))),
-   'seed_place_spl_ballard', '5614 22nd Ave NW, Seattle, WA 98107, USA', 47.6686, -122.3856,
+   'ChIJqci788UVkFQREdTIYKi-mYs', '5614 22nd Ave NW, Seattle, WA 98107, USA', 47.66981, -122.384271,
    strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- Green Lake Community Center (real city community centre).
   ('evt_warhammer_open', 'org_metro', 'Warhammer 40k Open Play', 'miniatures',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+9 days','+18.5 hours','+7 hours'),
    'Green Lake Community Center, main hall', 6, 0, lower(hex(randomblob(8))),
-   'seed_place_greenlake_cc', '7201 E Green Lake Dr N, Seattle, WA 98115, USA', 47.6807, -122.3283,
+   'ChIJk4QZY2sUkFQR3aJEU8ufnJk', '7201 East Green Lake Dr N, Seattle, WA 98115, USA', 47.68026, -122.328503,
    strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- Warren G. Magnuson Park (real city park). Proves the search join: nothing in
@@ -180,15 +190,16 @@ INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, cap
   ('evt_learn_magic', 'org_cardboard', 'Learn to Play Magic', 'other',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+14 days','+20.5 hours','+7 hours'),
    'Magnuson Park, Building 30', 10, 0, lower(hex(randomblob(8))),
-   'seed_place_magnuson_park', '7400 Sand Point Way NE, Seattle, WA 98115, USA', 47.6806, -122.2570,
+   'ChIJTSbT3aATkFQRHymm3sgqcb8', '7400 Sand Point Way NE, Seattle, WA 98115, USA', 47.679769, -122.253602,
    strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- Past event: must never appear in the upcoming list, and RSVPs to it 409.
-  -- No verified place.
+  -- University Branch (real public library).
   ('evt_last_week_draft', 'org_cardboard', 'Last Week''s Draft', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','-3 days','+20 hours','+7 hours'),
-   'Cardboard Castle, 114 Pike St', 8, 0, lower(hex(randomblob(8))),
-   NULL, NULL, NULL, NULL, NULL);
+   'University Library, meeting room', 8, 0, lower(hex(randomblob(8))),
+   'ChIJVZZq9mAUkFQRRAHfUiu_sc0', '5009 Roosevelt Way NE, Seattle, WA 98105, USA', 47.665245, -122.317923,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now'));
 
 -- ------------------------------------------- the rest of the upcoming board --
 -- 44 more scheduled events across the next five weeks, bringing the upcoming
@@ -221,183 +232,265 @@ INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, cap
   -- +1 day (2)
   ('evt_midweek_modern', 'org_cardboard', 'Midweek Modern Night', 'other',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+1 days','+19.5 hours','+7 hours'),
-   'Cardboard Castle, 114 Pike St', 16, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Northgate Community Center, multipurpose room', 16, 0, lower(hex(randomblob(8))),
+   'ChIJNauPGVYRkFQRBY2bPEB3jfU', '10510 5th Ave NE, Seattle, WA 98125, USA', 47.705455, -122.32236,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_dnd_curse_amber', 'org_metro', 'D&D: The Curse of Amberfall', 'rpg',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+1 days','+23 hours','+7 hours'),
-   'Greenwood House, dining room', 6, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Greenwood House, dining room', 6, 0, lower(hex(randomblob(8))),
+   NULL, NULL, NULL, NULL, NULL),
 
   -- +2 days (2 more, alongside Friday Night Draft)
   ('evt_catan_tournament', 'org_dicegoblin', 'Catan Tournament', 'board',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+2 days','+19 hours','+7 hours'),
-   'Dice Goblin Loft, 3rd floor', 16, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Columbia Library, meeting room', 16, 0, lower(hex(randomblob(8))),
+   'ChIJv5x3_wxqkFQRs76P7-fM9GE', '4721 Rainier Ave S, Seattle, WA 98118, USA', 47.559901, -122.286959,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_kill_team_night', 'org_metro', 'Kill Team Skirmish Night', 'miniatures',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+2 days','+20.5 hours','+7 hours'),
-   'Green Lake Community Center, main hall', 8, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Green Lake Community Center, main hall', 8, 0, lower(hex(randomblob(8))),
+   'ChIJk4QZY2sUkFQR3aJEU8ufnJk', '7201 East Green Lake Dr N, Seattle, WA 98115, USA', 47.68026, -122.328503,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- +3 days (1 more)
   ('evt_pauper_league', 'org_cardboard', 'Pauper League Week 3', 'other',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+3 days','+21 hours','+7 hours'),
-   'Cardboard Castle, 114 Pike St', 12, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Central Library, Room 3C', 12, 0, lower(hex(randomblob(8))),
+   'ChIJ55fLWVtBkFQR0v31eadEoLM', '1000 4th Ave, Seattle, WA 98104, USA', 47.606766, -122.332644,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- +4 days (2 more)
   ('evt_board_game_potluck', 'org_library', 'Board Game Potluck', 'board',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+4 days','+18.5 hours','+7 hours'),
-   'Ballard Library, meeting room', 20, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Ballard Library, meeting room', 20, 0, lower(hex(randomblob(8))),
+   'ChIJqci788UVkFQREdTIYKi-mYs', '5614 22nd Ave NW, Seattle, WA 98107, USA', 47.66981, -122.384271,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_commander_precon', 'org_dicegoblin', 'Precon Commander Night', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+4 days','+20.5 hours','+7 hours'),
-   'Dice Goblin Loft, back tables', 8, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Rainier Community Center, game room', 8, 0, lower(hex(randomblob(8))),
+   'ChIJAZfGcw1qkFQRL1KrHhXvV0c', '4600 38th Ave. S, Seattle, WA 98118, USA', 47.561389, -122.284164,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- +6 days (3 more)
   ('evt_draft_set_release', 'org_cardboard', 'Booster Draft: Set Release', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+6 days','+20 hours','+7 hours'),
-   'Cardboard Castle, 114 Pike St', 8, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Columbia Library, meeting room', 8, 0, lower(hex(randomblob(8))),
+   'ChIJv5x3_wxqkFQRs76P7-fM9GE', '4721 Rainier Ave S, Seattle, WA 98118, USA', 47.559901, -122.286959,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_dnd_gilded_fox', 'org_metro', 'D&D One-Shot: Tomb of the Gilded Fox', 'rpg',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+6 days','+22 hours','+7 hours'),
-   'Central Library, Room 4A', 6, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Central Library, Room 4A', 6, 0, lower(hex(randomblob(8))),
+   'ChIJ55fLWVtBkFQR0v31eadEoLM', '1000 4th Ave, Seattle, WA 98104, USA', 47.606766, -122.332644,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_wargame_intro', 'org_library', 'Intro to Miniature Wargaming', 'miniatures',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+6 days','+18.5 hours','+7 hours'),
-   'Magnuson Park, Building 30', 10, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Magnuson Park, Building 30', 10, 0, lower(hex(randomblob(8))),
+   'ChIJTSbT3aATkFQRHymm3sgqcb8', '7400 Sand Point Way NE, Seattle, WA 98115, USA', 47.679769, -122.253602,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- +7 days (1)
   ('evt_family_game_hour', 'org_library', 'Family Game Hour', 'board',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+7 days','+18 hours','+7 hours'),
-   'Ballard Library, meeting room', 24, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Ballard Library, meeting room', 24, 0, lower(hex(randomblob(8))),
+   'ChIJqci788UVkFQREdTIYKi-mYs', '5614 22nd Ave NW, Seattle, WA 98107, USA', 47.66981, -122.384271,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- +9 days (2 more, alongside Warhammer 40k Open Play)
   ('evt_commander_chaos', 'org_dicegoblin', 'Chaos Commander: Four-Player Pods', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+9 days','+19.5 hours','+7 hours'),
-   'Dice Goblin Loft, 3rd floor', 16, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Bellevue Library, meeting room 1', 16, 0, lower(hex(randomblob(8))),
+   'ChIJAf2ta4xskFQRMkLmAk-vP7o', '1111 110th Ave NE, Bellevue, WA 98004, USA', 47.620044, -122.194169,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_rpg_open_table', 'org_metro', 'Open Table RPG Night', 'rpg',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+9 days','+21 hours','+7 hours'),
-   'Greenwood House, dining room', 7, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Rainier Community Center, game room', 7, 0, lower(hex(randomblob(8))),
+   'ChIJAZfGcw1qkFQRL1KrHhXvV0c', '4600 38th Ave. S, Seattle, WA 98118, USA', 47.561389, -122.284164,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- +10 days (1)
   ('evt_draft_vintage_cube', 'org_cardboard', 'Vintage Cube Draft', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+10 days','+20 hours','+7 hours'),
-   'Cardboard Castle, 114 Pike St', 8, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Bellevue Library, meeting room 1', 8, 0, lower(hex(randomblob(8))),
+   'ChIJAf2ta4xskFQRMkLmAk-vP7o', '1111 110th Ave NE, Bellevue, WA 98004, USA', 47.620044, -122.194169,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- +12 days — Game Fest, day one (4). One venue, four staggered slots.
   ('evt_fest_warhammer_tourney', 'org_library', 'Game Fest: Warhammer 40k Tournament', 'miniatures',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+12 days','+18 hours','+7 hours'),
-   'Magnuson Park, Building 30', 16, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Magnuson Park, Building 30', 16, 0, lower(hex(randomblob(8))),
+   'ChIJTSbT3aATkFQRHymm3sgqcb8', '7400 Sand Point Way NE, Seattle, WA 98115, USA', 47.679769, -122.253602,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_fest_flagship_draft', 'org_cardboard', 'Game Fest: Flagship Draft', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+12 days','+18.5 hours','+7 hours'),
-   'Magnuson Park, Building 30', 32, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Magnuson Park, Building 30', 32, 0, lower(hex(randomblob(8))),
+   'ChIJTSbT3aATkFQRHymm3sgqcb8', '7400 Sand Point Way NE, Seattle, WA 98115, USA', 47.679769, -122.253602,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_fest_commander_gauntlet', 'org_dicegoblin', 'Game Fest: Commander Gauntlet', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+12 days','+19.5 hours','+7 hours'),
-   'Magnuson Park, Building 30', 20, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Magnuson Park, Building 30', 20, 0, lower(hex(randomblob(8))),
+   'ChIJTSbT3aATkFQRHymm3sgqcb8', '7400 Sand Point Way NE, Seattle, WA 98115, USA', 47.679769, -122.253602,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_fest_dnd_marathon', 'org_metro', 'Game Fest: D&D Marathon', 'rpg',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+12 days','+20.5 hours','+7 hours'),
-   'Magnuson Park, Building 30', 8, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Magnuson Park, Building 30', 8, 0, lower(hex(randomblob(8))),
+   'ChIJTSbT3aATkFQRHymm3sgqcb8', '7400 Sand Point Way NE, Seattle, WA 98115, USA', 47.679769, -122.253602,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- +13 days — Game Fest, day two (5). The heaviest day on the board; the
   -- open library is the one event here that carries a verified place.
   ('evt_fest_board_library', 'org_library', 'Game Fest: Open Board Game Library', 'board',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+13 days','+18 hours','+7 hours'),
    'Magnuson Park, Building 30', 40, 0, lower(hex(randomblob(8))),
-   'seed_place_magnuson_park', '7400 Sand Point Way NE, Seattle, WA 98115, USA', 47.6806, -122.2570,
+   'ChIJTSbT3aATkFQRHymm3sgqcb8', '7400 Sand Point Way NE, Seattle, WA 98115, USA', 47.679769, -122.253602,
    strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_fest_learn_anything', 'org_cardboard', 'Game Fest: Learn to Play Anything', 'other',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+13 days','+19 hours','+7 hours'),
-   'Magnuson Park, Building 30', 24, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Magnuson Park, Building 30', 24, 0, lower(hex(randomblob(8))),
+   'ChIJTSbT3aATkFQRHymm3sgqcb8', '7400 Sand Point Way NE, Seattle, WA 98115, USA', 47.679769, -122.253602,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_fest_sealed_finals', 'org_cardboard', 'Game Fest: Sealed Finals', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+13 days','+20 hours','+7 hours'),
-   'Magnuson Park, Building 30', 16, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Magnuson Park, Building 30', 16, 0, lower(hex(randomblob(8))),
+   'ChIJTSbT3aATkFQRHymm3sgqcb8', '7400 Sand Point Way NE, Seattle, WA 98115, USA', 47.679769, -122.253602,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_fest_indie_rpg', 'org_metro', 'Game Fest: Indie RPG Showcase', 'rpg',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+13 days','+21 hours','+7 hours'),
-   'Magnuson Park, Building 30', 12, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Magnuson Park, Building 30', 12, 0, lower(hex(randomblob(8))),
+   'ChIJTSbT3aATkFQRHymm3sgqcb8', '7400 Sand Point Way NE, Seattle, WA 98115, USA', 47.679769, -122.253602,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_fest_closing_pods', 'org_dicegoblin', 'Game Fest: Closing Commander Pods', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+13 days','+23 hours','+7 hours'),
-   'Magnuson Park, Building 30', 12, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Magnuson Park, Building 30', 12, 0, lower(hex(randomblob(8))),
+   'ChIJTSbT3aATkFQRHymm3sgqcb8', '7400 Sand Point Way NE, Seattle, WA 98115, USA', 47.679769, -122.253602,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- +14 days (2 more, alongside Learn to Play Magic)
   ('evt_kids_board_club', 'org_library', 'Kids Board Game Club', 'board',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+14 days','+18.5 hours','+7 hours'),
-   'Ballard Library, meeting room', 18, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Ballard Library, meeting room', 18, 0, lower(hex(randomblob(8))),
+   'ChIJqci788UVkFQREdTIYKi-mYs', '5614 22nd Ave NW, Seattle, WA 98107, USA', 47.66981, -122.384271,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_warhammer_narrative', 'org_metro', 'Narrative Warhammer Campaign, Session 1', 'miniatures',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+14 days','+20 hours','+7 hours'),
-   'Green Lake Community Center, main hall', 6, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Green Lake Community Center, main hall', 6, 0, lower(hex(randomblob(8))),
+   'ChIJk4QZY2sUkFQR3aJEU8ufnJk', '7201 East Green Lake Dr N, Seattle, WA 98115, USA', 47.68026, -122.328503,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- +16 days (1)
   ('evt_draft_two_headed', 'org_cardboard', 'Two-Headed Giant Draft', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+16 days','+19.5 hours','+7 hours'),
-   'Cardboard Castle, 114 Pike St', 12, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Rainier Community Center, game room', 12, 0, lower(hex(randomblob(8))),
+   'ChIJAZfGcw1qkFQRL1KrHhXvV0c', '4600 38th Ave. S, Seattle, WA 98118, USA', 47.561389, -122.284164,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- +17 days (2)
   ('evt_commander_budget', 'org_dicegoblin', 'Budget Commander Brawl', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+17 days','+20.5 hours','+7 hours'),
-   'Dice Goblin Loft, back tables', 8, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Rainier Community Center, game room', 8, 0, lower(hex(randomblob(8))),
+   'ChIJAZfGcw1qkFQRL1KrHhXvV0c', '4600 38th Ave. S, Seattle, WA 98118, USA', 47.561389, -122.284164,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_dnd_west_marches', 'org_metro', 'West Marches: Session 12', 'rpg',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+17 days','+22 hours','+7 hours'),
-   'Greenwood House, dining room', 6, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Columbia Library, meeting room', 6, 0, lower(hex(randomblob(8))),
+   'ChIJv5x3_wxqkFQRs76P7-fM9GE', '4721 Rainier Ave S, Seattle, WA 98118, USA', 47.559901, -122.286959,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- +19 days — league finals night (4), three organizers running at once.
   ('evt_library_game_day', 'org_library', 'Library Game Day', 'board',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+19 days','+18 hours','+7 hours'),
    'Central Library, Room 2B', 30, 0, lower(hex(randomblob(8))),
-   'seed_place_spl_central', '1000 4th Ave, Seattle, WA 98104, USA', 47.6067, -122.3325,
+   'ChIJ55fLWVtBkFQR0v31eadEoLM', '1000 4th Ave, Seattle, WA 98104, USA', 47.606766, -122.332644,
    strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_league_finals_draft', 'org_cardboard', 'Draft League Finals', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+19 days','+19 hours','+7 hours'),
-   'Cardboard Castle, 114 Pike St', 16, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Cardboard Castle, 114 Pike St', 16, 0, lower(hex(randomblob(8))),
+   NULL, NULL, NULL, NULL, NULL),
   ('evt_warhammer_doubles', 'org_metro', 'Warhammer Doubles Night', 'miniatures',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+19 days','+20 hours','+7 hours'),
-   'Green Lake Community Center, main hall', 8, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Green Lake Community Center, main hall', 8, 0, lower(hex(randomblob(8))),
+   'ChIJk4QZY2sUkFQR3aJEU8ufnJk', '7201 East Green Lake Dr N, Seattle, WA 98115, USA', 47.68026, -122.328503,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_puzzle_night', 'org_dicegoblin', 'Co-op Puzzle Night', 'other',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+19 days','+21 hours','+7 hours'),
-   'Dice Goblin Loft, 3rd floor', 10, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Columbia Library, meeting room', 10, 0, lower(hex(randomblob(8))),
+   'ChIJv5x3_wxqkFQRs76P7-fM9GE', '4721 Rainier Ave S, Seattle, WA 98118, USA', 47.559901, -122.286959,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- +20 days (1)
   ('evt_dnd_saltmarsh', 'org_metro', 'D&D: Saltmarsh Pirates', 'rpg',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+20 days','+19.5 hours','+7 hours'),
-   'Greenwood House, dining room', 6, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Northgate Community Center, multipurpose room', 6, 0, lower(hex(randomblob(8))),
+   'ChIJNauPGVYRkFQRBY2bPEB3jfU', '10510 5th Ave NE, Seattle, WA 98125, USA', 47.705455, -122.32236,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- +22 days (2)
   ('evt_board_heavy_euro', 'org_dicegoblin', 'Heavy Euro Games Evening', 'board',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+22 days','+18.5 hours','+7 hours'),
-   'Dice Goblin Loft, 3rd floor', 12, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Bellevue Library, meeting room 1', 12, 0, lower(hex(randomblob(8))),
+   'ChIJAf2ta4xskFQRMkLmAk-vP7o', '1111 110th Ave NE, Bellevue, WA 98004, USA', 47.620044, -122.194169,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_draft_chaos_cube', 'org_cardboard', 'Chaos Cube Draft', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+22 days','+20 hours','+7 hours'),
-   'Cardboard Castle, 114 Pike St', 8, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Capitol Hill Library, meeting room', 8, 0, lower(hex(randomblob(8))),
+   'ChIJ1Y9IDC4VkFQRteLhIs-Bf4I', '425 Harvard Ave E, Seattle, WA 98102, USA', 47.623, -122.322397,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- +24 days (1)
   ('evt_commander_cedh', 'org_dicegoblin', 'cEDH Practice Pods', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+24 days','+20.5 hours','+7 hours'),
-   'Dice Goblin Loft, back tables', 8, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Rainier Community Center, game room', 8, 0, lower(hex(randomblob(8))),
+   'ChIJAZfGcw1qkFQRL1KrHhXvV0c', '4600 38th Ave. S, Seattle, WA 98118, USA', 47.561389, -122.284164,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- +26 days (3)
   ('evt_dnd_beginners', 'org_library', 'D&D for Absolute Beginners', 'rpg',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+26 days','+18.5 hours','+7 hours'),
-   'Ballard Library, meeting room', 12, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Ballard Library, meeting room', 12, 0, lower(hex(randomblob(8))),
+   'ChIJqci788UVkFQREdTIYKi-mYs', '5614 22nd Ave NW, Seattle, WA 98107, USA', 47.66981, -122.384271,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_warhammer_paint', 'org_metro', 'Paint and Play Warhammer', 'miniatures',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+26 days','+19.5 hours','+7 hours'),
-   'Green Lake Community Center, main hall', 10, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Green Lake Community Center, main hall', 10, 0, lower(hex(randomblob(8))),
+   'ChIJk4QZY2sUkFQR3aJEU8ufnJk', '7201 East Green Lake Dr N, Seattle, WA 98115, USA', 47.68026, -122.328503,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_trivia_night', 'org_cardboard', 'Tabletop Trivia Night', 'other',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+26 days','+21 hours','+7 hours'),
-   'Cardboard Castle, 114 Pike St', 20, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'University Library, meeting room', 20, 0, lower(hex(randomblob(8))),
+   'ChIJVZZq9mAUkFQRRAHfUiu_sc0', '5009 Roosevelt Way NE, Seattle, WA 98105, USA', 47.665245, -122.317923,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- +27 days (1)
   ('evt_draft_team_league', 'org_cardboard', 'Team Draft League', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+27 days','+20 hours','+7 hours'),
-   'Cardboard Castle, 114 Pike St', 12, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Northgate Community Center, multipurpose room', 12, 0, lower(hex(randomblob(8))),
+   'ChIJNauPGVYRkFQRBY2bPEB3jfU', '10510 5th Ave NE, Seattle, WA 98125, USA', 47.705455, -122.32236,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- +30 days (1)
   ('evt_board_game_swap', 'org_library', 'Board Game Swap Meet', 'board',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+30 days','+18 hours','+7 hours'),
-   'Central Library, Room 2B', 25, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Central Library, Room 2B', 25, 0, lower(hex(randomblob(8))),
+   'ChIJ55fLWVtBkFQR0v31eadEoLM', '1000 4th Ave, Seattle, WA 98104, USA', 47.606766, -122.332644,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- +33 days (2)
   ('evt_commander_cracked_packs', 'org_dicegoblin', 'Commander Cracked Packs', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+33 days','+20.5 hours','+7 hours'),
-   'Dice Goblin Loft, 3rd floor', 16, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Columbia Library, meeting room', 16, 0, lower(hex(randomblob(8))),
+   'ChIJv5x3_wxqkFQRs76P7-fM9GE', '4721 Rainier Ave S, Seattle, WA 98118, USA', 47.559901, -122.286959,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_dnd_campaign_finale', 'org_metro', 'D&D Campaign Finale', 'rpg',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+33 days','+22 hours','+7 hours'),
-   'Greenwood House, dining room', 6, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Bellevue Library, meeting room 1', 6, 0, lower(hex(randomblob(8))),
+   'ChIJAf2ta4xskFQRMkLmAk-vP7o', '1111 110th Ave NE, Bellevue, WA 98004, USA', 47.620044, -122.194169,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- +35 days (1) — the far edge of the five-week window, barely signed up yet.
   ('evt_prerelease_draft', 'org_cardboard', 'Set Prerelease Draft', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+35 days','+19.5 hours','+7 hours'),
-   'Cardboard Castle, 114 Pike St', 16, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL);
+   'Central Library, Room 3C', 16, 0, lower(hex(randomblob(8))),
+   'ChIJ55fLWVtBkFQR0v31eadEoLM', '1000 4th Ave, Seattle, WA 98104, USA', 47.606766, -122.332644,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now'));
 
 -- ------------------------------------------------------------ past events --
 -- Seven more finished events, from two days back to a little over two weeks,
@@ -412,27 +505,41 @@ INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, cap
                     place_id, place_address, place_lat, place_lng, place_resolved_at) VALUES
   ('evt_past_commander_league', 'org_dicegoblin', 'Commander League Night', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','-2 days','+20.5 hours','+7 hours'),
-   'Dice Goblin Loft, 3rd floor', 12, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Bellevue Library, meeting room 1', 12, 0, lower(hex(randomblob(8))),
+   'ChIJAf2ta4xskFQRMkLmAk-vP7o', '1111 110th Ave NE, Bellevue, WA 98004, USA', 47.620044, -122.194169,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_past_board_brunch', 'org_library', 'Board Game Brunch', 'board',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','-2 days','+18.5 hours','+7 hours'),
-   'Ballard Library, meeting room', 20, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Ballard Library, meeting room', 20, 0, lower(hex(randomblob(8))),
+   'ChIJqci788UVkFQREdTIYKi-mYs', '5614 22nd Ave NW, Seattle, WA 98107, USA', 47.66981, -122.384271,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   -- Ran full. A past FULL event is its own small regression test: the seat bar
   -- and the "FULL" badge have to render for an event nobody can join any more.
   ('evt_past_dnd_icespire', 'org_metro', 'D&D: Dragon of Icespire, Session 4', 'rpg',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','-4 days','+22 hours','+7 hours'),
-   'Greenwood House, dining room', 6, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'University Library, meeting room', 6, 0, lower(hex(randomblob(8))),
+   'ChIJVZZq9mAUkFQRRAHfUiu_sc0', '5009 Roosevelt Way NE, Seattle, WA 98105, USA', 47.665245, -122.317923,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_past_warhammer_league', 'org_metro', 'Warhammer League Round 2', 'miniatures',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','-6 days','+19.5 hours','+7 hours'),
-   'Green Lake Community Center, main hall', 8, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Green Lake Community Center, main hall', 8, 0, lower(hex(randomblob(8))),
+   'ChIJk4QZY2sUkFQR3aJEU8ufnJk', '7201 East Green Lake Dr N, Seattle, WA 98115, USA', 47.68026, -122.328503,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_past_thursday_draft', 'org_cardboard', 'Thursday Draft', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','-8 days','+20 hours','+7 hours'),
-   'Cardboard Castle, 114 Pike St', 8, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Columbia Library, meeting room', 8, 0, lower(hex(randomblob(8))),
+   'ChIJv5x3_wxqkFQRs76P7-fM9GE', '4721 Rainier Ave S, Seattle, WA 98118, USA', 47.559901, -122.286959,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_past_learn_rpg', 'org_library', 'Learn an RPG in One Night', 'other',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','-11 days','+19 hours','+7 hours'),
-   'Central Library, Room 4A', 15, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
+   'Central Library, Room 4A', 15, 0, lower(hex(randomblob(8))),
+   'ChIJ55fLWVtBkFQR0v31eadEoLM', '1000 4th Ave, Seattle, WA 98104, USA', 47.606766, -122.332644,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_past_autumn_swap', 'org_library', 'Autumn Game Swap', 'board',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','-16 days','+18 hours','+7 hours'),
-   'Magnuson Park, Building 30', 24, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL);
+   'Magnuson Park, Building 30', 24, 0, lower(hex(randomblob(8))),
+   'ChIJTSbT3aATkFQRHymm3sgqcb8', '7400 Sand Point Way NE, Seattle, WA 98115, USA', 47.679769, -122.253602,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now'));
 
 -- ------------------------------------------------------- cancelled events --
 -- Cancellation is a status, not a delete (see 0002_admin.sql), and the seed has
@@ -456,34 +563,40 @@ INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, cap
                     place_id, place_address, place_lat, place_lng, place_resolved_at) VALUES
   ('evt_cancel_late_pod', 'org_dicegoblin', 'Late Night Commander Pod', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+7 days','+21 hours','+7 hours'),
-   'Dice Goblin Loft, back tables', 8, 0, lower(hex(randomblob(8))),
+   'Rainier Community Center, game room', 8, 0, lower(hex(randomblob(8))),
    'cancelled', strftime('%Y-%m-%dT%H:%M:%SZ','now','-2 days'),
-   NULL, NULL, NULL, NULL, NULL),
+   'ChIJAZfGcw1qkFQRL1KrHhXvV0c', '4600 38th Ave. S, Seattle, WA 98118, USA', 47.561389, -122.284164,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_cancel_grand_melee', 'org_metro', 'Warhammer Grand Melee', 'miniatures',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+13 days','+19 hours','+7 hours'),
    'Green Lake Community Center, main hall', 12, 0, lower(hex(randomblob(8))),
    'cancelled', strftime('%Y-%m-%dT%H:%M:%SZ','now','-1 days'),
-   NULL, NULL, NULL, NULL, NULL),
+   'ChIJk4QZY2sUkFQR3aJEU8ufnJk', '7201 East Green Lake Dr N, Seattle, WA 98115, USA', 47.68026, -122.328503,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_cancel_frostmaiden', 'org_metro', 'D&D: Rime of the Frostmaiden, Session 1', 'rpg',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+20 days','+20.5 hours','+7 hours'),
-   'Greenwood House, dining room', 6, 0, lower(hex(randomblob(8))),
+   'Capitol Hill Library, meeting room', 6, 0, lower(hex(randomblob(8))),
    'cancelled', strftime('%Y-%m-%dT%H:%M:%SZ','now','-6 hours'),
-   NULL, NULL, NULL, NULL, NULL),
+   'ChIJ1Y9IDC4VkFQRteLhIs-Bf4I', '425 Harvard Ave E, Seattle, WA 98102, USA', 47.623, -122.322397,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_cancel_board_marathon', 'org_library', 'Board Game Marathon', 'board',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+26 days','+18 hours','+7 hours'),
    'Ballard Library, meeting room', 20, 0, lower(hex(randomblob(8))),
    'cancelled', strftime('%Y-%m-%dT%H:%M:%SZ','now','-3 days'),
-   NULL, NULL, NULL, NULL, NULL),
+   'ChIJqci788UVkFQREdTIYKi-mYs', '5614 22nd Ave NW, Seattle, WA 98107, USA', 47.66981, -122.384271,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_cancel_snow_draft', 'org_cardboard', 'Snow Day Draft', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','-5 days','+20 hours','+7 hours'),
-   'Cardboard Castle, 114 Pike St', 8, 0, lower(hex(randomblob(8))),
+   'Bellevue Library, meeting room 1', 8, 0, lower(hex(randomblob(8))),
    'cancelled', strftime('%Y-%m-%dT%H:%M:%SZ','now','-6 days'),
-   NULL, NULL, NULL, NULL, NULL),
+   'ChIJAf2ta4xskFQRMkLmAk-vP7o', '1111 110th Ave NE, Bellevue, WA 98004, USA', 47.620044, -122.194169,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_cancel_midsummer', 'org_metro', 'Midsummer Game Social', 'other',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','-12 days','+19.5 hours','+7 hours'),
    'Magnuson Park, Building 30', 30, 0, lower(hex(randomblob(8))),
    'cancelled', strftime('%Y-%m-%dT%H:%M:%SZ','now','-14 days'),
-   NULL, NULL, NULL, NULL, NULL);
+   'ChIJTSbT3aATkFQRHymm3sgqcb8', '7400 Sand Point Way NE, Seattle, WA 98115, USA', 47.679769, -122.253602,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now'));
 
 -- --------------------------------------------------------- descriptions ----
 -- Applied as one UPDATE pass keyed by id, for the same reason `rsvp_count` is
