@@ -878,8 +878,9 @@ textarea.input {
   margin-bottom: var(--space-2);
 }
 
-/* The segmented control: exactly two mutually exclusive options in one pill,
-   one of them always on, enforced by `SegmentedControl`'s tuple prop. Worn by
+/* The segmented control: two or three mutually exclusive options in one pill,
+   one of them always on; `SegmentedControl`'s tuple prop enforces the floor of
+   two, and three is the board's Week / Month / List. Worn by
    the identity picker's role tablist (`aria-selected`) and by the board's View
    and Sort switches (`aria-pressed`) — different ARIA, because a tablist and a
    pair of toggles are different controls, but one appearance, because they ask

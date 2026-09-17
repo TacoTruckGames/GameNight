@@ -1,19 +1,23 @@
 /**
- * The shape three switches share: two options in one pill, one always on.
+ * The shape four switches share: a few options in one pill, one always on.
  *
  * The markup was written twice — the board's View switch and its Sort switch —
  * and the week agenda wanted it a third time. Copying it again is how two
  * controls that ask the same kind of question end up looking like two different
  * controls, so the markup lives here and the *meaning* stays with each switch:
  * what the options are, what they're called, who owns the wire value. This
- * component only knows there are two of them and which one is pressed.
+ * component only knows how many there are and which one is pressed.
  *
- * `options: readonly [T, T]` is the point of the tuple: the rule in
- * `base.css` above `.who__tabs, .segmented` — "exactly two mutually exclusive
- * options in one pill" — is a claim about the CSS (the pill flexes both halves
- * to equal width, and with two, seeing the alternative is the whole reason
- * neither collapses into a dropdown). A third option would quietly break that
- * rule; typed as a pair, it breaks the build instead.
+ * `options: readonly [T, T, ...T[]]` is two-or-more, and the "or more" was
+ * bought deliberately. It began as a strict pair, so that the claim in
+ * `base.css` above `.who__tabs, .segmented` — the pill flexes its halves to
+ * equal width, and with two, seeing the alternative is the whole reason neither
+ * collapses into a dropdown — could not be broken by accident. When the board
+ * genuinely wanted a third view (Week / Month / List) the type failed the build,
+ * which is exactly what it was for: the rule got re-read, the CSS was checked
+ * at 390px (three options still clear the 44px target), and the constraint was
+ * widened on purpose rather than discovered in production. Fewer than two is
+ * still a build error — a segmented control with one option is a label.
  *
  * `aria-pressed` rather than a tablist: these toggle a rendering, they don't
  * switch panels. The identity picker wears the same pill with `aria-selected`
@@ -30,7 +34,7 @@ export function SegmentedControl<T extends string>({
   onChange,
 }: {
   label: string;
-  options: readonly [T, T];
+  options: readonly [T, T, ...T[]];
   labels: Record<T, string>;
   value: T;
   onChange: (next: T) => void;

@@ -1,9 +1,11 @@
 /**
- * Calendar or list — the board's two readings of the same query result.
+ * Week, month or list — the board's three readings of the same query result.
  *
- * Calendar leads, and is the default: with ~50 events the month grid answers
- * "what is on this Saturday" at a glance, while a flat list answers only "what
- * is next". The list is still one tap away for anyone who wants the feed.
+ * Week leads, and is the default. "What can I get to in the next few days" is
+ * the question someone opens a board with, and a week of seven cells answers it
+ * without the scrolling a month of thirty demands on a phone. Month is a step
+ * out for planning further ahead; list is the plain feed, and the only view
+ * that sorts by anything other than the clock.
  *
  * The constants live here rather than in `shared/` because the worker never
  * sees the view: it is a client-side rendering choice over rows the API has
@@ -16,10 +18,10 @@
 
 import { SegmentedControl } from "./SegmentedControl";
 
-export const BOARD_VIEWS = ["calendar", "list"] as const;
+export const BOARD_VIEWS = ["week", "month", "list"] as const;
 export type BoardView = (typeof BOARD_VIEWS)[number];
-export const DEFAULT_BOARD_VIEW: BoardView = "calendar";
-export const BOARD_VIEW_LABELS: Record<BoardView, string> = { calendar: "Calendar", list: "List" };
+export const DEFAULT_BOARD_VIEW: BoardView = "week";
+export const BOARD_VIEW_LABELS: Record<BoardView, string> = { week: "Week", month: "Month", list: "List" };
 
 export function BoardViewSwitch({ value, onChange }: { value: BoardView; onChange: (next: BoardView) => void }) {
   return (

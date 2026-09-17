@@ -182,29 +182,37 @@ half-second spinner.
   3 events"); `popular` stays flat because a rank has no day boundaries. Grouping is a client-side pass over
   the same list keyed by an `Intl`-derived local day, never by the UTC string — a 7 PM Pacific table must not
   land under Saturday.
-- **Calendar view** is the same `GET /api/events`, no new endpoint — asked a different question. A month
-  grid has to fill the days *behind* today, so calendar view sends a **date window**, `?from=&to=`,
-  half-open and covering exactly the month on screen; the list sends neither and keeps the endpoint's
-  upcoming-only default, which is both the cacheable one and the honest one for a view whose job is "find a
-  table you can still join". A window rather than an `includePast` flag: past-inclusive with
-  `ORDER BY starts_at` would come back oldest-first and could spend the 200-row cap before reaching anything
-  joinable, whereas a window is bounded by construction. Both ends or neither — half a window is a 400, not
-  a guess. Same search and type filters, same cap, and cancelled events stay off the board in both modes.
-  The two ends are computed in *local* time and sent as UTC, because the grid buckets by local day. Month
-  grid, Monday-first so the weekend sits together, a count per day, tap a day to get the ordinary cards
-  beneath — the card stays the RSVP surface because a title does not fit a phone-width cell. Past days list
-  normally, with the RSVP button reading "Started". Day cells are plain labelled buttons (empty days
-  disabled), not an ARIA grid, because a list of buttons is correct with zero focus-management code. Sort is
-  hidden in this view; the grid is chronological by construction.
-- **Week agenda** is the same idea one level down, and it is what `My events` and the organizer's
-  `Your events` open on. The strip is the month grid's own cells in a single row — same `.cal__day` button,
-  same count, same tap-a-day-for-the-cards pane — and it asks `/api/me/rsvps` and `/api/me/hosted` the
+- **Week / Month / List** are three readings of one `GET /api/events` — no second endpoint, no second
+  cache, just a different question. **Week** is the default: "what can I get to in the next few days" is
+  what someone opens a board with, and seven cells answer it without the scrolling thirty demand on a
+  phone. **Month** steps out for planning further ahead. **List** is the plain feed.
+  Both dated views have to fill the days *behind* today — a grid you cannot page backwards through is a
+  broken grid — so they send a **date window**, `?from=&to=`, half-open and covering exactly the span on
+  screen. List sends neither and keeps the endpoint's upcoming-only default, which is both the cacheable
+  one and the honest one for a view whose job is "find a table you can still join"; it is also the only
+  view with an order to choose, since a grid is chronological by construction and Sort is therefore hidden
+  in the other two. A window rather than an `includePast` flag: past-inclusive with `ORDER BY starts_at`
+  would come back oldest-first and could spend the 200-row cap before reaching anything joinable, whereas a
+  window is bounded by construction. Both ends or neither — half a window is a 400, not a guess. Same
+  search and type filters, same cap, and cancelled events stay off the board in every mode. Every window's
+  two ends are computed in *local* time and sent as UTC, because the cells bucket by local day. Monday-first
+  so the weekend sits together, a count per day, tap a day to get the ordinary cards beneath — the card
+  stays the RSVP surface because a title does not fit a phone-width cell. Past days list normally, greyed,
+  with the RSVP button reading "Started" for a table you never had a seat at. Day cells are plain labelled
+  buttons (empty days disabled), not an ARIA grid, because a list of buttons is correct with zero
+  focus-management code. Only the month grid earns the wide page at ≥1120px; a week is one row and fits the
+  reading column at every width.
+- **Week agenda** is that same week strip on the two personal pages, `My events` and the organizer's
+  `Your events`, which open on it. One `WeekStrip` and one `WeekAgenda` shell serve all three pages: the
+  strip is the month grid's own cells in a single row — same `.cal__day` button, same count, same
+  tap-a-day-for-the-cards pane — and the personal pages ask `/api/me/rsvps` and `/api/me/hosted` the
   windowed question the board asks `/api/events`: local Monday 00:00 to the next Monday, computed in the
   reader's zone and sent as UTC, because the strip buckets by local day. Past weeks therefore show what you
-  went to, greyed as past cards with a "Past" badge and an "Ended" chip. **List** is the unwindowed,
-  upcoming-only agenda, unchanged and one tap away. Week leads because the question a personal agenda is
-  opened with is "am I double-booked on Saturday?", which a flat list makes you answer by reading every
-  date. An empty week says "nothing this week" rather than "you have never RSVP'd": a window cannot know
+  went to, greyed as past cards with a "Past" badge and an "Ended" chip — though a past card you hold a
+  seat on keeps "Cancel RSVP", since "Started" is the state of a table you never joined. **List** is the
+  unwindowed, upcoming-only agenda, unchanged and one tap away. Week leads because the question a personal
+  agenda is opened with is "am I double-booked on Saturday?", which a flat list makes you answer by reading
+  every date. An empty week says "nothing this week" rather than "you have never RSVP'd": a window cannot know
   more than the window, and a second unwindowed request on every visit to earn the stronger sentence is not
   a trade worth making — list view still says it.
 - **No pagination** (`LIMIT 200`); ~50 live events fit on one screen.
@@ -355,7 +363,7 @@ the next section calls beyond the brief.
 | **Review pass** (UX) | 60 screenshots × 2 critic passes, 11 defects fixed, the desktop breakpoint | 2 h |
 | **Data & content** | 64-event seed with clusters/past/cancelled, descriptions, game-type taxonomy research | 2 h |
 | **Polish** (frontend) | Name-as-button header, role badge, segmented View/Sort, description field end to end, head count | 1.5 h |
-| **Week agenda** (frontend + windowed `/me` endpoints) | Week strip + day pane on My events and Organize, past attendance, shared segmented control | 2 h |
+| **Week agenda** (frontend + windowed `/me` endpoints) | Week strip + day pane on My events, Organize and the board, past attendance, shared segmented control | 2.5 h |
 
 Roughly **20 hours** all told, of which the core the brief asked for was the first four.
 

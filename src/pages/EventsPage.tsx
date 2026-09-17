@@ -1,14 +1,19 @@
 /**
- * The board. Search + game-type chips, then the same list of RSVP-able cards
- * in one of two shapes: **List** (day-grouped under the default `date` sort,
- * flat under `popular` — a rank has no day boundaries) or **Calendar**, a month
- * grid built from the same `useEvents` hook and the same endpoint — no second
- * data source — asked a different question: give me this month, `?from=&to=`,
- * past days included. A month grid with nothing behind today is a grid you
- * cannot page backwards through.
+ * The board. Search + game-type filter, then the same RSVP-able cards in one of
+ * three shapes, all from one `useEvents` hook and one endpoint — no second data
+ * source, just a different question asked of it:
  *
- * List view sends no window on purpose, so it stays upcoming-only: its job is
- * still "find a table you can still join".
+ * - **Week** (the default): the seven days on screen, `?from=&to=`.
+ * - **Month**: the month on screen, same window a month wide.
+ * - **List**: no window at all, so it stays upcoming-only — its job is still
+ *   "find a table you can still join" — and it is the only view that sorts by
+ *   anything but the clock.
+ *
+ * Both dated views send a window because a grid with nothing behind today is a
+ * grid you cannot page backwards through. Their two ends are computed in
+ * **local** time and handed over as UTC: the cells bucket events by the
+ * reader's civil day, and a UTC-midnight window would push a late-evening event
+ * onto the wrong side of the boundary.
  *
  * `GET /api/events` is deliberately user-independent (so it stays cacheable),
  * so "You're in" comes from `GET /api/me/rsvps` and is joined here on the
@@ -28,6 +33,7 @@ import { EventSortControl } from "../components/EventSort";
 import { Icon } from "../components/Icon";
 import { GameTypeFilter } from "../components/GameTypeFilter";
 import { MonthCalendar } from "../components/MonthCalendar";
+import { WeekAgenda, weekWindow } from "../components/WeekAgenda";
 import { EventListSkeleton } from "../components/Skeleton";
 import { useIdentity } from "../identity/IdentityContext";
 import {
@@ -36,7 +42,9 @@ import {
   groupByDay,
   monthOf,
   sameMonth,
+  shiftDays,
   shiftMonth,
+  startOfWeek,
   type DayKey,
   type YearMonth,
 } from "../lib/calendar";
@@ -50,6 +58,7 @@ export function EventsPage() {
   const [gameType, setGameType] = useState("");
   const [sort, setSort] = useState<EventSort>(DEFAULT_EVENT_SORT);
   const [view, setView] = useState<BoardView>(DEFAULT_BOARD_VIEW);
+  const [weekStart, setWeekStart] = useState<DayKey>(() => startOfWeek(dayKey(new Date())!));
   const [month, setMonth] = useState<YearMonth>(() => monthOf(dayKey(new Date())!));
   const [selectedDay, setSelectedDay] = useState<DayKey | null>(null); // the user's explicit tap only
   const searchId = useId();
@@ -60,34 +69,28 @@ export function EventsPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  // The grid is chronological by construction, so calendar view always asks for
-  // the default sort — which also shares the query cache with the default list.
-  const effectiveSort = view === "calendar" ? DEFAULT_EVENT_SORT : sort;
+  // A grid is chronological by construction, so only list view has an order to
+  // choose — and asking for the default elsewhere shares the query cache with it.
+  const effectiveSort = view === "list" ? sort : DEFAULT_EVENT_SORT;
 
-  // Calendar view asks for exactly the month on screen; list view asks for
-  // nothing and gets the upcoming board.
-  //
-  // The two ends are computed in **local** time and handed over as UTC, because
-  // the grid buckets events by the reader's civil day: the month that starts at
-  // local midnight on the 1st is the month whose cells this grid draws, and a
-  // UTC-midnight window would push a late-evening event onto the wrong side of
-  // the boundary. `new Date(y, 12, 1)` rolls into next January on its own, so
-  // December needs no special case.
-  const monthWindow = useMemo(
-    () =>
-      view === "calendar"
-        ? {
-            from: new Date(month.year, month.month - 1, 1).toISOString(),
-            to: new Date(month.year, month.month, 1).toISOString(),
-          }
-        : {},
-    [view, month],
-  );
-  const events = useEvents({ q: debouncedSearch, gameType, sort: effectiveSort, ...monthWindow });
+  // One window per dated view; list asks for none and gets the upcoming board.
+  // `new Date(y, 12, 1)` and `day + 7` both roll into the next month or year on
+  // their own, so neither end needs a special case.
+  const window = useMemo(() => {
+    if (view === "week") return weekWindow(weekStart);
+    if (view === "month")
+      return {
+        from: new Date(month.year, month.month - 1, 1).toISOString(),
+        to: new Date(month.year, month.month, 1).toISOString(),
+      };
+    return {};
+  }, [view, weekStart, month]);
+  const events = useEvents({ q: debouncedSearch, gameType, sort: effectiveSort, ...window });
   const myRsvpIds = useMyRsvpIds();
   const filtered = debouncedSearch !== "" || gameType !== "";
 
   const todayKey = dayKey(new Date())!; // `new Date()` is always valid; per render is fine
+  const thisWeek = startOfWeek(todayKey);
   const groups = useMemo(() => groupByDay(events.data ?? []), [events.data]);
   const counts = useMemo(() => new Map(groups.map((group) => [group.key, group.events.length])), [groups]);
 
@@ -112,11 +115,12 @@ export function EventsPage() {
     setGameType("");
   };
 
-  // One page width per view: the calendar's month grid wants more than the
-  // reading column, so on a wide screen the whole board widens with it rather
-  // than the grid alone breaking out from under the heading and the filters.
+  // One page width per view: only the month grid wants more than the reading
+  // column, so on a wide screen the whole board widens with it rather than the
+  // grid alone breaking out from under the heading and the filters. A week is
+  // one row of seven cells and fits the column at every width.
   return (
-    <div className={view === "calendar" ? "board board--wide" : "board"}>
+    <div className={view === "month" ? "board board--wide" : "board"}>
       <h1 className="page-title">Upcoming events</h1>
       <p className="page-subtitle">Find a table near you and grab a seat.</p>
 
@@ -149,9 +153,9 @@ export function EventsPage() {
       ) : events.isError ? (
         <ErrorBanner error={events.error} onRetry={() => void events.refetch()} />
       ) : view === "list" && (events.data?.length ?? 0) === 0 ? (
-        // List view only: an empty *month* is an ordinary thing to navigate
-        // through, so the calendar keeps its controls on screen and says so in
-        // its own empty state below rather than replacing itself with this one.
+        // List view only: an empty week or month is an ordinary thing to page
+        // through, so those views keep their controls on screen and say so in
+        // their own empty states rather than replacing themselves with this one.
         <EmptyState
           title={filtered ? "No upcoming events match" : "No upcoming events yet"}
           hint={filtered ? "Try a different search or clear the filters." : "Check back soon — organizers post new tables regularly."}
@@ -163,7 +167,46 @@ export function EventsPage() {
             ) : null
           }
         />
-      ) : view === "calendar" ? (
+      ) : view === "week" ? (
+        <WeekAgenda
+          events={events.data ?? []}
+          weekStart={weekStart}
+          onWeekChange={setWeekStart}
+          busy={events.isFetching}
+          loading={events.isPlaceholderData}
+          emptyWeek={
+            <EmptyState
+              title={weekStart === thisWeek ? "No events this week" : "No events that week"}
+              hint={filtered ? "Try another week, or clear the filters." : "Try another week."}
+              action={
+                <>
+                  <button
+                    type="button"
+                    className="btn btn--sm btn--secondary"
+                    onClick={() => setWeekStart(shiftDays(weekStart, -7))}
+                  >
+                    Previous week
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn--sm btn--secondary"
+                    onClick={() => setWeekStart(shiftDays(weekStart, 7))}
+                  >
+                    Next week
+                  </button>
+                  {filtered ? (
+                    <button type="button" className="btn btn--sm btn--secondary" onClick={clearFilters}>
+                      Clear filters
+                    </button>
+                  ) : null}
+                </>
+              }
+            />
+          }
+        >
+          {(event) => <EventCard event={event} joined={myRsvpIds.has(event.id)} showRsvp={isPlayer} />}
+        </WeekAgenda>
+      ) : view === "month" ? (
         // `board-calendar` is the desktop hook only: wide enough, the grid and
         // the selected day's cards sit side by side instead of stacked.
         <div className="stack stack--loose board-calendar">
@@ -177,6 +220,11 @@ export function EventsPage() {
           />
           {selectedGroup ? (
             <AgendaList groups={[selectedGroup]} myRsvpIds={myRsvpIds} showRsvp={isPlayer} busy={events.isFetching} />
+          ) : events.isPlaceholderData ? (
+            // Still last month's rows, and every one of them falls outside the
+            // month now on screen — without this the pane would flash "no events"
+            // on the way to every month that has some.
+            <EventListSkeleton count={1} label="Loading this month" />
           ) : (
             <EmptyState
               title={`No events in ${formatMonthLabel(month)}`}
