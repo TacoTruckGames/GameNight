@@ -399,6 +399,44 @@ export function useUpdateEvent(id: string) {
 }
 
 /**
+ * The organizer calls their event off. Same invalidation as an edit: the board,
+ * the door list and every player's My RSVP all show the new status.
+ */
+export function useCancelEvent(id: string) {
+  const { userId } = useIdentity();
+  const afterWrite = useAfterWrite();
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<EventDetail>(`/api/events/${encodeURIComponent(id)}/cancel`, { method: "POST", userId }),
+    onSuccess: afterWrite,
+  });
+}
+
+/**
+ * Gone for good — the server only allows it while nobody holds a seat, and
+ * answers 409 `EVENT_HAS_RSVPS` otherwise, which the UI never lets you reach:
+ * the Delete control is not offered once the count is above zero.
+ */
+export function useDeleteEvent(id: string) {
+  const { userId } = useIdentity();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiFetch<void>(`/api/events/${encodeURIComponent(id)}`, { method: "DELETE", userId }),
+    onSuccess: () => {
+      // Not `afterWrite`: that invalidates `["events"]` wholesale, which
+      // includes this event's own detail and door-list queries — still mounted
+      // for the tick before the sheet navigates away, so they would refetch a
+      // row that no longer exists and log a 404 for nothing. Drop those two
+      // outright; the lists are what actually changed.
+      queryClient.removeQueries({ queryKey: queryKeys.event(id) });
+      queryClient.removeQueries({ queryKey: queryKeys.attendees(id) });
+      void queryClient.invalidateQueries({ queryKey: ["events", "list"] });
+      void queryClient.invalidateQueries({ queryKey: ["me"] });
+    },
+  });
+}
+
+/**
  * Shared error handling for the two RSVP writes. The interesting cases are all
  * "the world moved while you were reading": say so plainly, then refetch.
  */

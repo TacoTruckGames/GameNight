@@ -20,6 +20,7 @@ import { useAttendees, useMapsConfig } from "../api/hooks";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { Icon } from "../components/Icon";
+import { EventDangerZone } from "../components/EventDangerZone";
 import { EventForm } from "../components/EventForm";
 import { EventMiniMap } from "../components/EventMiniMap";
 import { MapLink } from "../components/MapLink";
@@ -60,6 +61,25 @@ export function AttendeesPage({ asSheet = false }: { asSheet?: boolean }) {
   const { event, attendees: list } = attendees.data;
   const past = isPastEvent(event.startsAt);
 
+  // The same two chips the player sees, in the same words. "12 seats taken"
+  // was the same number said from the other side of the table, and an organizer
+  // comparing their listing to what a player reads should not have to translate.
+  const facts = (
+    <div className="detail__facts">
+      <SeatChip
+        seatsLeft={event.seatsLeft}
+        capacity={event.capacity}
+        isFull={event.isFull}
+        status={event.status}
+        past={past}
+      />
+      <span className="badge badge--count">
+        <Icon name="player" size={14} />
+        {attendanceLabel(list.length, past)}
+      </span>
+    </div>
+  );
+
   const body = (
     <>
       {asSheet ? null : (
@@ -86,6 +106,23 @@ export function AttendeesPage({ asSheet = false }: { asSheet?: boolean }) {
         </p>
       </div>
 
+      {editing ? (
+        <>
+          {/* Editing replaces the read view rather than sitting under it. What
+              stays is the header above and the two numbers here — head count and
+              seats — because they are what every edit is made against: opening
+              seats at a full table, moving a night twelve people have planned
+              around. */}
+          {facts}
+          <EventForm event={event} onDone={() => setEditing(false)} />
+          <EventDangerZone
+            event={event}
+            onCancelled={() => setEditing(false)}
+            onDeleted={() => (asSheet ? navigate(-1) : navigate("/", { replace: true }))}
+          />
+        </>
+      ) : (
+        <>
       <div className="card">
         <div className="stack">
           <div className="venue">
@@ -97,36 +134,18 @@ export function AttendeesPage({ asSheet = false }: { asSheet?: boolean }) {
           {/* The organizer's own words, the same way the player's sheet shows
               them. Absent is ordinary and renders as nothing at all. */}
           {event.description !== null ? <p className="text-lines">{event.description}</p> : null}
-          {/* The same two chips the player sees, in the same words. "12 seats
-              taken" was the same number said from the other side of the table,
-              and an organizer comparing their listing to what a player reads
-              should not have to translate it. */}
-          <div className="detail__facts">
-            <SeatChip
-              seatsLeft={event.seatsLeft}
-              capacity={event.capacity}
-              isFull={event.isFull}
-              status={event.status}
-              past={past}
-            />
-            <span className="badge badge--count">
-              <Icon name="player" size={14} />
-              {attendanceLabel(list.length, past)}
-            </span>
-          </div>
+          {facts}
         </div>
         {/* The board's cards open this page now, not the public one, so this is
             where Edit has to be — otherwise an organizer could only reach it by
             typing the player's URL for their own event. */}
-        {event.status === "cancelled" || editing ? null : (
+        {event.status === "cancelled" ? null : (
           <button type="button" className="btn btn--block" onClick={() => setEditing(true)}>
             Edit Event
           </button>
         )}
         <p className="detail__host">Hosted by {event.organizerName}</p>
       </div>
-
-      {editing ? <EventForm event={event} onDone={() => setEditing(false)} /> : null}
 
       <h2 className="card__title">Who's coming</h2>
 
@@ -145,6 +164,8 @@ export function AttendeesPage({ asSheet = false }: { asSheet?: boolean }) {
             </li>
           ))}
         </ul>
+      )}
+        </>
       )}
     </>
   );

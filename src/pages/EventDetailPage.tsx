@@ -30,6 +30,7 @@ import { mapsDirectionsUrl } from "../../shared/maps-links";
 import { useEvent, useMapsConfig, useMyRsvpIds } from "../api/hooks";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { Icon } from "../components/Icon";
+import { EventDangerZone } from "../components/EventDangerZone";
 import { EventForm } from "../components/EventForm";
 import { EventMiniMap } from "../components/EventMiniMap";
 import { MapLink } from "../components/MapLink";
@@ -110,6 +111,31 @@ export function EventDetailPage({ asSheet = false }: { asSheet?: boolean }) {
         </p>
       </div>
 
+      {mine && editing ? (
+        <>
+          {/* Same shape as the door list's edit mode — see `AttendeesPage` for
+              why the facts stay and the read view goes. */}
+          <div className="detail__facts">
+            <SeatChip
+              seatsLeft={detail.seatsLeft}
+              capacity={detail.capacity}
+              isFull={detail.isFull}
+              status={detail.status}
+              past={past}
+            />
+            <span className="badge badge--count">
+              <Icon name="player" size={14} />
+              {attendanceLabel(detail.attendeeCount, past)}
+            </span>
+          </div>
+          <EventForm event={detail} onDone={() => setEditing(false)} />
+          <EventDangerZone
+            event={detail}
+            onCancelled={() => setEditing(false)}
+            onDeleted={() => (asSheet ? navigate(-1) : navigate("/", { replace: true }))}
+          />
+        </>
+      ) : (
       <div className="card">
         <div className="stack">
           {/* The venue block: the label you can tap, the address Google
@@ -161,7 +187,7 @@ export function EventDetailPage({ asSheet = false }: { asSheet?: boolean }) {
           </div>
           {cancelled ? (
             <p className="text-sm muted">
-              An admin cancelled this event. {joined ? "Your seat is gone — you can clear it from your list." : ""}
+              This event was cancelled. {joined ? "Your seat is gone — you can clear it from your list." : ""}
             </p>
           ) : null}
         </div>
@@ -175,18 +201,14 @@ export function EventDetailPage({ asSheet = false }: { asSheet?: boolean }) {
             status={detail.status}
             block
           />
-        ) : mine && !cancelled && !editing ? (
+        ) : mine && !cancelled ? (
           <button type="button" className="btn btn--block" onClick={() => setEditing(true)}>
             Edit Event
           </button>
         ) : null}
         <p className="detail__host">Hosted by {detail.organizerName}</p>
       </div>
-
-      {/* Below the event rather than in place of it: the organizer is editing
-          something they can still see, and the times and seat count above are
-          what they are editing against. */}
-      {mine && editing ? <EventForm event={detail} onDone={() => setEditing(false)} /> : null}
+      )}
     </>
   );
 

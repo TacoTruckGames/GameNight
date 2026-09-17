@@ -641,6 +641,34 @@ a {
 
 /* --------------------------------------------------------------- filters -- */
 
+/* The two non-edits, under the edit form. A hairline above, so the row reads as
+   a different kind of thing from the Save/Discard pair it follows, and the
+   confirmation gets the danger tint so its own two buttons cannot be mistaken
+   for the form's. */
+.danger {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.danger__confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-danger-soft);
+}
+
+.danger__text {
+  margin: 0;
+  color: var(--color-danger);
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+}
+
 /* Save and Cancel on one line, Save first. Not `btn--block` each: a full-width
    Cancel reads as equal in weight to the thing it undoes. */
 .form-actions {

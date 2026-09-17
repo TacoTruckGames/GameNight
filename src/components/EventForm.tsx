@@ -419,7 +419,7 @@ export function EventForm({ event, onDone }: { event?: EditableEvent; onDone?: (
           className="input"
           type="number"
           inputMode="numeric"
-          min={CAPACITY_MIN}
+          min={event ? Math.max(CAPACITY_MIN, event.attendeeCount) : CAPACITY_MIN}
           max={CAPACITY_MAX}
           step={1}
           value={capacity}
@@ -430,6 +430,17 @@ export function EventForm({ event, onDone }: { event?: EditableEvent; onDone?: (
           aria-invalid={errors.capacity !== undefined}
           aria-describedby={describedBy("capacity", ids.capacity)}
         />
+        {/* The floor, in words, while editing: the server refuses a capacity
+            below the head count and says so — but an organizer trying to make
+            room at a full table should not have to find that out by being told
+            no. The same line is where "the table is full" becomes actionable:
+            raise the number. */}
+        {event && event.attendeeCount > 0 ? (
+          <p className="text-sm muted">
+            {event.attendeeCount === 1 ? "1 person has" : `${event.attendeeCount} people have`} a seat, so capacity
+            can't go below {event.attendeeCount}.{event.isFull ? " The table is full — raise this to open more seats." : ""}
+          </p>
+        ) : null}
         {errors.capacity ? (
           <p className="field__error" id={`${ids.capacity}-error`}>
             {errors.capacity}
@@ -440,15 +451,18 @@ export function EventForm({ event, onDone }: { event?: EditableEvent; onDone?: (
       {formError ? <ErrorBanner error={formError} /> : null}
 
       {editing ? (
-        // Two buttons, and Cancel is the secondary one: an edit is a thing you
-        // are in the middle of, so there has to be a way out that is not the
-        // browser's Back.
+        // Two buttons, and the way out is the secondary one: an edit is a thing
+        // you are in the middle of, so there has to be an exit that is not the
+        // browser's Back. It says "Discard" and not "Cancel" because, a little
+        // further down the same screen, "Cancel event" means the other thing —
+        // and one word meaning both on one screen is a mistake waiting for a
+        // thumb.
         <div className="form-actions">
           <button type="submit" className="btn" disabled={pending || !dirty}>
             {updateEvent.isPending ? "Saving…" : "Save changes"}
           </button>
           <button type="button" className="btn btn--secondary" onClick={() => onDone?.()} disabled={pending}>
-            Cancel
+            Discard
           </button>
         </div>
       ) : (

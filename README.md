@@ -313,6 +313,23 @@ half-second spinner.
   an organizer fixing their own table is not one. Where that button sits, the page used to offer "Switch to a
   player to RSVP"; the header's switcher does that on every page now, so the primary slot went back to the
   reader's own business.
+- **Editing replaces the view.** Edit used to append the form under the read view, so the sheet became the
+  event, then the form, then the guest list. Now the form *is* the view: the header and the two facts — head
+  count and seats — stay, because every edit is made against them, and the rest goes until Save or Discard.
+  The capacity field says the floor in words ("9 people have a seat, so capacity can't go below 9"), and on
+  a full table adds "raise this to open more seats", because the server was already refusing a smaller
+  number and an organizer trying to make room should not learn that by being told no. Postponing is the
+  Starts field. The form's exit reads **Discard**, not Cancel, because two rows down "Cancel event" means
+  the other thing.
+- **Cancel and delete, from the same place.** `POST /api/events/:id/cancel` is the admin's cancel behind the
+  owner gate: a status change, never a delete, so everyone holding a seat sees the event marked cancelled in
+  their list rather than watching it vanish; the confirmation names how many people that is, because that
+  number is the whole cost of the tap. Only an admin can restore — un-cancelling re-promises seats to
+  people who may have made other plans. `DELETE /api/events/:id` exists for the event posted by mistake, and
+  **only while nobody holds a seat**: the server answers 409 `EVENT_HAS_RSVPS` otherwise, and the UI never
+  offers the button past zero, since a control that exists only to say no is worse than no control. Both
+  confirm inline rather than through `window.confirm`, which cannot be styled, cannot name the count, and
+  on a phone arrives looking like a system error.
 - Validation runs twice on purpose — the shared zod schema in the browser to skip a round-trip, and the same
   schema on the server, which is the one that counts.
 
