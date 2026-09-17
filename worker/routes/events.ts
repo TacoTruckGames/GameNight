@@ -8,7 +8,7 @@
 
 import { Hono } from "hono";
 
-import type { AttendeesResponse, EventDetail } from "../../shared/api-types";
+import type { AttendeesResponse } from "../../shared/api-types";
 import { createEventSchema, eventPatchSchema, eventsQuerySchema } from "../../shared/schemas";
 import {
   deleteEvent,
@@ -18,14 +18,15 @@ import {
   listAttendees,
   listEvents,
   setEventStatus,
+  toEventDetail,
   toEventSummary,
-  updateEvent,
   type ResolvedPlace,
 } from "../db/queries";
 import type { AppEnv } from "../lib/context";
-import { ApiError, fieldError } from "../lib/errors";
-import { redact, resolvePlaceForPatch, resolvePlaceId } from "../lib/places";
+import { ApiError } from "../lib/errors";
+import { redact, resolvePlaceId } from "../lib/places";
 import { reportError } from "../lib/report";
+import { applyEventPatch } from "../lib/event-edit";
 import { newRoomKey } from "../lib/room";
 import { nowIso, toIsoSeconds, toStorageWindow } from "../lib/time";
 import { parseJson, parseQuery } from "../lib/validate";
@@ -123,7 +124,7 @@ events.post("/events", async (c) => {
     capacity: input.capacity,
     // Salts the Durable Object name. Rotating it hands the event a brand-new,
     // empty room that rehydrates from D1 — the manual recovery lever.
-    roomKey: crypto.randomUUID().replaceAll("-", "").slice(0, 16),
+    roomKey: newRoomKey(),
   });
 
   const row = await getEventRow(c.env.DB, id);
@@ -144,12 +145,7 @@ events.get("/events/:id", async (c) => {
   // `description` is added here rather than in `toEventSummary`, because this is
   // the only public route that sends it — the board's cards have no room for
   // prose and no reason to carry 50 of them. Null is the ordinary "none" case.
-  return c.json({
-    ...toEventSummary(row),
-    description: row.description,
-    myRsvp,
-    organizerId: row.organizer_id,
-  } satisfies EventDetail);
+  return c.json(toEventDetail(row, myRsvp));
 });
 
 /**
@@ -195,45 +191,13 @@ events.patch("/events/:id", async (c) => {
   // moment the request landed rather than whatever the client believes.
   const patch = await parseJson(c, eventPatchSchema(new Date()));
 
-  // `events.rsvp_count <= capacity` is a CHECK constraint, so without this the
-  // honest mistake "shrink the room" arrives as an opaque 500. It is a field
-  // error, on the field.
-  if (patch.capacity !== undefined && patch.capacity < row.rsvp_count) {
-    throw new ApiError(
-      400,
-      "VALIDATION_FAILED",
-      "Please fix the highlighted fields.",
-      fieldError("capacity", `Capacity can't be below the ${row.rsvp_count} current attendees`),
-    );
-  }
-
-  // A hydrated `EventRoom` caches capacity and answers "full" from that cache
-  // without reading D1, so a raise would be invisible to the players it was for.
-  // A rotated key names a room that does not exist yet; it hydrates from D1 on
-  // its next call. It is written in the same UPDATE as the capacity, so the two
-  // can never disagree.
-  const rotate = patch.capacity !== undefined && patch.capacity !== row.capacity ? newRoomKey() : null;
-
-  // Resolved *before* the UPDATE, so a failed lookup writes nothing at all.
-  const place = await resolvePlaceForPatch(c, patch.placeId, patch.placeSessionToken);
-
-  await updateEvent(
-    c.env.DB,
-    id,
-    // Normalise to the one storage format, whatever offset the client sent.
-    { ...patch, ...(patch.startsAt !== undefined ? { startsAt: toIsoSeconds(new Date(patch.startsAt)) } : {}) },
-    rotate,
-    place,
-  );
+  // The floor, the room rotation, the venue lookup and the write — the same
+  // pipeline the admin's patch runs, in `lib/event-edit.ts`.
+  await applyEventPatch(c, id, row, patch);
 
   const updated = await getEventRow(c.env.DB, id);
   if (!updated) throw new ApiError(500, "INTERNAL", "The event could not be read back after the update.");
-  return c.json({
-    ...toEventSummary(updated),
-    description: updated.description,
-    myRsvp: null,
-    organizerId: updated.organizer_id,
-  } satisfies EventDetail);
+  return c.json(toEventDetail(updated, null));
 });
 
 /**
@@ -254,12 +218,7 @@ events.post("/events/:id/cancel", async (c) => {
 
   const updated = await getEventRow(c.env.DB, id);
   if (!updated) throw new ApiError(500, "INTERNAL", "The event could not be read back.");
-  return c.json({
-    ...toEventSummary(updated),
-    description: updated.description,
-    myRsvp: null,
-    organizerId: updated.organizer_id,
-  } satisfies EventDetail);
+  return c.json(toEventDetail(updated, null));
 });
 
 /**

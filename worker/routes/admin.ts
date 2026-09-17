@@ -16,6 +16,7 @@
  */
 
 import { Hono } from "hono";
+import { applyEventPatch } from "../lib/event-edit";
 import type { Context } from "hono";
 import { z } from "zod";
 
@@ -43,14 +44,12 @@ import {
   listErrors,
   resolveError,
   toAdminEvent,
-  updateEvent,
 } from "../db/queries";
 import { audit } from "../lib/audit";
 import type { AppEnv } from "../lib/context";
-import { ApiError, fieldError } from "../lib/errors";
-import { resolvePlaceForPatch } from "../lib/places";
-import { newRoomKey, roomFor } from "../lib/room";
-import { nowIso, toIsoSeconds } from "../lib/time";
+import { ApiError } from "../lib/errors";
+import { roomFor } from "../lib/room";
+import { nowIso } from "../lib/time";
 import { parseJson, parseQuery } from "../lib/validate";
 import { requireAdmin } from "../middleware/auth";
 
@@ -167,43 +166,17 @@ admin.patch("/admin/events/:id", async (c) => {
 
   const patch = await parseJson(c, eventPatchSchema(new Date()));
 
-  // `events.rsvp_count <= capacity` is a CHECK constraint, so without this the
-  // honest mistake "shrink the room" would arrive as an opaque 500. It is a
-  // field error, on the field.
-  if (patch.capacity !== undefined && patch.capacity < row.rsvp_count) {
-    throw new ApiError(
-      400,
-      "VALIDATION_FAILED",
-      "Please fix the highlighted fields.",
-      fieldError("capacity", `Capacity can't be below the ${row.rsvp_count} current attendees`),
-    );
-  }
-
-  // Hazard 1: a hydrated `EventRoom` caches capacity and answers "full" from
-  // that cache without ever reading D1, so a raise would be invisible to the
-  // players it was meant for. A rotated key names a room that does not exist
-  // yet; it hydrates from D1 — the new capacity — on its next call. It goes in
-  // the same UPDATE as the capacity, so the two can never disagree.
-  const rotate = patch.capacity !== undefined && patch.capacity !== row.capacity ? newRoomKey() : null;
-
-  // Resolved *before* the UPDATE, so a failed lookup writes nothing at all.
-  const place = await resolvePlaceForPatch(c, patch.placeId, patch.placeSessionToken);
-
-  const changed = await updateEvent(
-    c.env.DB,
-    id,
-    // Normalise to the one storage format, whatever offset the client sent.
-    { ...patch, ...(patch.startsAt !== undefined ? { startsAt: toIsoSeconds(new Date(patch.startsAt)) } : {}) },
-    rotate,
-    place,
-  );
+  // Hazard 1 lives in `lib/event-edit.ts` with the rest of the pipeline: the
+  // room key rotates in the same UPDATE as a capacity change, so a hydrated
+  // room can never keep answering "full" from a stale cache.
+  const { changed, rotated } = await applyEventPatch(c, id, row, patch);
 
   await audit(c.env.DB, {
     actorId: actor.id,
     action: "event.updated",
     targetType: "event",
     targetId: id,
-    metadata: { changed, ...(rotate ? { roomRotated: true } : {}) },
+    metadata: { changed, ...(rotated ? { roomRotated: true } : {}) },
   });
 
   return c.json(await adminGetEvent(c.env.DB, id));

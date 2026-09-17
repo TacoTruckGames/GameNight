@@ -27,8 +27,7 @@ import type {
   EventSummary,
   Page,
   Role,
-  User,
-} from "../../shared/api-types";
+  User, EventDetail } from "../../shared/api-types";
 import type { GameType } from "../../shared/game-types";
 import { ADMIN_PAGE_SIZE, type EventPatch, type AdminEventsQuery, type AdminUsersQuery } from "../../shared/schemas";
 
@@ -631,6 +630,15 @@ export type PlaceUpdate = { kind: "clear" } | { kind: "set"; place: ResolvedPlac
  * A new key names a room that has never existed, which hydrates from D1 — the
  * new capacity — on its next call.
  */
+/**
+ * The detail shape: the summary plus the two things only the sheet shows and
+ * the one thing only the caller knows. Three routes answered with this literal
+ * before it had a name.
+ */
+export function toEventDetail(row: EventRow, myRsvp: boolean | null): EventDetail {
+  return { ...toEventSummary(row), description: row.description, myRsvp, organizerId: row.organizer_id };
+}
+
 export async function updateEvent(
   db: D1Database,
   id: string,
