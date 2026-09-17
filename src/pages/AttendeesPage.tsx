@@ -15,20 +15,15 @@
 
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { gameTypeLabel } from "../../shared/game-types";
 import { useAttendees, useMapsConfig } from "../api/hooks";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBanner } from "../components/ErrorBanner";
-import { Icon } from "../components/Icon";
 import { EventDangerZone } from "../components/EventDangerZone";
 import { EventForm } from "../components/EventForm";
-import { EventMiniMap } from "../components/EventMiniMap";
-import { MapLink } from "../components/MapLink";
-import { SeatChip } from "../components/SeatChip";
+import { EventFacts, EventSheetHeader, EventVenue } from "../components/EventSheet";
 import { Sheet } from "../components/Sheet";
 import { Skeleton } from "../components/Skeleton";
-import { attendanceLabel } from "../lib/attendance";
-import { formatEventDateTime, formatEventWhen, isPastEvent, toDateTimeAttr } from "../lib/datetime";
+import { formatEventDateTime, isPastEvent, toDateTimeAttr } from "../lib/datetime";
 
 export function AttendeesPage({ asSheet = false }: { asSheet?: boolean }) {
   const { id = "" } = useParams();
@@ -61,24 +56,9 @@ export function AttendeesPage({ asSheet = false }: { asSheet?: boolean }) {
   const { event, attendees: list } = attendees.data;
   const past = isPastEvent(event.startsAt);
 
-  // The same two chips the player sees, in the same words. "12 seats taken"
-  // was the same number said from the other side of the table, and an organizer
-  // comparing their listing to what a player reads should not have to translate.
-  const facts = (
-    <div className="detail__facts">
-      <SeatChip
-        seatsLeft={event.seatsLeft}
-        capacity={event.capacity}
-        isFull={event.isFull}
-        status={event.status}
-        past={past}
-      />
-      <span className="badge badge--count">
-        <Icon name="player" size={14} />
-        {attendanceLabel(list.length, past)}
-      </span>
-    </div>
-  );
+  // The same two chips the player sees, in the same words — `EventSheet.tsx`
+  // says why. Counted from the names this page was handed, not the column.
+  const facts = <EventFacts event={event} attendeeCount={list.length} past={past} />;
 
   const body = (
     <>
@@ -100,23 +80,8 @@ export function AttendeesPage({ asSheet = false }: { asSheet?: boolean }) {
       <div className={`doorlist${editing ? " doorlist--editing" : ""}`}>
         <div className="doorlist__main stack stack--loose">
 
-      {/* The same header on both sheets, because it is the same event and the
-          organizer reviewing their own listing is checking exactly what a player
-          would read. Kind, name, when — in that order, because that is the order
-          the questions arrive in. The date sits outside the card and is set
-          large: it used to be the fifth thing on the page, below a map.
-
-          Who is hosting is *not* up here. It is the one fact on the sheet nobody
-          is deciding on — it settles nothing about whether to go — so it sits at
-          the foot of the card, under the action, the way a byline sits under an
-          article rather than over its headline. */}
-      <div className="detail__head">
-        <span className="detail__kind">{gameTypeLabel(event.gameType)}</span>
-        <h1 className="page-title">{event.title}</h1>
-        <p className="detail__when">
-          <time dateTime={toDateTimeAttr(event.startsAt)}>{formatEventWhen(event.startsAt)}</time>
-        </p>
-      </div>
+      {/* The same header as the player's sheet — `EventSheet.tsx`. */}
+      <EventSheetHeader event={event} />
 
       {editing ? (
         <>
@@ -137,12 +102,7 @@ export function AttendeesPage({ asSheet = false }: { asSheet?: boolean }) {
         <>
       <div className="card">
         <div className="stack">
-          <div className="venue">
-            <MapLink event={event} className="card__address venue__link" withAddress />
-            {event.place && maps.map ? (
-              <EventMiniMap eventId={event.id} place={event.place} location={event.location} />
-            ) : null}
-          </div>
+          <EventVenue event={event} showMap={maps.map} />
           {/* The organizer's own words, the same way the player's sheet shows
               them. Absent is ordinary and renders as nothing at all. */}
           {event.description !== null ? <p className="text-lines">{event.description}</p> : null}

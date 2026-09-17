@@ -23,22 +23,16 @@
 
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { gameTypeLabel } from "../../shared/game-types";
-import { attendanceLabel } from "../lib/attendance";
-import { isPastEvent } from "../lib/datetime";
 import { useEvent, useMapsConfig, useMyRsvpIds } from "../api/hooks";
 import { ErrorBanner } from "../components/ErrorBanner";
-import { Icon } from "../components/Icon";
 import { EventDangerZone } from "../components/EventDangerZone";
 import { EventForm } from "../components/EventForm";
-import { EventMiniMap } from "../components/EventMiniMap";
-import { MapLink } from "../components/MapLink";
+import { EventFacts, EventSheetHeader, EventVenue } from "../components/EventSheet";
 import { RsvpButton } from "../components/RsvpButton";
 import { Sheet } from "../components/Sheet";
-import { GoingChip, SeatChip } from "../components/SeatChip";
 import { Skeleton } from "../components/Skeleton";
 import { useIdentity } from "../identity/IdentityContext";
-import { formatEventWhen, toDateTimeAttr } from "../lib/datetime";
+import { isPastEvent } from "../lib/datetime";
 
 export function EventDetailPage({ asSheet = false }: { asSheet?: boolean }) {
   const { id = "" } = useParams();
@@ -111,41 +105,15 @@ export function EventDetailPage({ asSheet = false }: { asSheet?: boolean }) {
         </Link>
       )}
 
-      {/* The same header on both sheets, because it is the same event and the
-          organizer reviewing their own listing is checking exactly what a player
-          would read. Kind, name, when — in that order, because that is the order
-          the questions arrive in. The date sits outside the card and is set
-          large: it used to be the fifth thing on the page, below a map.
-
-          Who is hosting is *not* up here. It is the one fact on the sheet nobody
-          is deciding on — it settles nothing about whether to go — so it sits at
-          the foot of the card, under the action, the way a byline sits under an
-          article rather than over its headline. */}
-      <div className="detail__head">
-        <span className="detail__kind">{gameTypeLabel(detail.gameType)}</span>
-        <h1 className="page-title">{detail.title}</h1>
-        <p className="detail__when">
-          <time dateTime={toDateTimeAttr(detail.startsAt)}>{formatEventWhen(detail.startsAt)}</time>
-        </p>
-      </div>
+      {/* The same header, facts and venue as the door list — one component
+          each, in `EventSheet.tsx`, with the reasoning. */}
+      <EventSheetHeader event={detail} />
 
       {mine && editing ? (
         <>
           {/* Same shape as the door list's edit mode — see `AttendeesPage` for
               why the facts stay and the read view goes. */}
-          <div className="detail__facts">
-            <SeatChip
-              seatsLeft={detail.seatsLeft}
-              capacity={detail.capacity}
-              isFull={detail.isFull}
-              status={detail.status}
-              past={past}
-            />
-            <span className="badge badge--count">
-              <Icon name="player" size={14} />
-              {attendanceLabel(detail.attendeeCount, past)}
-            </span>
-          </div>
+          <EventFacts event={detail} attendeeCount={detail.attendeeCount} past={past} />
           <EventForm event={detail} onDone={() => setEditing(false)} />
           <EventDangerZone
             event={detail}
@@ -156,24 +124,7 @@ export function EventDetailPage({ asSheet = false }: { asSheet?: boolean }) {
       ) : (
       <div className="card">
         <div className="stack">
-          {/* The venue block: the label you can tap, the address Google
-              confirmed (only when it adds something the label does not already
-              say), and the map.
-
-              No Directions button. Where there is a map it was the same tap
-              twice — the map is itself a link to that URL. Where there is none
-              the venue is free text Google never confirmed ("Greenwood House,
-              dining room"), and turn-by-turn to a string like that is a promise
-              nobody can keep: Maps either fails or routes somewhere confidently
-              wrong. The label above it is a link to a Maps *search* for the same
-              words, which is the honest version of the same offer — a search
-              that finds nothing shows you it found nothing. */}
-          <div className="venue">
-            <MapLink event={detail} className="card__address venue__link" withAddress />
-            {detail.place !== null && maps.map ? (
-              <EventMiniMap eventId={detail.id} place={detail.place} location={detail.location} />
-            ) : null}
-          </div>
+          <EventVenue event={detail} showMap={maps.map} />
           {/* The organizer's own words, and the reason this page is not just a
               bigger card. Absent is the ordinary case, and an absent paragraph
               renders as nothing at all — no heading left standing over it. */}
@@ -185,24 +136,8 @@ export function EventDetailPage({ asSheet = false }: { asSheet?: boolean }) {
               between them. On a phone it is still a column: the button is a
               thumb target and takes the whole line. */}
           <div className="detail__act">
-          {/* Three separate facts, because they are three: whether you have a
-              seat, whether the table has any, and how many people that is. They
-              used to be two, with the first two crammed into one pill. */}
-          <div className="detail__facts">
-            {joined && !past && !cancelled ? <GoingChip /> : null}
-            <SeatChip
-              seatsLeft={detail.seatsLeft}
-              capacity={detail.capacity}
-              isFull={detail.isFull}
-              status={detail.status}
-              past={past}
-            />
-            <span className="badge badge--count">
-              <Icon name="player" size={14} />
-              {attendanceLabel(detail.attendeeCount, past)}
-            </span>
-          </div>
-          {action}
+            <EventFacts event={detail} attendeeCount={detail.attendeeCount} past={past} joined={joined} />
+            {action}
           </div>
           {cancelled ? (
             <p className="text-sm muted">
