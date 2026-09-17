@@ -431,12 +431,22 @@ credit, so this stays deliberately minimal.
 ### Administration
 
 `/admin` is the operator's entry point, and it is reached **only by typing that URL** — the main site has no
-tab, link or redirect into it, and the identity picker offers no admin role. Landing there without an
-operator identity gives you the door (`AdminGate`): continue as one of the seeded operator accounts
-(*Site Admin*). Every operator page wears a fixed **orange bar** — the same colour in both themes, since
+tab, link or redirect into it, and the identity picker offers no admin role. Typing it is the whole entry
+mechanism: the tools **sign themselves in** as the provisioned operator account (*Site Admin*), because the
+door that used to stand there asked a question with one possible answer. On a demo board with no
+authentication, a click that cannot be answered wrongly is not a check, it is a speed bump — and the list of
+what has to change before real traffic already begins with this.
+
+**It is a separate session from the board.** The operator identity is stored under its own key, so the tools
+can be open in one tab as *Site Admin* while the board is open in another as Alice, and neither moves the
+other; "Exit to site" puts you back as whoever you were. An operator is not a role the board can be in at
+all — a board identity that resolves to `admin` is handed to the operator surface and the board falls back to
+the picker, which also cleans up after the old single-key storage. Every operator page wears a fixed
+**orange bar** — the same colour in both themes, since
 "am I about to change live data?" should not depend on noticing a tint — and the admin site has its own
 shell, without the app's bottom tabs. It is small on
-purpose: an overview (counts, 14-day signups and RSVPs, open errors, recent admin actions), **Users**
+purpose: an overview (counts, 14-day signups and RSVPs, open errors, recent admin actions — with no tile for
+operator accounts, since there is exactly one and nothing to page into), **Users**
 (search/filter, suspend with an optional reason, unsuspend), **Events** (every event, past and cancelled
 included; edit any field, cancel/restore, remove an attendee) and **Errors** (the backend error log).
 
@@ -592,9 +602,9 @@ If a reviewer would rather see the four-hour version, it is `git checkout 5d9885
 
 What is stubbed or simplified, roughly in the order I would harden it:
 
-1. **Auth.** `X-User-Id` is trust-the-client, anyone can mint an organizer account from the picker, and the
-   admin is just another name on it — all fine for a demo board, none of it survives contact with real
-   users. Replace with real sessions (OAuth + signed cookie), put Cloudflare Access or an email allowlist in
+1. **Auth.** `X-User-Id` is trust-the-client, anyone can mint an organizer account from the picker, and
+   anyone who types `/admin` is handed the operator account — all fine for a demo board, none of it survives
+   contact with real users. Replace with real sessions (OAuth + signed cookie), put Cloudflare Access or an email allowlist in
    front of `/admin` and `/api/admin/*`, and make organizer and admin roles something granted rather than
    self-declared; rate-limit `POST /api/users`; add body-size limits, write rate limits and CSP headers.
    The `error_log` and `audit_log` tables need a retention job (anonymise, then purge).

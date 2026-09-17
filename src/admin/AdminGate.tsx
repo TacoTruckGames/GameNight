@@ -1,18 +1,25 @@
 /**
- * The door at `/admin`.
+ * Arriving at `/admin`.
  *
- * Since the main site offers no route in, this is where an operator arrives
- * when they type the URL without an operator identity. It lists the admin
- * accounts the operator provisioned — self-signup cannot create one, because
- * `SIGNUP_ROLES` excludes `admin` — and signs you in as the one you choose.
+ * There is no door any more. This is a demo board with one provisioned operator
+ * account and no authentication to speak of — the click that said "Continue as
+ * Site Admin" asked a question with one possible answer, and a reviewer typing
+ * the URL should land in the tools, not in a lobby.
  *
- * This is emphatically not authentication: on a demo board anyone who knows the
- * URL can pick an operator here, exactly as anyone can pick a seeded organizer
- * on the main site. The README's "before real traffic" list says so first. What
- * the server will *let* an operator do is the part that is really enforced.
+ * So this signs itself in: fetch the users, take the operator account, done. It
+ * renders only while that is in flight, or when it cannot be finished — no
+ * operator account exists, or the list would not load. **`/admin` has its own
+ * stored identity**, so this does not touch whoever is signed in on the board;
+ * see `IdentityContext`.
+ *
+ * This is emphatically not authentication, and it is not pretending to be: on a
+ * demo board anyone who knows the URL is an operator, exactly as anyone can pick
+ * a seeded organizer on the main site. The README's "before real traffic" list
+ * says so first. What the server will *let* an operator do is the part that is
+ * really enforced.
  */
 
-import type { User } from "../../shared/api-types";
+import { useEffect, useRef } from "react";
 import { useUsers } from "../api/hooks";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBanner } from "../components/ErrorBanner";
@@ -20,52 +27,60 @@ import { Skeleton } from "../components/Skeleton";
 import { useIdentity } from "../identity/IdentityContext";
 
 export function AdminGate() {
-  const { user, signIn } = useIdentity();
+  const { signIn } = useIdentity();
   const users = useUsers();
-  const admins = (users.data ?? []).filter((person) => person.role === "admin");
+  // The seed provisions one; `SIGNUP_ROLES` excludes `admin`, so the API cannot
+  // mint another. More than one is an operator decision made in SQL, and the
+  // first is as good an answer as any — this screen is not a picker.
+  const operator = (users.data ?? []).find((person) => person.role === "admin") ?? null;
 
-  function enter(admin: User) {
-    signIn(admin);
-  }
+  // `signIn` clears the query cache, which unmounts the query feeding this
+  // component; without the latch its refetch would sign in again on arrival.
+  const entered = useRef(false);
 
-  return (
-    <div className="stack stack--loose">
-      <div>
-        <h1 className="page-title">Operator access</h1>
-        <p className="page-subtitle">
-          {user
-            ? `You're signed in as ${user.name}, who isn't an operator. Continue as one to use these tools.`
-            : "Continue as one of the provisioned operator accounts."}
+  useEffect(() => {
+    if (entered.current || !operator) return;
+    entered.current = true;
+    signIn(operator);
+  }, [operator, signIn]);
+
+  if (users.isError) {
+    return (
+      <div className="stack stack--loose">
+        <div>
+          <h1 className="page-title">Operator tools</h1>
+          <p className="page-subtitle">Couldn't load the operator account.</p>
+        </div>
+        <ErrorBanner error={users.error} onRetry={() => void users.refetch()} />
+        <p className="text-sm muted">
+          <a href="/">Back to the event board</a>.
         </p>
       </div>
+    );
+  }
 
-      {users.isPending ? (
-        <div className="stack" role="status" aria-busy="true" aria-label="Loading operators">
-          <Skeleton height={56} />
-          <Skeleton height={56} />
-        </div>
-      ) : users.isError ? (
-        <ErrorBanner error={users.error} onRetry={() => void users.refetch()} />
-      ) : admins.length === 0 ? (
+  if (!users.isPending && !operator) {
+    return (
+      <div className="stack stack--loose">
+        <h1 className="page-title">Operator tools</h1>
         <EmptyState
-          title="No operator accounts"
+          title="No operator account"
           hint="Seed one with role 'admin' — the sign-up API cannot create it."
         />
-      ) : (
-        <ul className="stack">
-          {admins.map((admin) => (
-            <li key={admin.id}>
-              <button type="button" className="btn btn--block" onClick={() => enter(admin)}>
-                Continue as {admin.name}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+        <p className="text-sm muted">
+          <a href="/">Back to the event board</a>.
+        </p>
+      </div>
+    );
+  }
 
-      <p className="text-sm muted">
-        Not what you were looking for? <a href="/">Back to the event board</a>.
-      </p>
+  // Signing in. Shaped like the page it is about to become, so the frame does
+  // not jump when it arrives.
+  return (
+    <div className="stack stack--loose" role="status" aria-busy="true" aria-label="Opening the operator tools">
+      <Skeleton width="60%" height={28} />
+      <Skeleton height={72} />
+      <Skeleton height={72} />
     </div>
   );
 }

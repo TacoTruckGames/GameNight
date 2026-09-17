@@ -70,7 +70,6 @@ export function AdminOverviewPage() {
               <StatTile label="Users" value={overview.data.users.total} to="/admin/users" />
               <StatTile label="Players" value={overview.data.users.players} to="/admin/users?role=player" />
               <StatTile label="Organizers" value={overview.data.users.organizers} to="/admin/users?role=organizer" />
-              <StatTile label="Admins" value={overview.data.users.admins} to="/admin/users?role=admin" />
               <StatTile label="Suspended" value={overview.data.users.suspended} to="/admin/users?status=suspended" />
               <StatTile label="New" value={overview.data.users.newLast7d} hint="last 7 days" />
             </div>
