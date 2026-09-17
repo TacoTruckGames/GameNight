@@ -1,7 +1,13 @@
 name = "gamenight"
 main = "./worker/index.ts"
 compatibility_date = "2026-09-01"
-workers_dev = false           # one origin: the custom domain. A second one splits the edge cache and doubles the surface.
+# `true` on purpose, for now. Setting it to `false` makes `wrangler deploy`
+# reconcile the zone's routes, which needs a token with Workers Routes: Read —
+# without it the upload succeeds and then the command exits 1, which is the
+# worst of both. The second origin (`*.workers.dev`) is the cost: it splits the
+# edge cache and doubles the surface. Turn it off from the dashboard (Settings →
+# Domains & Routes), or here once the deploy token has that scope.
+workers_dev = true
 
 [assets]                       # the vite plugin fills in `directory` at build time
 binding = "ASSETS"

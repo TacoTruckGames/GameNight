@@ -725,7 +725,10 @@ What is stubbed or simplified, roughly in the order I would harden it:
    anyone who types `/admin` is handed the operator account — all fine for a demo board, none of it survives
    contact with real users. Replace with real sessions (OAuth + signed cookie), put Cloudflare Access or an email allowlist in
    front of `/admin` and `/api/admin/*`, and make organizer and admin roles something granted rather than
-   self-declared; rate-limit `POST /api/users`; add body-size limits, write rate limits and CSP headers.
+   self-declared; rate-limit `POST /api/users` and `/api/places/*` (the body limit and the CSP landed
+   with the security review; the Google spend ceiling is still reachable by any self-declared organizer).
+   Disable the `*.workers.dev` origin — one origin, one edge cache — which needs a deploy token with
+   Workers Routes: Read or a dashboard toggle; `wrangler.toml` says why it is still on.
    The `error_log` and `audit_log` tables need a retention job (anonymise, then purge).
 2. **Durable Object trade-offs.** A room lives in one location, so RSVP latency is higher for far-away
    players (reads are unaffected). Storage loss is recovered by lazy rehydration from D1, but a periodic
