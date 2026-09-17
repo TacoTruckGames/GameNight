@@ -235,7 +235,10 @@ events.get("/events/:id/attendees", async (c) => {
   }
 
   return c.json({
-    event: toEventSummary(row),
+    // `description` is added here rather than in `toEventSummary` for the same
+    // reason the detail route adds it: the list shapes have no room for prose
+    // and no reason to carry fifty of them, and the row is already read.
+    event: { ...toEventSummary(row), description: row.description },
     attendees: await listAttendees(c.env.DB, row.id),
   } satisfies AttendeesResponse);
 });

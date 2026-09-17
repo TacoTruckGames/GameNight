@@ -16,7 +16,15 @@
 
 import { useId, useState } from "react";
 import type { FormEvent } from "react";
-import type { EventDetail } from "../../shared/api-types";
+import type { EventSummary } from "../../shared/api-types";
+
+/**
+ * What editing actually needs: the seven fields the form owns, and nothing
+ * else. Narrower than `EventDetail` on purpose — the door list has an event
+ * shaped exactly like this and no `myRsvp` or `organizerId` to offer, and
+ * inventing those to satisfy a type would be a lie in the shape of a cast.
+ */
+export type EditableEvent = EventSummary & { description: string | null };
 import type { GameType } from "../../shared/game-types";
 import { GAME_TYPES, GAME_TYPE_LABELS } from "../../shared/game-types";
 import {
@@ -57,7 +65,7 @@ function fieldErrorsFrom(issues: readonly { path: string; message: string }[]): 
   return next;
 }
 
-export function EventForm({ event, onDone }: { event?: EventDetail; onDone?: () => void }) {
+export function EventForm({ event, onDone }: { event?: EditableEvent; onDone?: () => void }) {
   const editing = event !== undefined;
   const toast = useToast();
   const createEvent = useCreateEvent();

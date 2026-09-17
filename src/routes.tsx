@@ -103,6 +103,14 @@ export function AppRoutes() {
       {background ? (
         <Routes>
           <Route path="events/:id" element={<EventDetailPage asSheet />} />
+          <Route
+            path="organize/events/:id"
+            element={
+              <OrganizerOnly>
+                <AttendeesPage asSheet />
+              </OrganizerOnly>
+            }
+          />
         </Routes>
       ) : null}
     </>

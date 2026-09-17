@@ -109,9 +109,16 @@ export interface Attendee {
   rsvpAt: string;
 }
 
-/** `GET /api/events/:id/attendees` — owning organizer only. */
+/**
+ * `GET /api/events/:id/attendees` — owning organizer only.
+ *
+ * The event carries its `description` here, which the list shape deliberately
+ * does not. Same reason the public detail route adds it: this is a page about
+ * one event, the row is already in hand, and the organizer reading it is the
+ * person who wrote the thing.
+ */
 export interface AttendeesResponse {
-  event: EventSummary;
+  event: EventSummary & { description: string | null };
   attendees: Attendee[];
 }
 

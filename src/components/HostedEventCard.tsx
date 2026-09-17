@@ -14,7 +14,7 @@
  * they are not asking.
  */
 
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import type { EventSummary } from "../../shared/api-types";
 import { gameTypeLabel } from "../../shared/game-types";
 import { attendanceLabel } from "../lib/attendance";
@@ -27,6 +27,9 @@ export function HostedEventCard({ event }: { event: EventSummary }) {
   const state = seatState({ ...event, past });
   const { hour, suffix } = formatEventTime(event.startsAt);
   const door = `/organize/events/${event.id}`;
+  // Same as the player's card: hand the current location to the link and the
+  // door list opens over this board instead of replacing it.
+  const location = useLocation();
 
   return (
     <article className={`ecard${past ? " ecard--past" : ""}`}>
@@ -35,7 +38,7 @@ export function HostedEventCard({ event }: { event: EventSummary }) {
         <span className="ecard__suffix">{suffix}</span>
       </span>
 
-      <Link className="ecard__title" to={door}>
+      <Link className="ecard__title" to={door} state={{ backgroundLocation: location }}>
         <time className="visually-hidden" dateTime={toDateTimeAttr(event.startsAt)}>
           {hour} {suffix}
         </time>{" "}
@@ -52,7 +55,7 @@ export function HostedEventCard({ event }: { event: EventSummary }) {
       <MapLink event={event} compact />
 
       {/* Tense-neutral on purpose: this is the door list, before and after. */}
-      <Link className="btn btn--sm btn--secondary" to={door}>
+      <Link className="btn btn--sm btn--secondary" to={door} state={{ backgroundLocation: location }}>
         {event.attendeeCount === 1 ? "1 seat" : `${event.attendeeCount} seats`}
       </Link>
     </article>

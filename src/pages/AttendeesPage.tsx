@@ -2,20 +2,38 @@
  * The organizer's door list for one event: who's coming, in the order they
  * RSVP'd. Owner-only — a 403 from the API shows as a plain sentence, not a
  * broken page.
+ *
+ * Two frames, exactly as `EventDetailPage` has: tapped from a card on the
+ * organizer's board it is a sheet over that board, and a typed URL, a shared
+ * link or a refresh renders the same thing as a full page. `routes.tsx` decides
+ * from the navigation's own state; everything below is identical in both.
+ *
+ * It carries the venue's map for the same reason the player's sheet does — an
+ * organizer standing outside the building wants directions as much as anyone,
+ * and the door list is the page they will have open when they are.
  */
 
-import { Link, useParams } from "react-router";
-import { useAttendees } from "../api/hooks";
+import { useState } from "react";
+import { Link, useNavigate, useParams } from "react-router";
+import { gameTypeLabel } from "../../shared/game-types";
+import { useAttendees, useMapsConfig } from "../api/hooks";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBanner } from "../components/ErrorBanner";
+import { EventForm } from "../components/EventForm";
+import { EventMiniMap } from "../components/EventMiniMap";
 import { MapLink } from "../components/MapLink";
 import { SeatChip } from "../components/SeatChip";
+import { Sheet } from "../components/Sheet";
 import { Skeleton } from "../components/Skeleton";
 import { formatEventDateTime, formatEventDateTimeLong, toDateTimeAttr } from "../lib/datetime";
 
-export function AttendeesPage() {
+export function AttendeesPage({ asSheet = false }: { asSheet?: boolean }) {
   const { id = "" } = useParams();
+  const navigate = useNavigate();
   const attendees = useAttendees(id);
+  const maps = useMapsConfig({ enabled: true });
+  const [editing, setEditing] = useState(false);
+  const close = () => navigate(-1);
 
   if (attendees.isPending) {
     return (
@@ -32,34 +50,72 @@ export function AttendeesPage() {
     return (
       <div className="stack">
         <ErrorBanner error={attendees.error} onRetry={() => void attendees.refetch()} />
-        <Link to="/organize">Back to your events</Link>
+        <Link to="/">Back to our events</Link>
       </div>
     );
   }
 
   const { event, attendees: list } = attendees.data;
 
-  return (
-    <div className="stack stack--loose">
-      <Link to="/organize" className="text-sm">
-        ← Your events
-      </Link>
+  const body = (
+    <>
+      {asSheet ? null : (
+        <Link to="/" className="text-sm">
+          ← Our events
+        </Link>
+      )}
 
+      {/* The same shape as the player's sheet, because it is the same event —
+          what differs is the last row: a player gets a seat, the organizer gets
+          the people in theirs. "Hosted by" is dropped: this route is owner-only,
+          so the answer is always "you". */}
       <div className="stack">
         <h1 className="page-title">{event.title}</h1>
         <p className="card__meta">
-          <time dateTime={toDateTimeAttr(event.startsAt)}>{formatEventDateTimeLong(event.startsAt)}</time>
+          <span className="badge">{gameTypeLabel(event.gameType)}</span>
         </p>
-        <MapLink event={event} />
-        <div>
-          <SeatChip
-            seatsLeft={event.seatsLeft}
-            capacity={event.capacity}
-            isFull={event.isFull}
-            status={event.status}
-          />
-        </div>
       </div>
+
+      <div className="card">
+        <div className="stack">
+          <p className="detail__when">
+            <time dateTime={toDateTimeAttr(event.startsAt)}>{formatEventDateTimeLong(event.startsAt)}</time>
+          </p>
+          <div className="venue">
+            <MapLink event={event} className="card__address venue__link" />
+            {event.place && event.place.address !== event.location ? (
+              <p className="text-sm muted venue__address">{event.place.address}</p>
+            ) : null}
+            {event.place && maps.map ? (
+              <EventMiniMap eventId={event.id} place={event.place} location={event.location} />
+            ) : null}
+          </div>
+          {/* The organizer's own words, the same way the player's sheet shows
+              them. Absent is ordinary and renders as nothing at all. */}
+          {event.description !== null ? <p className="text-lines">{event.description}</p> : null}
+          <div className="detail__facts">
+            <SeatChip
+              seatsLeft={event.seatsLeft}
+              capacity={event.capacity}
+              isFull={event.isFull}
+              status={event.status}
+            />
+            <span className="badge">{list.length === 1 ? "1 seat taken" : `${list.length} seats taken`}</span>
+          </div>
+        </div>
+        {/* The board's cards open this page now, not the public one, so this is
+            where Edit has to be — otherwise an organizer could only reach it by
+            typing the player's URL for their own event. */}
+        {event.status === "cancelled" || editing ? null : (
+          <button type="button" className="btn btn--block" onClick={() => setEditing(true)}>
+            Edit Event
+          </button>
+        )}
+      </div>
+
+      {editing ? <EventForm event={event} onDone={() => setEditing(false)} /> : null}
+
+      <h2 className="card__title">Who's coming</h2>
 
       {list.length === 0 ? (
         <EmptyState title="No RSVPs yet" hint="The event is live on the board with every seat open; names land here as players RSVP." />
@@ -77,6 +133,14 @@ export function AttendeesPage() {
           ))}
         </ul>
       )}
-    </div>
+    </>
+  );
+
+  if (!asSheet) return <div className="stack stack--loose">{body}</div>;
+
+  return (
+    <Sheet label={`${event.title} — who's coming`} onClose={close}>
+      {body}
+    </Sheet>
   );
 }
