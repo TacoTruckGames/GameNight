@@ -67,16 +67,20 @@ export function AttendeesPage({ asSheet = false }: { asSheet?: boolean }) {
 
       {/* The same header on both sheets, because it is the same event and the
           organizer reviewing their own listing is checking exactly what a player
-          would read. Kind, name, when, whose — in that order, because that is
-          the order the questions arrive in. The date sits outside the card and
-          is set large: it used to be the fifth thing on the page, below a map. */}
+          would read. Kind, name, when — in that order, because that is the order
+          the questions arrive in. The date sits outside the card and is set
+          large: it used to be the fifth thing on the page, below a map.
+
+          Who is hosting is *not* up here. It is the one fact on the sheet nobody
+          is deciding on — it settles nothing about whether to go — so it sits at
+          the foot of the card, under the action, the way a byline sits under an
+          article rather than over its headline. */}
       <div className="detail__head">
         <span className="detail__kind">{gameTypeLabel(event.gameType)}</span>
         <h1 className="page-title">{event.title}</h1>
         <p className="detail__when">
           <time dateTime={toDateTimeAttr(event.startsAt)}>{formatEventWhen(event.startsAt)}</time>
         </p>
-        <p className="detail__host">Hosted by {event.organizerName}</p>
       </div>
 
       <div className="card">
@@ -111,6 +115,7 @@ export function AttendeesPage({ asSheet = false }: { asSheet?: boolean }) {
             Edit Event
           </button>
         )}
+        <p className="detail__host">Hosted by {event.organizerName}</p>
       </div>
 
       {editing ? <EventForm event={event} onDone={() => setEditing(false)} /> : null}
