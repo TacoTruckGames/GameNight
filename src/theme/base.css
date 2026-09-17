@@ -461,6 +461,30 @@ a {
   margin-bottom: var(--space-4);
 }
 
+/* Search and the type picker narrow the same list, so they share a line and
+   give the board back a row it used to spend on chrome. The bases add up to
+   fit inside 320px — the narrowest width this is checked at — with the search
+   box taking every pixel the select does not need; `wrap` is the escape hatch
+   below that, because two usable rows beat one unreadable one. `flex-end`
+   aligns the input with the select, not with the label sitting above it. */
+.filters__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.filters__row > .search {
+  flex: 1 1 6.5rem;
+  min-width: 0;
+}
+
+/* Fixed, not flexible: it only ever has to hold "Miniatures". */
+.filters__row > .field {
+  flex: 0 1 9rem;
+  min-width: 0;
+}
+
 /* Wraps rather than scrolls: seven chips fit in two rows on a phone, and a
    hidden horizontal scroll hid half of them. */
 .chip-row {

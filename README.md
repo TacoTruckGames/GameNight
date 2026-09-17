@@ -228,6 +228,8 @@ half-second spinner.
   every date. An empty week says "nothing this week" rather than "you have never RSVP'd": a window cannot know
   more than the window, and a second unwindowed request on every visit to earn the stronger sentence is not
   a trade worth making — list view still says it.
+- **Search and the type filter share one line**, and every view is chronological, so the board's chrome is
+  two rows before the first event instead of four.
 - **No pagination** (`LIMIT 200`); ~50 live events fit on one screen.
 - **RSVP lives on the card**, not behind the detail page: the primary user is on a phone on a commute, so the
   decision happens where the information is.
@@ -372,7 +374,7 @@ the next section calls beyond the brief.
 | **Look and feel** | WotC-derived palette + contrast audit, logo and icon set, identity picker with one tab per role | 1.5 h |
 | **Admin / operations** | Dashboard (suspend accounts, fix events, backend error log, audit log), its own orange-bar shell, FK-safe users-table rebuild | 3 h |
 | **Board** (frontend + API) | Sort by date/popular, day-grouped agenda, month calendar with a windowed `?from=&to=` query for past months, filter dropdown | 3 h |
-| **Board trim** (frontend) | Sort control retired, deselectable day cells, whole-span upcoming pane | 0.5 h |
+| **Board trim** (frontend) | Sort control retired, deselectable day cells, whole-span upcoming pane, filter row on one line | 0.5 h |
 | **Venues** (backend) | Google Places proxied through the Worker, server-resolved coordinates, D1 spend ceiling, mini map, tap-to-navigate | 2 h |
 | **Review pass** (UX) | 60 screenshots × 2 critic passes, 11 defects fixed, the desktop breakpoint | 2 h |
 | **Data & content** | 64-event seed with clusters/past/cancelled, descriptions, game-type taxonomy research | 2 h |

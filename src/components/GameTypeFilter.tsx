@@ -6,8 +6,9 @@
  * having: the platform renders it as a bottom sheet on iOS and a full-screen
  * list on Android, so it stays thumb-reachable without any code of ours.
  *
- * Labelled and full-width like the View and Sort controls below it — the three
- * together read as one stack of settings rather than three loose shapes.
+ * Labelled like the View switch below it, and sharing a line with the search
+ * box: both narrow the same list, and separately they cost two rows of a phone
+ * before the first event.
  *
  * Every category is a filter option. "Board games" was once left out for being
  * too broad — but under category-level types every bucket is that broad by
@@ -22,7 +23,7 @@ export function GameTypeFilter({ value, onChange }: { value: string; onChange: (
   return (
     <div className="field">
       <label className="field__label" htmlFor={selectId}>
-        Game
+        Game Type
       </label>
       <select
         id={selectId}

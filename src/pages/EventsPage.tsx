@@ -132,25 +132,27 @@ export function EventsPage() {
       <h1 className="page-title">Upcoming Events</h1>
 
       <div className="filters">
-        <div className="search">
-          <label className="visually-hidden" htmlFor={searchId}>
-            Search events by title or location
-          </label>
-          <span className="search__icon">
-            <Icon name="search" />
-          </span>
-          <input
-            id={searchId}
-            className="input"
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search title or location"
-            maxLength={SEARCH_MAX}
-            autoComplete="off"
-          />
+        <div className="filters__row">
+          <div className="search">
+            <label className="visually-hidden" htmlFor={searchId}>
+              Search events by title or location
+            </label>
+            <span className="search__icon">
+              <Icon name="search" />
+            </span>
+            <input
+              id={searchId}
+              className="input"
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search event title or location"
+              maxLength={SEARCH_MAX}
+              autoComplete="off"
+            />
+          </div>
+          <GameTypeFilter value={gameType} onChange={setGameType} />
         </div>
-        <GameTypeFilter value={gameType} onChange={setGameType} />
         <BoardViewSwitch value={view} onChange={setView} />
       </div>
 
