@@ -84,7 +84,7 @@ resolves it to a user row and its role on every request, and every route declare
 | `POST /api/users` (the caller names the role; defaults to player) | ✓ | ✓ (anonymous too) |
 | `PUT` / `DELETE /api/events/:id/rsvp`, `GET /api/me/rsvps` | ✓ | 403 |
 | `POST /api/events`, `GET /api/me/hosted` | 403 | ✓ |
-| `PATCH /api/events/:id`, `GET /api/events/:id/attendees` | 403 | ✓ only for the owner |
+| `PATCH /api/events/:id`, `POST /api/events/:id/cancel`, `DELETE /api/events/:id`, `GET /api/events/:id/attendees` | 403 | ✓ only for the owner |
 
 An unknown `X-User-Id` is a 401 everywhere, which the client treats as "your stored identity is gone — pick
 again". Errors are always `{ error: { code, message, details? } }`; validation failures list every bad field

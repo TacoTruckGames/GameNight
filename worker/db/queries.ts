@@ -682,7 +682,7 @@ export async function updateEvent(
 }
 
 /** Cancel or restore. `cancelled_at` is cleared on restore so it never lies. */
-export async function adminSetEventStatus(
+export async function setEventStatus(
   db: D1Database,
   id: string,
   status: EventStatus,
@@ -692,6 +692,21 @@ export async function adminSetEventStatus(
     .prepare("UPDATE events SET status = ?2, cancelled_at = ?3 WHERE id = ?1")
     .bind(id, status, status === "cancelled" ? now : null)
     .run();
+}
+
+/**
+ * Gone, not cancelled — and only ever for an event nobody holds a seat on.
+ *
+ * The product's rule is that cancelling is a status change, never a delete: the
+ * RSVP rows stay so the people who were coming still see the event, marked
+ * cancelled, in their list. A delete is compatible with that rule exactly when
+ * there are no such people, which is what the caller checks before calling
+ * this. `rsvps.event_id` references `events(id)` without a cascade, so a delete
+ * with seats outstanding would fail at the database anyway — the route turns
+ * that into a 409 with a sentence rather than an opaque 500.
+ */
+export async function deleteEvent(db: D1Database, id: string): Promise<void> {
+  await db.prepare("DELETE FROM events WHERE id = ?1").bind(id).run();
 }
 
 // ----------------------------------------------------------- admin: errors --

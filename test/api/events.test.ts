@@ -4,7 +4,7 @@ import type { ApiErrorBody, AttendeesResponse, EventDetail, EventSummary } from 
 import { env } from "cloudflare:test";
 
 import { DESCRIPTION_MAX } from "../../shared/schemas";
-import { api, cancelEvent, inDays, putRsvp, seedAdmin, seedEvent, seedUser, seedUsers } from "../helpers";
+import { api, cancelEvent, inDays, putRsvp, rsvpCount, seedAdmin, seedEvent, seedUser, seedUsers } from "../helpers";
 
 /** The list is shared across tests, so always look for *our* event in it. */
 function find(list: EventSummary[], id: string): EventSummary | undefined {
@@ -855,5 +855,86 @@ describe("PATCH /api/events/:id", () => {
     // A patch that would fail validation, from someone not allowed to send it:
     // the 403 has to win, or the route leaks that the event exists.
     expect((await patch(event.id, { capacity: -5 }, player.id)).status).toBe(403);
+  });
+});
+
+describe("POST /api/events/:id/cancel", () => {
+  const cancel = (id: string, as?: string) => api<EventDetail & ApiErrorBody>(`/api/events/${id}/cancel`, { method: "POST", as });
+
+  it("lets the owning organizer call it off, and keeps the seats on record", async () => {
+    const organizer = await seedUser({ role: "organizer" });
+    const players = await seedUsers(2);
+    const event = await seedEvent({ organizer, rsvpPlayerIds: players.map((p) => p.id) });
+
+    const { status, body } = await cancel(event.id, organizer.id);
+    expect(status).toBe(200);
+    expect(body.status).toBe("cancelled");
+    // A status change, not a delete: the people who were coming still have rows.
+    expect(await rsvpCount(event.id)).toBe(2);
+    expect((await api<EventDetail>(`/api/events/${event.id}`)).body.status).toBe("cancelled");
+  });
+
+  it("is idempotent", async () => {
+    const organizer = await seedUser({ role: "organizer" });
+    const event = await seedEvent({ organizer });
+    expect((await cancel(event.id, organizer.id)).status).toBe(200);
+    expect((await cancel(event.id, organizer.id)).status).toBe(200);
+  });
+
+  it("is the owner's alone", async () => {
+    const owner = await seedUser({ role: "organizer" });
+    const other = await seedUser({ role: "organizer" });
+    const player = await seedUser();
+    const event = await seedEvent({ organizer: owner });
+    expect((await cancel(event.id)).status).toBe(401);
+    expect((await cancel(event.id, player.id)).status).toBe(403);
+    expect((await cancel(event.id, other.id)).status).toBe(403);
+    expect((await cancel("evt_missing", owner.id)).status).toBe(404);
+    expect((await api<EventDetail>(`/api/events/${event.id}`)).body.status).toBe("scheduled");
+  });
+
+  it("a cancelled event refuses edits and new RSVPs", async () => {
+    const organizer = await seedUser({ role: "organizer" });
+    const player = await seedUser();
+    const event = await seedEvent({ organizer });
+    await cancel(event.id, organizer.id);
+    const edit = await api<ApiErrorBody>(`/api/events/${event.id}`, { method: "PATCH", body: { title: "x" }, as: organizer.id });
+    expect(edit.status).toBe(409);
+    expect(edit.body.error.code).toBe("EVENT_CANCELLED");
+    expect((await putRsvp(event.id, player.id)).status).toBe(409);
+  });
+});
+
+describe("DELETE /api/events/:id", () => {
+  const remove = (id: string, as?: string) => api<ApiErrorBody>(`/api/events/${id}`, { method: "DELETE", as });
+
+  it("removes an event nobody has joined", async () => {
+    const organizer = await seedUser({ role: "organizer" });
+    const event = await seedEvent({ organizer });
+    expect((await remove(event.id, organizer.id)).status).toBe(204);
+    expect((await api(`/api/events/${event.id}`)).status).toBe(404);
+  });
+
+  it("refuses once anyone holds a seat, and says to cancel instead", async () => {
+    const organizer = await seedUser({ role: "organizer" });
+    const player = await seedUser();
+    const event = await seedEvent({ organizer, rsvpPlayerIds: [player.id] });
+    const { status, body } = await remove(event.id, organizer.id);
+    expect(status).toBe(409);
+    expect(body.error.code).toBe("EVENT_HAS_RSVPS");
+    expect(body.error.message).toMatch(/1 person has a seat/);
+    expect((await api(`/api/events/${event.id}`)).status).toBe(200);
+  });
+
+  it("is the owner's alone", async () => {
+    const owner = await seedUser({ role: "organizer" });
+    const other = await seedUser({ role: "organizer" });
+    const player = await seedUser();
+    const event = await seedEvent({ organizer: owner });
+    expect((await remove(event.id)).status).toBe(401);
+    expect((await remove(event.id, player.id)).status).toBe(403);
+    expect((await remove(event.id, other.id)).status).toBe(403);
+    expect((await remove("evt_missing", owner.id)).status).toBe(404);
+    expect((await api(`/api/events/${event.id}`)).status).toBe(200);
   });
 });

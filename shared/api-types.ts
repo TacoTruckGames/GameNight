@@ -149,7 +149,8 @@ export type ApiErrorCode =
   | "NOT_FOUND" //         404
   | "EVENT_FULL" //        409 — lost the race for the last seat (S1)
   | "EVENT_STARTED" //     409 — event is in the past
-  | "EVENT_CANCELLED" //   409 — an admin cancelled the event; no new RSVPs
+  | "EVENT_CANCELLED" //   409 — the event was cancelled; no new RSVPs, no edits
+  | "EVENT_HAS_RSVPS" //   409 — delete refused: people hold seats, so cancel instead
   | "RSVP_UNAVAILABLE" //  503 — DO/D1 write failed; safe to retry (PUT/DELETE are idempotent)
   | "PLACE_UNAVAILABLE" // 503 — the maps provider is down or over budget. Only an *admin* edit
   //                             sees this: posting an event degrades to free text instead.

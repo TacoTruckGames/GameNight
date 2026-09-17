@@ -35,7 +35,7 @@ import {
   adminListEvents,
   adminListUsers,
   adminOverview,
-  adminSetEventStatus,
+  setEventStatus,
   adminSetSuspended,
   deleteError,
   getError,
@@ -222,7 +222,7 @@ admin.post("/admin/events/:id/cancel", async (c) => {
   const row = await adminGetEventRow(c.env.DB, id);
   if (!row) throw new ApiError(404, "NOT_FOUND", "That event does not exist.");
 
-  await adminSetEventStatus(c.env.DB, id, "cancelled", nowIso());
+  await setEventStatus(c.env.DB, id, "cancelled", nowIso());
   await audit(c.env.DB, { actorId: actor.id, action: "event.cancelled", targetType: "event", targetId: id });
 
   return c.json(await adminGetEvent(c.env.DB, id));
@@ -235,7 +235,7 @@ admin.post("/admin/events/:id/restore", async (c) => {
   const row = await adminGetEventRow(c.env.DB, id);
   if (!row) throw new ApiError(404, "NOT_FOUND", "That event does not exist.");
 
-  await adminSetEventStatus(c.env.DB, id, "scheduled", nowIso());
+  await setEventStatus(c.env.DB, id, "scheduled", nowIso());
   await audit(c.env.DB, { actorId: actor.id, action: "event.restored", targetType: "event", targetId: id });
 
   return c.json(await adminGetEvent(c.env.DB, id));

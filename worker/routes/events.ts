@@ -11,11 +11,13 @@ import { Hono } from "hono";
 import type { AttendeesResponse, EventDetail } from "../../shared/api-types";
 import { createEventSchema, eventPatchSchema, eventsQuerySchema } from "../../shared/schemas";
 import {
+  deleteEvent,
   getEventRow,
   hasRsvp,
   insertEvent,
   listAttendees,
   listEvents,
+  setEventStatus,
   toEventSummary,
   updateEvent,
   type ResolvedPlace,
@@ -166,15 +168,25 @@ events.get("/events/:id", async (c) => {
  * table is not one. Giving those rows an actor role to distinguish them is the
  * right fix and a bigger one than this route.
  */
-events.patch("/events/:id", async (c) => {
+/**
+ * The gate every owner-only write goes through: signed in as an organizer, the
+ * event exists, and it is theirs. Ownership is read off the row, never off
+ * anything the client sent. Auth is checked before the lookup so an outsider
+ * cannot learn which ids exist by which error they get back.
+ */
+async function requireOwnedEvent(c: Parameters<typeof requireOrganizer>[0], id: string) {
   const organizer = requireOrganizer(c);
-  const id = c.req.param("id");
-
   const row = await getEventRow(c.env.DB, id);
   if (!row) throw new ApiError(404, "NOT_FOUND", "That event does not exist.");
   if (row.organizer_id !== organizer.id) {
     throw new ApiError(403, "FORBIDDEN", "That event belongs to a different organizer.");
   }
+  return row;
+}
+
+events.patch("/events/:id", async (c) => {
+  const id = c.req.param("id");
+  const row = await requireOwnedEvent(c, id);
   if (row.status === "cancelled") {
     throw new ApiError(409, "EVENT_CANCELLED", "This event was cancelled, so it can no longer be edited.");
   }
@@ -222,6 +234,55 @@ events.patch("/events/:id", async (c) => {
     myRsvp: null,
     organizerId: updated.organizer_id,
   } satisfies EventDetail);
+});
+
+/**
+ * The organizer calls it off.
+ *
+ * A status change, never a delete — the same rule the admin's cancel follows,
+ * and for the same reason: the RSVP rows stay, so everyone who was coming sees
+ * the event marked cancelled in their own list rather than watching it vanish.
+ * Idempotent, because a second tap on a slow connection is not a second event.
+ * Only an admin can restore, and that is deliberate: un-cancelling re-promises
+ * seats to people who may have made other plans, and it belongs to the person
+ * who can also see the error log.
+ */
+events.post("/events/:id/cancel", async (c) => {
+  const id = c.req.param("id");
+  const row = await requireOwnedEvent(c, id);
+  if (row.status !== "cancelled") await setEventStatus(c.env.DB, id, "cancelled", nowIso());
+
+  const updated = await getEventRow(c.env.DB, id);
+  if (!updated) throw new ApiError(500, "INTERNAL", "The event could not be read back.");
+  return c.json({
+    ...toEventSummary(updated),
+    description: updated.description,
+    myRsvp: null,
+    organizerId: updated.organizer_id,
+  } satisfies EventDetail);
+});
+
+/**
+ * Gone — but only while nobody holds a seat.
+ *
+ * "Delete" is the verb an organizer reaches for on an event they posted by
+ * mistake, and for one nobody has joined it is the right verb: there is no one
+ * to tell. The moment someone has a seat the right verb is cancel, because a
+ * deletion would silently remove the event from that person's list with no
+ * explanation, and the 409 says so in words.
+ */
+events.delete("/events/:id", async (c) => {
+  const id = c.req.param("id");
+  const row = await requireOwnedEvent(c, id);
+  if (row.rsvp_count > 0) {
+    throw new ApiError(
+      409,
+      "EVENT_HAS_RSVPS",
+      `${row.rsvp_count === 1 ? "1 person has" : `${row.rsvp_count} people have`} a seat. Cancel the event instead, so they find out.`,
+    );
+  }
+  await deleteEvent(c.env.DB, id);
+  return c.body(null, 204);
 });
 
 /** Owning organizer only — the door list is not public. */
