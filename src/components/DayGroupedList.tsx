@@ -26,7 +26,7 @@ export function DayGroupedList<T extends { id: string }>({
   children: (event: T) => ReactNode;
 }) {
   return (
-    <div className="stack stack--loose" aria-busy={busy}>
+    <div className="stack stack--loose day-groups" aria-busy={busy}>
       {groups.map((group) => (
         <section className="agenda" key={group.key}>
           <h2 className="agenda__head">

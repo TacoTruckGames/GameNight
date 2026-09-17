@@ -115,12 +115,12 @@ export function EventsPage() {
     setGameType("");
   };
 
-  // One page width per view: only the month grid wants more than the reading
-  // column, so on a wide screen the whole board widens with it rather than the
-  // grid alone breaking out from under the heading and the filters. A week is
-  // one row of seven cells and fits the column at every width.
+  // The whole page widens on a wide screen, in every view — the heading, the
+  // filters and the content then share one left and one right edge, which is
+  // what widening only the grid got wrong the first time. What each view *does*
+  // with the width differs, and that is the stylesheet's business.
   return (
-    <div className={view === "month" ? "board board--wide" : "board"}>
+    <div className="page--wide">
       <h1 className="page-title">Upcoming Events</h1>
 
       <div className="filters">

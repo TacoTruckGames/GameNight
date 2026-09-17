@@ -9,7 +9,8 @@
  * Deliberately not "Today": the board's pane and this one should never disagree
  * about what a day is called.
  *
- * The container is a plain `.stack.stack--loose`, not the board's
+ * The container is a plain `.stack.stack--loose` plus a `week-agenda` hook a
+ * wide page can use to set the strip beside the day's cards, not the board's
  * `.board-calendar`: that rule exists to widen a month grid past the reading
  * column, and a one-row strip already fits.
  */
@@ -96,7 +97,7 @@ export function WeekAgenda<T extends { id: string; startsAt: string }>({
   const selectedGroup = groups.find((group) => group.key === effectiveDay) ?? null;
 
   return (
-    <div className="stack stack--loose">
+    <div className="stack stack--loose week-agenda">
       <WeekStrip
         weekStart={weekStart}
         todayKey={todayKey}

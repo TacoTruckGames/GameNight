@@ -1497,19 +1497,47 @@ textarea.input {
 @media (min-width: 1120px) {
   /* Breakout, measured from the column rather than the viewport: half of the
      container puts the element's centre on the column's centre, so it lands
-     1040px wide and centred with no `100vw` and no scrollbar. List view has no
-     `--wide`, so it keeps the 640px reading column at every width. */
-  .board--wide {
+     1040px wide and centred with no `100vw` and no scrollbar. Worn by the board
+     and by My RSVP — the name stopped saying "board" when the second page
+     wanted the same width. */
+  .page--wide {
     width: 1040px;
     margin-inline: calc(50% - 520px);
   }
 
-  /* Fills the widened board; the month grid and the selected day's cards sit
-     side by side instead of stacked. */
-  .board-calendar {
+  /* Two columns, three ways to earn them. The month grid and the week strip are
+     navigators: they take the left column and the day you picked takes the
+     right, which is the shape that made the month worth widening. */
+  .board-calendar,
+  .page--wide .week-agenda {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     align-items: start;
     gap: var(--space-5);
+  }
+
+  /* A list has no navigator, so the cards themselves take both columns. Multi-
+     column rather than a two-track grid on purpose: a grid fills row-wise, which
+     would run a chronological list left, right, left, right — you would read
+     Monday, then Wednesday, then Tuesday. Columns fill top-to-bottom, so the
+     order survives the second column. `display: block` because a flex container
+     has no columns to give.
+
+     Direct children only: the day pane *inside* a week agenda is the right-hand
+     column already, and must not split again. */
+  .page--wide > .day-groups,
+  .page--wide > ul.stack {
+    display: block;
+    columns: 2;
+    column-gap: var(--space-5);
+  }
+
+  /* `break-inside` keeps a day — heading and its cards — whole in one column,
+     and the margin replaces the flex `gap` that `display: block` just turned
+     off. */
+  .page--wide > .day-groups > .agenda,
+  .page--wide > ul.stack > li {
+    break-inside: avoid;
+    margin-bottom: var(--space-4);
   }
 }

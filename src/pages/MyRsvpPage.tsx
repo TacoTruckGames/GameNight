@@ -77,7 +77,7 @@ export function MyRsvpPage() {
   );
 
   return (
-    <>
+    <div className="page--wide">
       <h1 className="page-title">My RSVP</h1>
       <p className="page-subtitle">Seats you're holding, by day.</p>
 
@@ -117,6 +117,6 @@ export function MyRsvpPage() {
       ) : (
         <AgendaList groups={groups} myRsvpIds={joinedIds} showRsvp busy={myRsvps.isFetching} />
       )}
-    </>
+    </div>
   );
 }
