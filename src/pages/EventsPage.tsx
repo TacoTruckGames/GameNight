@@ -158,7 +158,13 @@ export function EventsPage() {
         <BoardViewSwitch value={view} onChange={setView} />
       </div>
 
-      {events.isPending ? (
+      {/* The placeholder check is list-only. Switching away from a dated view
+          leaves that window's rows on screen for one fetch, and in the list they
+          are wrong twice over: too few, and some of them already started — which
+          is the one thing this view promises never to show. In the dated views
+          the stale rows are the better thing to keep: the grid holds its shape
+          and the strip never flashes empty. */}
+      {events.isPending || (view === "list" && events.isPlaceholderData) ? (
         <EventListSkeleton />
       ) : events.isError ? (
         <ErrorBanner error={events.error} onRetry={() => void events.refetch()} />
