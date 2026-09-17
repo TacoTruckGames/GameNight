@@ -10,29 +10,11 @@
  * is chronological by construction.
  */
 
-import { useId } from "react";
 import { EVENT_SORTS, EVENT_SORT_LABELS, type EventSort } from "../../shared/event-sort";
+import { SegmentedControl } from "./SegmentedControl";
 
 export function EventSortControl({ value, onChange }: { value: EventSort; onChange: (next: EventSort) => void }) {
-  const labelId = useId();
   return (
-    <div className="field">
-      <span className="field__label" id={labelId}>
-        Sort
-      </span>
-      <div className="segmented" role="group" aria-labelledby={labelId}>
-        {EVENT_SORTS.map((sort) => (
-          <button
-            key={sort}
-            type="button"
-            className="segmented__option"
-            aria-pressed={value === sort}
-            onClick={() => onChange(sort)}
-          >
-            {EVENT_SORT_LABELS[sort]}
-          </button>
-        ))}
-      </div>
-    </div>
+    <SegmentedControl label="Sort" options={EVENT_SORTS} labels={EVENT_SORT_LABELS} value={value} onChange={onChange} />
   );
 }

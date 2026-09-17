@@ -879,12 +879,12 @@ textarea.input {
 }
 
 /* The segmented control: exactly two mutually exclusive options in one pill,
-   one of them always on. Worn by the identity picker's role tablist
-   (`aria-selected`) and by the board's View and Sort switches
-   (`aria-pressed`) — different ARIA, because a tablist and a pair of toggles
-   are different controls, but one appearance, because they ask the same kind
-   of question. Both options stay visible rather than collapsing into a
-   dropdown: with two, seeing the alternative is the point. */
+   one of them always on, enforced by `SegmentedControl`'s tuple prop. Worn by
+   the identity picker's role tablist (`aria-selected`) and by the board's View
+   and Sort switches (`aria-pressed`) — different ARIA, because a tablist and a
+   pair of toggles are different controls, but one appearance, because they ask
+   the same kind of question. Both options stay visible rather than collapsing
+   into a dropdown: with two, seeing the alternative is the point. */
 .who__tabs,
 .segmented {
   display: flex;

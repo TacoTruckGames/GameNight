@@ -14,7 +14,7 @@
  * mutually exclusive modes, one of which is always on.
  */
 
-import { useId } from "react";
+import { SegmentedControl } from "./SegmentedControl";
 
 export const BOARD_VIEWS = ["calendar", "list"] as const;
 export type BoardView = (typeof BOARD_VIEWS)[number];
@@ -22,25 +22,7 @@ export const DEFAULT_BOARD_VIEW: BoardView = "calendar";
 export const BOARD_VIEW_LABELS: Record<BoardView, string> = { calendar: "Calendar", list: "List" };
 
 export function BoardViewSwitch({ value, onChange }: { value: BoardView; onChange: (next: BoardView) => void }) {
-  const labelId = useId();
   return (
-    <div className="field">
-      <span className="field__label" id={labelId}>
-        View
-      </span>
-      <div className="segmented" role="group" aria-labelledby={labelId}>
-        {BOARD_VIEWS.map((view) => (
-          <button
-            key={view}
-            type="button"
-            className="segmented__option"
-            aria-pressed={value === view}
-            onClick={() => onChange(view)}
-          >
-            {BOARD_VIEW_LABELS[view]}
-          </button>
-        ))}
-      </div>
-    </div>
+    <SegmentedControl label="View" options={BOARD_VIEWS} labels={BOARD_VIEW_LABELS} value={value} onChange={onChange} />
   );
 }
