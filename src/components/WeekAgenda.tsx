@@ -125,15 +125,20 @@ export function WeekAgenda<T extends { id: string; startsAt: string }>({
 
   return (
     <div className="stack stack--loose week-agenda">
-      <WeekStrip
-        weekStart={weekStart}
-        todayKey={todayKey}
-        counts={counts}
-        selectedDay={effectiveDay}
-        onSelectDay={(key) => setTap(key === effectiveDay ? null : { week: weekStart, day: key })}
-        onWeekChange={onWeekChange}
-      />
-      {effectiveDay && dayAction ? dayAction(effectiveDay) : null}
+      {/* Strip and day action in one box — see `EventsPage`'s month view: they
+          are one column on a desktop, and the button belongs under the strip
+          rather than under the day's cards. */}
+      <div className="cal-side">
+        <WeekStrip
+          weekStart={weekStart}
+          todayKey={todayKey}
+          counts={counts}
+          selectedDay={effectiveDay}
+          onSelectDay={(key) => setTap(key === effectiveDay ? null : { week: weekStart, day: key })}
+          onWeekChange={onWeekChange}
+        />
+        {effectiveDay && dayAction ? dayAction(effectiveDay) : null}
+      </div>
       {selectedGroup ? (
         <DayGroupedList groups={[selectedGroup]} busy={busy}>
           {children}

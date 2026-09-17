@@ -213,8 +213,10 @@ half-second spinner.
   focus-management code. At ≥1120px the whole page widens and each view spends the width its own way: the
   month grid and the week strip become navigators on the *right*, with the cards beside them in the left
   column where reading starts — the events are what the page is for, and the calendar is the control that
-  changes them. Placed with `grid-column`, not by reordering the markup: stacked on a phone the calendar has
-  to come above the day it selected, and a screen reader wants the navigator before the results either way;
+  changes them, "+ New Event" included: it posts on the day the calendar has selected, so it travels with it
+  rather than sitting under the card list. Placed with `grid-column`, not by reordering the markup: stacked on
+  a phone the calendar has to come above the day it selected, and a screen reader wants the navigator before
+  the results either way;
   the list keeps its days in one chronological column and pairs the cards *within* a day two across. The
   split never crosses a heading — a run of days dealt into two columns reads Monday, Wednesday, Tuesday,
   whichever direction the columns fill — but two cards under one date already share that date, so they can

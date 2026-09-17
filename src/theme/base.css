@@ -515,6 +515,14 @@ a {
   align-self: flex-start;
 }
 
+/* The calendar and its own action, as one thing. On a phone this is just the
+   parent stack's gap restated; past 1120px it is the right-hand column. */
+.cal-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
 /* Bottom-right, spanning the two short lines it sits beside. Matches both the
    player's `<button>` and the organizer's door-list `<a>`.
 
@@ -1439,6 +1447,17 @@ textarea.input {
   gap: var(--space-2);
 }
 
+/* The chips and the button that acts on them. A column on a phone, where the
+   button is a thumb target and owns its line; one row past the breakpoint,
+   where a full-width button put the whole width of the panel between the fact
+   ("4 / 16 Seats Left") and the thing you do about it. The desktop half is in
+   the 900px block below. */
+.detail__act {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
 /* "Anywhere outside". Transparent on purpose — the switcher hangs off a button
    rather than taking the screen, and dimming the page would claim otherwise.
    It also covers the header, which is what makes a second tap on the name close
@@ -2006,6 +2025,28 @@ textarea.input {
     display: inline;
   }
 
+  /* The facts and the action, one row, the action against the right edge —
+     which is where a mouse expects the button in a panel it is about to leave.
+     The chips take the slack and wrap within it, so a long set never squeezes
+     the button into two lines of text. */
+  .detail__act {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  .detail__act > .detail__facts {
+    flex: 1 1 auto;
+  }
+
+  /* `.btn--block` is 100% wide by default — it still is on a phone, where this
+     rule does not apply. */
+  .detail__act > .btn {
+    flex: none;
+    width: auto;
+  }
+
   /* A 640px "Cancel RSVP" gives a destructive action the weight of a primary
      one. Sized to its words and packed left instead.
 
@@ -2055,8 +2096,15 @@ textarea.input {
      order is the one a phone and a screen reader need: the navigator comes
      before the results it filters, and stacked on a narrow screen the calendar
      has to be above the day it selected, not below it. `grid-row: 1` pins it
-     beside the first cards; everything else — the day's cards, "+ New Event",
-     an empty state — falls down the left column in source order. */
+     beside the first cards; everything else — the day's cards, an empty state —
+     falls down the left column in source order.
+
+     "+ New Event" travels with the calendar, inside `.cal-side`, rather than
+     being placed into the second column on its own. A grid row is as tall as
+     its tallest item, so a button in row 2 of the right column would sit below
+     the *left* column's card list — halfway down the page, under nothing. In
+     the same box as the grid it sits under the grid, which is also where it
+     belongs: it posts an event on the day the calendar has selected. */
   .board-calendar,
   .page--wide .week-agenda {
     display: grid;
@@ -2065,14 +2113,14 @@ textarea.input {
     gap: var(--space-5);
   }
 
-  .board-calendar > .cal,
-  .page--wide .week-agenda > .cal {
+  .board-calendar > .cal-side,
+  .page--wide .week-agenda > .cal-side {
     grid-column: 2;
     grid-row: 1;
   }
 
-  .board-calendar > :not(.cal),
-  .page--wide .week-agenda > :not(.cal) {
+  .board-calendar > :not(.cal-side),
+  .page--wide .week-agenda > :not(.cal-side) {
     grid-column: 1;
   }
 

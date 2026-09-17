@@ -304,19 +304,26 @@ export function EventsPage() {
         // `board-calendar` is the desktop hook only: wide enough, the grid and
         // the selected day's cards sit side by side instead of stacked.
         <div className="stack stack--loose board-calendar">
-          <MonthCalendar
-            month={month}
-            todayKey={todayKey}
-            counts={counts}
-            selectedDay={effectiveDay}
-            onSelectDay={(key) => setSelectedDay(key === effectiveDay ? null : key)}
-            onMonthChange={showMonth}
-          />
+          {/* The navigator and the one action that belongs to it, in one box —
+              which is what makes them one column on a desktop. Posting an event
+              *on the selected day* is a thing you do to the calendar, not to the
+              list of what is already there; keeping them together also keeps the
+              button directly under the grid instead of at the foot of however
+              tall the day's card list happens to be. Stacked on a phone the
+              order is unchanged: grid, button, cards. */}
+          <div className="cal-side">
+            <MonthCalendar
+              month={month}
+              todayKey={todayKey}
+              counts={counts}
+              selectedDay={effectiveDay}
+              onSelectDay={(key) => setSelectedDay(key === effectiveDay ? null : key)}
+              onMonthChange={showMonth}
+            />
+            {selectedGroup ? newEventOn(selectedGroup.key) : null}
+          </div>
           {selectedGroup ? (
-            <>
-              {newEventOn(selectedGroup.key)}
-              {agenda([selectedGroup], events.isFetching)}
-            </>
+            agenda([selectedGroup], events.isFetching)
           ) : events.isPlaceholderData ? (
             // Still last month's rows, and every one of them falls outside the
             // month now on screen — without this the pane would flash "no events"
