@@ -263,11 +263,14 @@ half-second spinner.
   two frames. The URL is the event's either way, so a sheet is still a link you can send. Escape, a tap
   outside and Back all close it — the same three, and the same absence of a Close button, as the identity
   switcher — and on a phone you can also **drag it away**, which is the gesture the other two are a keyboard
-  and a small target standing in for. A drag may only *begin* at the top of the scroll, or anywhere on the
-  grip, so a swipe taken mid-read is a scroll and not an exit; the grip lives outside the scrolling body for
-  exactly that reason, since the one control that has to work however far down you are should not be the
-  first thing to scroll off. It engages after 6px so a tap is still a tap, and releases on distance *or*
-  speed, because refusing a short flick is what makes a sheet feel stuck. The long date also stopped sharing a line with the attendance count, which is what made
+  and a small target standing in for. **The whole panel is the handle** once you are at the top of it; the
+  grip is only the exception that also works mid-scroll, which is what a grip is for, and it lives outside
+  the scrolling body so it is never the first thing to scroll away. Taking that gesture needs a native
+  `touchmove` listener: the body scrolls, so the browser claims a vertical drag and cancels the pointer
+  before a second move arrives, and `preventDefault()` is the only way back — which React's passive
+  `onTouchMove` cannot do. Direction is decided once, on the first 3px, and locked: down from the top is a
+  dismissal, anything else stays a scroll. It engages at 6px so a tap is still a tap, and releases on
+  distance *or* speed, because refusing a short flick is what makes a sheet feel stuck. The long date also stopped sharing a line with the attendance count, which is what made
   "Thursday, September 17, 2026 at 7:30 PM · 9 going" wrap to two lines on every phone.
 - **An organizer edits their own event** from its page — the same `EventForm` that posts one, prefilled, and
   sending **only the fields that changed**. `PATCH /api/events/:id` is the admin's patch route with a

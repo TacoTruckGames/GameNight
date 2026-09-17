@@ -1,38 +1,42 @@
 /**
  * A bottom sheet you can throw away.
  *
- * Three ways to dismiss, and they are the same three the identity switcher
- * uses, so "put this back" means one thing across the app: Escape, a tap
- * outside, and — on a phone, where the other two are a keyboard and a small
- * target — **a drag downward**. There is still no Close button; a fourth way to
- * say it would be a control spending the sheet's first row.
+ * Dismissal is the same set the identity switcher uses, so "put this back"
+ * means one thing across the app: Escape, a tap outside, and — on a phone,
+ * where those two are a keyboard and a small target — **a drag downward**.
+ * There is still no Close button; a fourth way to say it would be a control
+ * spending the sheet's first row.
  *
- * ## The gesture, and what it has to avoid
+ * ## Why this is a native listener and not an `onTouchMove` prop
  *
- * The sheet scrolls. A drag that starts while it is scrolled down has to be a
- * scroll, or the event you are halfway through reading leaves the screen. So a
- * drag is only allowed to *begin* at `scrollTop === 0`, or anywhere on the grip
- * — which is what the grip is for, and why it carries `touch-action: none`: it
- * opts out of the browser's own panning so the handle always answers.
+ * The sheet's body scrolls, so the browser treats a vertical drag inside it as
+ * a scroll and claims the gesture — cancelling our pointer before we see a
+ * second move. That is why the first version of this only worked on the grip:
+ * the grip carries `touch-action: none` and so is the one place the browser
+ * never claims. Everywhere else the drag died on contact.
  *
- * Which is also why the grip is **outside** the scrolling part. It began inside
- * it, and scrolled away with the content: the one control that is supposed to
- * work however far down you are was the first thing to leave. The panel is a
- * flex column that does not scroll, holding a fixed grip and a body that does.
+ * Taking the gesture back needs `preventDefault()` on `touchmove`, and React
+ * registers `touchmove` as **passive**, where `preventDefault()` does nothing
+ * at all. So the touch path is a native listener with `{ passive: false }`,
+ * attached by hand. Pointer events still cover the mouse — one extra path, and
+ * the only reason a headless browser can test any of this.
  *
- * It engages after 6px, not immediately, so a tap is still a tap: below that
- * threshold nothing moves and the click goes through to whatever was pressed.
- * Past it, the click is swallowed once on the way up — otherwise flicking the
- * sheet away from over a button would press that button on release.
+ * ## What the gesture must not break
  *
- * Release decides by distance *or* speed. 110px is a deliberate throw; a short
+ * It must not eat the scroll. The direction is decided once, on the first
+ * meaningful move, and locked for the rest of the gesture: downward from the
+ * top of the body is a dismissal, anything else is a scroll and is never
+ * intercepted again. So a drag taken halfway through reading an event scrolls,
+ * and a drag taken at the top throws the sheet away — from anywhere on the
+ * panel, not just from the handle.
+ *
+ * It engages visually after 6px, so a tap is still a tap and its click goes
+ * through. Past that the click is swallowed once on release — otherwise
+ * flicking the sheet away from over a button would press that button.
+ *
+ * Release decides on distance *or* speed. 110px is a deliberate throw; a short
  * flick is also a deliberate throw, and refusing it because the finger did not
- * travel far enough is the thing that makes a sheet feel stuck. Anything else
- * snaps back, and `prefers-reduced-motion` gets the snap without the animation.
- *
- * Pointer events rather than touch events: one code path covers a finger, a
- * trackpad and a mouse, which is also the only reason this is testable in a
- * headless browser at all.
+ * travel far enough is the thing that makes a sheet feel stuck.
  */
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
@@ -42,8 +46,19 @@ const DISMISS_DISTANCE = 110;
 /** …or a short, fast one: px travelled, and px/ms at release. */
 const FLICK_DISTANCE = 40;
 const FLICK_VELOCITY = 0.5;
-/** Below this, it is a tap and nothing moves. */
+/** Below this the sheet does not move, so a tap stays a tap. */
 const ENGAGE = 6;
+/** Enough movement to tell a drag's direction from a wobble. */
+const DIRECTION = 3;
+
+type Gesture = {
+  from: number;
+  last: number;
+  at: number;
+  velocity: number;
+  /** null until the first meaningful move decides, then locked. */
+  mode: "dismiss" | "scroll" | null;
+};
 
 export function Sheet({
   label,
@@ -59,11 +74,16 @@ export function Sheet({
   const [dragging, setDragging] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const bodyRef = useRef<HTMLDivElement | null>(null);
-  const gesture = useRef<{ id: number; from: number; last: number; at: number; velocity: number } | null>(null);
+  const gesture = useRef<Gesture | null>(null);
   const swallowClick = useRef(false);
 
-  // A callback ref, not `useRef` + an effect: the sheet's caller may still be
-  // loading when this mounts, so an effect that runs once would focus nothing.
+  // `onClose` is a fresh closure every render, and the native listeners below
+  // must not be torn down and re-attached for that. One ref, read at call time.
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+
+  // A callback ref, not `useRef` + an effect: the caller may still be loading
+  // when this mounts, so an effect that ran once would focus nothing.
   const attach = useCallback((node: HTMLDivElement | null) => {
     panelRef.current = node;
     node?.focus();
@@ -71,62 +91,105 @@ export function Sheet({
 
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") closeRef.current();
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
+  }, []);
 
-  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!panelRef.current || event.button !== 0) return;
-    const onGrip = (event.target as HTMLElement).closest(".sheet__grip") !== null;
-    // Mid-read, the body is a scroll container first and a sheet second.
-    if (!onGrip && (bodyRef.current?.scrollTop ?? 0) > 0) return;
-    gesture.current = { id: event.pointerId, from: event.clientY, last: event.clientY, at: event.timeStamp, velocity: 0 };
+  /** Shared by both input paths. Returns the px the sheet should sit at. */
+  const begin = (y: number, target: EventTarget | null, timeStamp: number) => {
+    const onGrip = (target as HTMLElement | null)?.closest(".sheet__grip") != null;
+    // Mid-read, the body is a scroll container first and a sheet second — the
+    // grip is the deliberate exception, which is what a grip is for.
+    if (!onGrip && (bodyRef.current?.scrollTop ?? 0) > 0) return false;
+    gesture.current = { from: y, last: y, at: timeStamp, velocity: 0, mode: onGrip ? "dismiss" : null };
+    return true;
   };
 
-  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+  /** True when the caller should stop the browser doing its own thing. */
+  const move = (y: number, timeStamp: number): boolean => {
     const g = gesture.current;
-    if (!g || event.pointerId !== g.id) return;
+    if (!g) return false;
 
-    const dy = event.clientY - g.from;
-    const dt = event.timeStamp - g.at;
-    if (dt > 0) g.velocity = (event.clientY - g.last) / dt;
-    g.last = event.clientY;
-    g.at = event.timeStamp;
+    const dy = y - g.from;
+    const dt = timeStamp - g.at;
+    if (dt > 0) g.velocity = (y - g.last) / dt;
+    g.last = y;
+    g.at = timeStamp;
 
-    // Upward drags do nothing: this sheet has no expanded state to pull into.
+    // One decision, then locked: a gesture that started as a scroll stays one.
+    if (g.mode === null) {
+      if (Math.abs(dy) < DIRECTION) return false;
+      g.mode = dy > 0 ? "dismiss" : "scroll";
+    }
+    if (g.mode === "scroll") return false;
+
     if (dy < ENGAGE) {
       if (dragging) setDragY(0);
-      return;
+      return true;
     }
-    if (!dragging) {
-      setDragging(true);
-      event.currentTarget.setPointerCapture(event.pointerId);
-    }
+    if (!dragging) setDragging(true);
     swallowClick.current = true;
     setDragY(dy - ENGAGE);
+    return true;
   };
 
-  const onPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+  const end = () => {
     const g = gesture.current;
     gesture.current = null;
-    if (!g || event.pointerId !== g.id) return;
     const travelled = dragY;
     setDragging(false);
     setDragY(0);
-    if (travelled >= DISMISS_DISTANCE || (travelled >= FLICK_DISTANCE && g.velocity >= FLICK_VELOCITY)) onClose();
+    if (!g || g.mode !== "dismiss") return;
+    if (travelled >= DISMISS_DISTANCE || (travelled >= FLICK_DISTANCE && g.velocity >= FLICK_VELOCITY)) {
+      closeRef.current();
+    }
   };
 
-  // The scrim thins out as the sheet leaves, so the board is already coming back
-  // before the finger lifts — and a drag that snaps back never looked committed.
-  const progress = Math.min(dragY / 320, 1);
+  // The touch path, by hand, because React's `touchmove` is passive.
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
+
+    const onTouchStart = (event: TouchEvent) => {
+      if (event.touches.length !== 1) return;
+      begin(event.touches[0]!.clientY, event.target, event.timeStamp);
+    };
+    const onTouchMove = (event: TouchEvent) => {
+      if (event.touches.length !== 1) return;
+      const ours = move(event.touches[0]!.clientY, event.timeStamp);
+      // Only while the gesture is ours, and only while it still can be: once
+      // the browser has committed to scrolling, the event is not cancelable and
+      // calling this would be a console warning and nothing else.
+      if (ours && event.cancelable) event.preventDefault();
+    };
+    const onTouchEnd = () => end();
+
+    panel.addEventListener("touchstart", onTouchStart, { passive: true });
+    panel.addEventListener("touchmove", onTouchMove, { passive: false });
+    panel.addEventListener("touchend", onTouchEnd);
+    panel.addEventListener("touchcancel", onTouchEnd);
+    return () => {
+      panel.removeEventListener("touchstart", onTouchStart);
+      panel.removeEventListener("touchmove", onTouchMove);
+      panel.removeEventListener("touchend", onTouchEnd);
+      panel.removeEventListener("touchcancel", onTouchEnd);
+    };
+    // `begin`/`move`/`end` close over `dragging` and `dragY`, which change while
+    // a drag is in flight — re-attaching mid-gesture would drop it. They are
+    // re-created every render on purpose and the listeners re-bound with them.
+  });
+
+  // The mouse path. Touch is handled above; taking it here too would run the
+  // whole gesture twice.
+  const mouseOnly = (event: React.PointerEvent) => event.pointerType !== "touch";
 
   return (
     <>
       <div
         className="sheet__scrim"
-        style={dragY ? { opacity: 1 - progress * 0.7 } : undefined}
+        style={dragY ? { opacity: 1 - Math.min(dragY / 320, 1) * 0.7 } : undefined}
         onClick={onClose}
       />
       <div
@@ -137,10 +200,21 @@ export function Sheet({
         ref={attach}
         tabIndex={-1}
         style={dragY ? { transform: `translateY(${dragY}px)` } : undefined}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
+        onPointerDown={(event) => {
+          if (!mouseOnly(event) || event.button !== 0) return;
+          if (begin(event.clientY, event.target, event.timeStamp)) {
+            event.currentTarget.setPointerCapture(event.pointerId);
+          }
+        }}
+        onPointerMove={(event) => {
+          if (mouseOnly(event)) move(event.clientY, event.timeStamp);
+        }}
+        onPointerUp={(event) => {
+          if (mouseOnly(event)) end();
+        }}
+        onPointerCancel={(event) => {
+          if (mouseOnly(event)) end();
+        }}
         onClickCapture={(event) => {
           if (!swallowClick.current) return;
           swallowClick.current = false;

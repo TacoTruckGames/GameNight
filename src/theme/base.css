@@ -1207,11 +1207,16 @@ textarea.input {
   will-change: transform;
 }
 
+/* `pan-y` and not `auto`: the body only ever scrolls vertically, and saying so
+   lets the browser hand horizontal gestures straight back instead of waiting to
+   see. The downward drag is taken from it by `preventDefault` in `Sheet.tsx`,
+   which is a decision made per gesture and cannot be expressed here. */
 .sheet__body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  touch-action: pan-y;
   padding: var(--space-3) var(--space-4) calc(var(--space-5) + env(safe-area-inset-bottom));
 }
 
