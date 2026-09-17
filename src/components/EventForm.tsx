@@ -1,11 +1,18 @@
 /**
- * Posting an event and editing one are the same form.
+ * Posting an event and editing one are the same form — and so is the
+ * operator's edit.
  *
  * They ask for the same seven things, validate them against the same schema and
  * report failures the same way, so they are one component with two submit paths
  * rather than two forms that would drift the moment a field is added. What
  * differs is what "submit" means: a create sends everything and clears itself
  * for the next table; an edit sends **only what changed** and closes.
+ *
+ * The operator page used to carry its own 290-line copy of the edit half,
+ * with a header claiming it reused this one. It passes a `mutation` now — the
+ * admin's patch route, which audits — and `venueTools` for the two things only
+ * an operator does from here: read which venue is linked, and unlink it with
+ * one click rather than a save.
  *
  * Validation runs twice on purpose. The shared zod schema (`shared/schemas.ts`)
  * runs here so a bad capacity is caught without a round trip, and the *server*
@@ -18,16 +25,7 @@ import { useId, useState } from "react";
 import type { FormEvent } from "react";
 import { useSearchParams } from "react-router";
 import type { EventSummary } from "../../shared/api-types";
-
-/**
- * What editing actually needs: the seven fields the form owns, and nothing
- * else. Narrower than `EventDetail` on purpose — the door list has an event
- * shaped exactly like this and no `myRsvp` or `organizerId` to offer, and
- * inventing those to satisfy a type would be a lie in the shape of a cast.
- */
-export type EditableEvent = EventSummary & { description: string | null };
-import type { GameType } from "../../shared/game-types";
-import { GAME_TYPES, GAME_TYPE_LABELS } from "../../shared/game-types";
+import { GAME_TYPES, GAME_TYPE_LABELS, type GameType } from "../../shared/game-types";
 import {
   CAPACITY_MAX,
   CAPACITY_MIN,
@@ -35,6 +33,7 @@ import {
   LOCATION_MAX,
   TITLE_MAX,
   createEventSchema,
+  eventPatchSchema,
   type EventPatch,
 } from "../../shared/schemas";
 import { ApiError } from "../api/client";
@@ -44,6 +43,26 @@ import { PlaceCombobox } from "./PlaceCombobox";
 import { PlacePreviewMap } from "./PlacePreviewMap";
 import { useToast } from "./Toast";
 import { defaultEventStartValue, eveningOn, isoToLocalInput, localInputToIso } from "../lib/datetime";
+
+/**
+ * What editing actually needs: the seven fields the form owns, and nothing
+ * else. Narrower than `EventDetail` on purpose — the door list has an event
+ * shaped exactly like this and no `myRsvp` or `organizerId` to offer, and
+ * inventing those to satisfy a type would be a lie in the shape of a cast.
+ * `AdminEventDetail` satisfies it too, which is how the operator page shares
+ * the form.
+ */
+export type EditableEvent = EventSummary & { description: string | null };
+
+/**
+ * The write an edit goes through. The organizer's `useUpdateEvent` by default;
+ * the operator page passes `usePatchEvent`, whose route audits. Only the two
+ * members the form touches, as methods so either hook's result satisfies it.
+ */
+export interface EditMutation {
+  isPending: boolean;
+  mutate(patch: EventPatch, options?: { onSuccess?: (updated: { title: string }) => void; onError?: (error: unknown) => void }): void;
+}
 
 type FieldErrors = Partial<
   Record<"title" | "gameType" | "startsAt" | "location" | "placeId" | "description" | "capacity", string>
@@ -66,7 +85,20 @@ function fieldErrorsFrom(issues: readonly { path: string; message: string }[]): 
   return next;
 }
 
-export function EventForm({ event, onDone }: { event?: EditableEvent; onDone?: () => void }) {
+export function EventForm({
+  event,
+  onDone,
+  mutation,
+  venueTools = false,
+}: {
+  event?: EditableEvent;
+  /** Called when an edit is saved or discarded. The operator page uses it to remount the form on the saved values. */
+  onDone?: () => void;
+  /** Overrides the organizer's write. When set, the form does not toast — the caller's hook already does. */
+  mutation?: EditMutation;
+  /** The operator's extras under Location: which venue is linked, and a one-click unlink. */
+  venueTools?: boolean;
+}) {
   const editing = event !== undefined;
   // `?date=` is set by "+ New Event" on the board: the organizer already chose
   // the day by looking at it, so the form opens on that evening instead of on a
@@ -76,7 +108,9 @@ export function EventForm({ event, onDone }: { event?: EditableEvent; onDone?: (
   const openOn = params.get("date");
   const toast = useToast();
   const createEvent = useCreateEvent();
-  const updateEvent = useUpdateEvent(event?.id ?? "");
+  // Always called (hooks are unconditional); used only when no override came in.
+  const ownUpdate = useUpdateEvent(event?.id ?? "");
+  const updateEvent: EditMutation = mutation ?? ownUpdate;
   const ids = {
     title: useId(),
     gameType: useId(),
@@ -183,9 +217,9 @@ export function EventForm({ event, onDone }: { event?: EditableEvent; onDone?: (
       return;
     }
 
-    // The same schema the server runs, minus the fields this edit is not
-    // touching. `.partial()` is why an untouched required field is not an error.
-    const parsed = createEventSchema(new Date()).partial().safeParse(patch);
+    // The schema both PATCH routes run, so a change the server would refuse
+    // is refused here first, on the same field, in the same words.
+    const parsed = eventPatchSchema(new Date()).safeParse(patch);
     if (!parsed.success) {
       setErrors(fieldErrorsFrom(parsed.error.issues.map((i) => ({ path: String(i.path[0] ?? ""), message: i.message }))));
       return;
@@ -194,7 +228,7 @@ export function EventForm({ event, onDone }: { event?: EditableEvent; onDone?: (
     setErrors({});
     updateEvent.mutate(parsed.data, {
       onSuccess: (updated) => {
-        toast.show(`"${updated.title}" updated.`);
+        if (!mutation) toast.show(`"${updated.title}" updated.`);
         setPlaceSession(null); // the billing session ends with the write it paid for
         onDone?.();
       },
@@ -378,6 +412,31 @@ export function EventForm({ event, onDone }: { event?: EditableEvent; onDone?: (
         ) : null}
         {errors.placeId ? <p className="field__error">{errors.placeId}</p> : null}
         {placeNote ? <p className="field__note">{placeNote}</p> : null}
+        {venueTools && event ? (
+          <>
+            {event.place ? (
+              <p className="text-sm muted">
+                Linked venue: <span className="admin-mono">{event.place.address}</span>. Editing the label unlinks
+                it; pick a suggestion to re-point it.
+              </p>
+            ) : (
+              <p className="text-sm muted">No verified venue — the address is free text.</p>
+            )}
+            {/* Its own button, not a save: unlinking is the one place an operator
+                wants to change *only* the venue and see it happen immediately. */}
+            <button
+              type="button"
+              className="btn btn--sm btn--secondary field__aside"
+              disabled={!event.place || pending}
+              onClick={() => {
+                setPlaceId(null);
+                updateEvent.mutate({ placeId: null }, { onSuccess: () => onDone?.() });
+              }}
+            >
+              Remove venue link
+            </button>
+          </>
+        ) : null}
         {/* Only once a suggestion has been picked. Free text is not a place —
             there is nothing to show, and geocoding a half-typed line would
             render a confident map of somewhere the organizer did not mean. */}
