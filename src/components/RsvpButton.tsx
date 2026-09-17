@@ -10,6 +10,7 @@
 
 import type { EventStatus } from "../../shared/api-types";
 import { useCancelRsvp, useRsvp } from "../api/hooks";
+import { isPastEvent } from "../lib/datetime";
 
 export function RsvpButton({
   eventId,
@@ -33,7 +34,7 @@ export function RsvpButton({
   const cancel = useCancelRsvp(eventId);
 
   const pending = rsvp.isPending || cancel.isPending;
-  const started = new Date(startsAt).getTime() <= Date.now();
+  const started = isPastEvent(startsAt);
   const cancelled = status === "cancelled";
   const className = `btn btn--sm${block ? " btn--block" : ""}`;
 

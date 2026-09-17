@@ -7,10 +7,12 @@
  * "7 of 16 seats left" only implies by subtraction.
  *
  * Zero gets words rather than a bare "0 going", which reads like a verdict on
- * the event rather than a fact about the clock.
+ * the event rather than a fact about the clock. Past tense follows the clock
+ * too: "6 went" on a finished night, not "6 going".
  */
 
-export function attendanceLabel(attendeeCount: number): string {
+export function attendanceLabel(attendeeCount: number, past = false): string {
+  if (past) return attendeeCount <= 0 ? "No attendees" : `${attendeeCount} went`;
   if (attendeeCount <= 0) return "No one yet";
   return `${attendeeCount} going`;
 }

@@ -11,6 +11,11 @@
  *
  * "Cancelled" outranks everything, including "You're in": if an admin pulled the
  * event, how many seats are left — and whether you had one — stopped mattering.
+ *
+ * "Ended" comes next, for the same reason in a gentler form. A finished night is
+ * not a seating question, and a greyed past card that still offered "9 of 15
+ * seats left" would be arguing with itself. How many actually came is on the
+ * card's date line, which is the right place for it.
  */
 
 import type { EventStatus } from "../../shared/api-types";
@@ -22,18 +27,28 @@ export function SeatChip({
   isFull,
   joined,
   status,
+  past = false,
 }: {
   seatsLeft: number;
   capacity: number;
   isFull: boolean;
   joined?: boolean;
   status?: EventStatus;
+  /** Already happened. Outranks every seating state except "Cancelled". */
+  past?: boolean;
 }) {
   if (status === "cancelled")
     return (
       <span className="seat-chip seat-chip--cancelled">
         <Icon name="alert" size={16} />
         Cancelled
+      </span>
+    );
+  if (past)
+    return (
+      <span className="seat-chip seat-chip--past">
+        <Icon name="empty" size={16} />
+        Ended
       </span>
     );
   const full = isFull || seatsLeft <= 0;

@@ -7,7 +7,7 @@ import { Link } from "react-router";
 import type { EventSummary } from "../../shared/api-types";
 import { gameTypeLabel } from "../../shared/game-types";
 import { attendanceLabel } from "../lib/attendance";
-import { formatEventDateTime, toDateTimeAttr } from "../lib/datetime";
+import { formatEventDateTime, isPastEvent, toDateTimeAttr } from "../lib/datetime";
 import { MapLink } from "./MapLink";
 import { SeatChip } from "./SeatChip";
 import { RsvpButton } from "./RsvpButton";
@@ -22,8 +22,12 @@ export function EventCard({
   /** Only players get a button; organizers see the same card, read-only. */
   showRsvp?: boolean;
 }) {
+  // Past events reach a card through the calendar's day pane, where a finished
+  // night otherwise looks exactly like one you can still join.
+  const past = isPastEvent(event.startsAt);
+
   return (
-    <article className="card">
+    <article className={past ? "card card--past" : "card"}>
       <Link className="card__link" to={`/events/${event.id}`}>
         <span className="card__title">{event.title}</span>
         {/* The head count rides on the date line, not in the action row: that
@@ -32,9 +36,10 @@ export function EventCard({
         <span className="card__meta">
           <time dateTime={toDateTimeAttr(event.startsAt)}>{formatEventDateTime(event.startsAt)}</time>
           {" · "}
-          {attendanceLabel(event.attendeeCount)}
+          {attendanceLabel(event.attendeeCount, past)}
         </span>
         <span className="card__meta">
+          {past ? <span className="badge badge--past">Past</span> : null}{past ? " " : null}
           <span className="badge">{gameTypeLabel(event.gameType)}</span> Hosted by {event.organizerName}
         </span>
       </Link>
@@ -49,6 +54,7 @@ export function EventCard({
           isFull={event.isFull}
           joined={joined}
           status={event.status}
+          past={past}
         />
         {showRsvp ? (
           <RsvpButton

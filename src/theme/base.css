@@ -311,6 +311,21 @@ a {
   gap: var(--space-3);
 }
 
+/* A finished event still earns a card — checking what you went to is a real
+   reason to scroll back — but it is not something you can act on, so it stops
+   being a raised surface and takes the page's own background. That reads as
+   "greyed out" in both themes without an opacity that would drag the text
+   under its contrast floor. */
+.card--past {
+  background: var(--color-bg);
+  box-shadow: none;
+}
+
+.card--past .card__title {
+  color: var(--color-muted);
+  font-weight: 650;
+}
+
 .card__link {
   color: inherit;
   text-decoration: none;
@@ -373,6 +388,14 @@ a {
   white-space: nowrap;
 }
 
+/* The one thing on a past card that is NOT muted: it is the reason the rest of
+   the card is. Full-strength text on the alt surface, so it reads first. */
+.badge--past {
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+  font-weight: 700;
+}
+
 .seat-chip {
   display: inline-flex;
   align-items: center;
@@ -406,6 +429,13 @@ a {
 .seat-chip--cancelled {
   background: var(--color-danger-soft);
   color: var(--color-danger);
+}
+
+/* Neutral on purpose: "Ended" is a fact, not a warning, so it takes the muted
+   pair rather than the danger one that "Cancelled" needs. */
+.seat-chip--past {
+  background: var(--color-surface-alt);
+  color: var(--color-muted);
 }
 
 /* --------------------------------------------------------------- filters -- */

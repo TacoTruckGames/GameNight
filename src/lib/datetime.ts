@@ -51,6 +51,18 @@ export function formatUtcDay(day: string): string {
   return at ? utcDay.format(at) : day;
 }
 
+/**
+ * Has it happened already? The board shows past events in the calendar's day
+ * pane, and three surfaces need to agree on the answer: the card greys itself,
+ * the detail page tags itself, and the RSVP button refuses. An unparseable date
+ * is treated as *not* past — the same defensive direction the rest of this file
+ * takes, since wrongly greying a live event is worse than not greying a dead one.
+ */
+export function isPastEvent(iso: string, now: Date = new Date()): boolean {
+  const at = parse(iso);
+  return at !== null && at.getTime() <= now.getTime();
+}
+
 /** Machine-readable value for `<time dateTime>`; empty when unparseable. */
 export function toDateTimeAttr(iso: string): string {
   return parse(iso) ? iso : "";
