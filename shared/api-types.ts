@@ -90,7 +90,17 @@ export interface EventSummary {
  * not an error; it is also the only place the list's lean payload is paid back
  * (see `EventSummary`).
  */
-export type EventDetail = EventSummary & { description: string | null; myRsvp: boolean | null };
+export type EventDetail = EventSummary & {
+  description: string | null;
+  myRsvp: boolean | null;
+  /**
+   * Whose event it is. On the list this would be dead weight — the board shows
+   * `organizerName` and nothing there acts on the id — but the detail page is
+   * where the owning organizer is offered Edit, and "is this mine" cannot be
+   * answered from a display name.
+   */
+  organizerId: string;
+};
 
 export interface Attendee {
   playerId: string;

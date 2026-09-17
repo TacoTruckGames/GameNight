@@ -2,7 +2,17 @@
  * The deep-linkable version of a card: everything the card has, plus room to
  * breathe, and the same one-tap RSVP.
  *
- * `GET /api/events/:id` carries `myRsvp`, so this page needs no join.
+ * `GET /api/events/:id` carries `myRsvp`, so this page needs no join. It also
+ * carries `organizerId`, which is the one thing a display name cannot answer:
+ * whether the organizer reading this is the one who posted it. If so, the
+ * primary action is Edit — this is the page they arrive on from the board, and
+ * it is the only place on the public side that can offer it.
+ *
+ * What used to sit there was "Switch to a player to RSVP", offered to anyone
+ * signed in who could not take a seat. It solved a problem the header now
+ * solves better: the switcher hangs off the name button on every page, so a
+ * second copy of it here was a button spending the page's primary slot on
+ * something the reader did not come for.
  */
 
 import { useState } from "react";
@@ -13,26 +23,24 @@ import { isPastEvent } from "../lib/datetime";
 import { mapsDirectionsUrl } from "../../shared/maps-links";
 import { useEvent, useMapsConfig, useMyRsvpIds } from "../api/hooks";
 import { ErrorBanner } from "../components/ErrorBanner";
+import { EventForm } from "../components/EventForm";
 import { EventMiniMap } from "../components/EventMiniMap";
 import { MapLink } from "../components/MapLink";
 import { RsvpButton } from "../components/RsvpButton";
 import { SeatChip } from "../components/SeatChip";
 import { Skeleton } from "../components/Skeleton";
 import { useIdentity } from "../identity/IdentityContext";
-import { WhoAreYou } from "../identity/WhoAreYou";
 import { formatEventDateTimeLong, toDateTimeAttr } from "../lib/datetime";
 
 export function EventDetailPage() {
   const { id = "" } = useParams();
-  const { isPlayer } = useIdentity();
+  const { isPlayer, user } = useIdentity();
   const event = useEvent(id);
   const myRsvpIds = useMyRsvpIds();
   // The one public page that asks. The board deliberately does not: the flags
   // change nothing there, so a request per list would buy nothing.
   const maps = useMapsConfig({ enabled: true });
-  // Same move as the header's "Switch": an organizer who wants this seat does
-  // not have to go hunting for that button, the picker opens right here.
-  const [switching, setSwitching] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   if (event.isPending) {
     return (
@@ -57,6 +65,10 @@ export function EventDetailPage() {
   const joined = detail.myRsvp ?? myRsvpIds.has(detail.id);
   const cancelled = detail.status === "cancelled";
   const past = isPastEvent(detail.startsAt);
+  // Ownership comes from the row, never from a name: two organizers may share
+  // one. The server checks it again on the PATCH — this only decides what to
+  // draw.
+  const mine = user?.role === "organizer" && user.id === detail.organizerId;
 
   return (
     <div className="stack stack--loose">
@@ -130,17 +142,17 @@ export function EventDetailPage() {
             status={detail.status}
             block
           />
-        ) : cancelled ? null : (
-          // Not a disclaimer in the primary slot: you *are* signed in, just not
-          // as someone who can take a seat, and this is the button that fixes
-          // that without leaving the page.
-          <button type="button" className="btn btn--secondary btn--block" onClick={() => setSwitching(true)}>
-            Switch to a player to RSVP
+        ) : mine && !cancelled && !editing ? (
+          <button type="button" className="btn btn--block" onClick={() => setEditing(true)}>
+            Edit Event
           </button>
-        )}
+        ) : null}
       </div>
 
-      {switching ? <WhoAreYou onClose={() => setSwitching(false)} /> : null}
+      {/* Below the event rather than in place of it: the organizer is editing
+          something they can still see, and the times and seat count above are
+          what they are editing against. */}
+      {mine && editing ? <EventForm event={detail} onDone={() => setEditing(false)} /> : null}
     </div>
   );
 }

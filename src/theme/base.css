@@ -461,6 +461,18 @@ a {
 
 /* --------------------------------------------------------------- filters -- */
 
+/* Save and Cancel on one line, Save first. Not `btn--block` each: a full-width
+   Cancel reads as equal in weight to the thing it undoes. */
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.form-actions > .btn {
+  flex: 1 1 8rem;
+}
+
 .filters {
   display: flex;
   flex-direction: column;

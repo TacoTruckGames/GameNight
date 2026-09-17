@@ -27,7 +27,7 @@ import type {
   RsvpResponse,
   User,
 } from "../../shared/api-types";
-import type { CreateEventInput, CreateUserInput } from "../../shared/schemas";
+import type { CreateEventInput, CreateUserInput, EventPatch } from "../../shared/schemas";
 import { ApiError, NetworkError, apiFetch } from "./client";
 import { SUSPENDED_MESSAGE, useIdentity } from "../identity/IdentityContext";
 import { useToast } from "../components/Toast";
@@ -365,6 +365,26 @@ export function useCreateEvent() {
   return useMutation({
     mutationFn: (input: CreateEventInput) =>
       apiFetch<EventSummary>("/api/events", { method: "POST", body: input, userId }),
+    onSuccess: afterWrite,
+  });
+}
+
+/**
+ * The organizer's edit of their own event.
+ *
+ * `afterWrite` clears `["events"]`, which includes this event's own detail key,
+ * so the page the form sits on refetches and the board behind it agrees. The
+ * response is the updated detail, but it is not written into the cache by hand:
+ * its `myRsvp` is `null` by construction (an organizer holds no seat), and
+ * seeding that into a key a player might later read is exactly the kind of
+ * cleverness `hooks.ts` avoids everywhere else.
+ */
+export function useUpdateEvent(id: string) {
+  const { userId } = useIdentity();
+  const afterWrite = useAfterWrite();
+  return useMutation({
+    mutationFn: (patch: EventPatch) =>
+      apiFetch<EventDetail>(`/api/events/${encodeURIComponent(id)}`, { method: "PATCH", body: patch, userId }),
     onSuccess: afterWrite,
   });
 }

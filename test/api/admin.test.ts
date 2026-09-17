@@ -946,7 +946,7 @@ describe("GET /api/admin/overview", () => {
  * Appended with the verified-venues feature.
  *
  * A venue is five columns but one decision, and the audit trail has to read
- * that way. If `adminUpdateEvent` had grown four more `assign(...)` calls, one
+ * that way. If `updateEvent` had grown four more `assign(...)` calls, one
  * click on one field would have produced `["placeId", "placeAddress",
  * "placeLat", "placeLng", "placeResolvedAt"]` in `changed` — noise that makes
  * the trail harder to read, and that would have broken the exact-array

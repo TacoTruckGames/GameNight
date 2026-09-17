@@ -9,7 +9,7 @@
 import { Hono } from "hono";
 
 import type { AttendeesResponse, EventDetail } from "../../shared/api-types";
-import { createEventSchema, eventsQuerySchema } from "../../shared/schemas";
+import { createEventSchema, eventPatchSchema, eventsQuerySchema } from "../../shared/schemas";
 import {
   getEventRow,
   hasRsvp,
@@ -17,12 +17,14 @@ import {
   listAttendees,
   listEvents,
   toEventSummary,
+  updateEvent,
   type ResolvedPlace,
 } from "../db/queries";
 import type { AppEnv } from "../lib/context";
-import { ApiError } from "../lib/errors";
-import { redact, resolvePlaceId } from "../lib/places";
+import { ApiError, fieldError } from "../lib/errors";
+import { redact, resolvePlaceForPatch, resolvePlaceId } from "../lib/places";
 import { reportError } from "../lib/report";
+import { newRoomKey } from "../lib/room";
 import { nowIso, toIsoSeconds, toStorageWindow } from "../lib/time";
 import { parseJson, parseQuery } from "../lib/validate";
 import { requireOrganizer } from "../middleware/auth";
@@ -140,7 +142,86 @@ events.get("/events/:id", async (c) => {
   // `description` is added here rather than in `toEventSummary`, because this is
   // the only public route that sends it — the board's cards have no room for
   // prose and no reason to carry 50 of them. Null is the ordinary "none" case.
-  return c.json({ ...toEventSummary(row), description: row.description, myRsvp } satisfies EventDetail);
+  return c.json({
+    ...toEventSummary(row),
+    description: row.description,
+    myRsvp,
+    organizerId: row.organizer_id,
+  } satisfies EventDetail);
+});
+
+/**
+ * The organizer's own edit. Same schema and same write as the admin's patch —
+ * see `eventPatchSchema` — differing only in who may call it: the admin may fix
+ * anybody's event, an organizer may fix the ones that are theirs.
+ *
+ * Ownership is checked against the row, never against anything the client sent.
+ * A cancelled event is refused: only an admin can restore one, so editing it
+ * would be filing changes into something nobody can see, with nothing on screen
+ * to say why. 409 rather than 403 — the caller is allowed, the event is not in
+ * a state to take it.
+ *
+ * Deliberately **not** audited. `audit()` writes the operator trail the admin
+ * dashboard reads as "recent admin actions", and an organizer editing their own
+ * table is not one. Giving those rows an actor role to distinguish them is the
+ * right fix and a bigger one than this route.
+ */
+events.patch("/events/:id", async (c) => {
+  const organizer = requireOrganizer(c);
+  const id = c.req.param("id");
+
+  const row = await getEventRow(c.env.DB, id);
+  if (!row) throw new ApiError(404, "NOT_FOUND", "That event does not exist.");
+  if (row.organizer_id !== organizer.id) {
+    throw new ApiError(403, "FORBIDDEN", "That event belongs to a different organizer.");
+  }
+  if (row.status === "cancelled") {
+    throw new ApiError(409, "EVENT_CANCELLED", "This event was cancelled, so it can no longer be edited.");
+  }
+
+  // `now` is the server's, so "must be in the future" is judged against the
+  // moment the request landed rather than whatever the client believes.
+  const patch = await parseJson(c, eventPatchSchema(new Date()));
+
+  // `events.rsvp_count <= capacity` is a CHECK constraint, so without this the
+  // honest mistake "shrink the room" arrives as an opaque 500. It is a field
+  // error, on the field.
+  if (patch.capacity !== undefined && patch.capacity < row.rsvp_count) {
+    throw new ApiError(
+      400,
+      "VALIDATION_FAILED",
+      "Please fix the highlighted fields.",
+      fieldError("capacity", `Capacity can't be below the ${row.rsvp_count} current attendees`),
+    );
+  }
+
+  // A hydrated `EventRoom` caches capacity and answers "full" from that cache
+  // without reading D1, so a raise would be invisible to the players it was for.
+  // A rotated key names a room that does not exist yet; it hydrates from D1 on
+  // its next call. It is written in the same UPDATE as the capacity, so the two
+  // can never disagree.
+  const rotate = patch.capacity !== undefined && patch.capacity !== row.capacity ? newRoomKey() : null;
+
+  // Resolved *before* the UPDATE, so a failed lookup writes nothing at all.
+  const place = await resolvePlaceForPatch(c, patch.placeId, patch.placeSessionToken);
+
+  await updateEvent(
+    c.env.DB,
+    id,
+    // Normalise to the one storage format, whatever offset the client sent.
+    { ...patch, ...(patch.startsAt !== undefined ? { startsAt: toIsoSeconds(new Date(patch.startsAt)) } : {}) },
+    rotate,
+    place,
+  );
+
+  const updated = await getEventRow(c.env.DB, id);
+  if (!updated) throw new ApiError(500, "INTERNAL", "The event could not be read back after the update.");
+  return c.json({
+    ...toEventSummary(updated),
+    description: updated.description,
+    myRsvp: null,
+    organizerId: updated.organizer_id,
+  } satisfies EventDetail);
 });
 
 /** Owning organizer only — the door list is not public. */

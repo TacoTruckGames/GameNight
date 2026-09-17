@@ -19,11 +19,11 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { z } from "zod";
 
-import type { AdminEventDetail, ApiFieldError } from "../../shared/api-types";
+import type { AdminEventDetail } from "../../shared/api-types";
 import {
   adminErrorsQuerySchema,
-  adminEventPatchSchema,
   adminEventsQuerySchema,
+  eventPatchSchema,
   adminUsersQuerySchema,
   suspendSchema,
   type SuspendInput,
@@ -37,7 +37,6 @@ import {
   adminOverview,
   adminSetEventStatus,
   adminSetSuspended,
-  adminUpdateEvent,
   deleteError,
   getError,
   listAttendees,
@@ -45,13 +44,12 @@ import {
   listErrors,
   resolveError,
   toAdminEvent,
-  type PlaceUpdate,
+  updateEvent,
 } from "../db/queries";
 import { audit } from "../lib/audit";
 import type { AppEnv } from "../lib/context";
-import { ApiError } from "../lib/errors";
-import { redact, resolvePlaceId } from "../lib/places";
-import { reportError } from "../lib/report";
+import { ApiError, fieldError } from "../lib/errors";
+import { resolvePlaceForPatch } from "../lib/places";
 import { newRoomKey, roomFor } from "../lib/room";
 import { nowIso, toIsoSeconds } from "../lib/time";
 import { parseJson, parseQuery } from "../lib/validate";
@@ -70,67 +68,6 @@ async function readSuspendBody(c: Context<AppEnv>): Promise<SuspendInput> {
   const raw = await c.req.text();
   if (raw.trim() === "") return {};
   return parseJson(c, suspendSchema);
-}
-
-function fieldError(path: string, message: string): ApiFieldError[] {
-  return [{ path, message }];
-}
-
-/**
- * **This is where the operator tool refuses to lie.**
- *
- * `POST /api/events` degrades silently when Google is unreachable: the
- * organizer wanted to post a game and the map is a garnish, so the event is
- * created with no place and the UI says so in one line. An admin editing an
- * event's venue is doing *only* that, deliberately, on a screen whose entire
- * purpose is fixing a wrong venue. Returning 200 with the old coordinates still
- * in the row would tell them the fix landed when it did not — and they would
- * close the tab.
- *
- * So the asymmetry is exact, and it is three cases:
- *   - `placeId: null`     → unlink. No network call; clearing always works.
- *   - `not_found`         → 400 on the `placeId` field. The id is stale; this is
- *                           the operator's problem and it is actionable.
- *   - anything else       → 503 `PLACE_UNAVAILABLE`, nothing written. Ours.
- *
- * `undefined` (the field absent) means "not editing the venue" and is the only
- * path that touches neither the network nor the place columns.
- */
-async function resolvePlaceForPatch(
-  c: Context<AppEnv>,
-  placeId: string | null | undefined,
-  sessionToken: string | undefined,
-): Promise<PlaceUpdate | null> {
-  if (placeId === undefined) return null;
-  if (placeId === null) return { kind: "clear" };
-
-  const outcome = await resolvePlaceId(c.env, c.env.DB, placeId, sessionToken);
-  if (outcome.ok) return { kind: "set", place: outcome.place };
-
-  if (outcome.reason === "not_found") {
-    throw new ApiError(
-      400,
-      "VALIDATION_FAILED",
-      "Please fix the highlighted fields.",
-      fieldError("placeId", "Google no longer recognises that place. Search for the venue again."),
-    );
-  }
-
-  // "No key configured" is not a failure and never reaches the Errors page —
-  // but it is still a 503 here, because nothing was written and saying
-  // otherwise would be the lie this whole function exists to avoid.
-  if (outcome.reason !== "unconfigured") {
-    await reportError(c.env.DB, "places.details", new Error(`Place lookup failed: ${outcome.reason}`), {
-      reason: outcome.reason,
-      placeId: redact(placeId).slice(0, 128),
-    });
-  }
-
-  throw new ApiError(
-    503,
-    "PLACE_UNAVAILABLE",
-    "We couldn't confirm that venue just now, so nothing was changed. Try again in a moment.",
-  );
 }
 
 // --------------------------------------------------------------- overview --
@@ -229,7 +166,7 @@ admin.patch("/admin/events/:id", async (c) => {
   const row = await adminGetEventRow(c.env.DB, id);
   if (!row) throw new ApiError(404, "NOT_FOUND", "That event does not exist.");
 
-  const patch = await parseJson(c, adminEventPatchSchema(new Date()));
+  const patch = await parseJson(c, eventPatchSchema(new Date()));
 
   // `events.rsvp_count <= capacity` is a CHECK constraint, so without this the
   // honest mistake "shrink the room" would arrive as an opaque 500. It is a
@@ -253,7 +190,7 @@ admin.patch("/admin/events/:id", async (c) => {
   // Resolved *before* the UPDATE, so a failed lookup writes nothing at all.
   const place = await resolvePlaceForPatch(c, patch.placeId, patch.placeSessionToken);
 
-  const changed = await adminUpdateEvent(
+  const changed = await updateEvent(
     c.env.DB,
     id,
     // Normalise to the one storage format, whatever offset the client sent.

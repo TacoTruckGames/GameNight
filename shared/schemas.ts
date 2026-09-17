@@ -279,12 +279,18 @@ export type AdminErrorsQuery = z.infer<typeof adminErrorsQuerySchema>;
  * changed, `placeId` and `description`, are removed by sending an explicit
  * `null`. Sending `""` for a description is not a clear; it normalises to
  * absent, which here is a no-op (and a 400 if it was the only field sent).
+ *
+ * One schema, two routes: the admin's `PATCH /api/admin/events/:id` and the
+ * organizer's `PATCH /api/events/:id`. They differ in *who* may call them and
+ * in nothing else — an organizer editing their own table and an operator
+ * fixing a bad one are the same edit, and a second schema would only be a
+ * second place for the rules to drift.
  */
-export function adminEventPatchSchema(now: Date) {
+export function eventPatchSchema(now: Date) {
   return createEventSchema(now)
     .partial()
     .refine((patch) => Object.values(patch).some((value) => value !== undefined), {
       message: "Change at least one field",
     });
 }
-export type AdminEventPatch = z.infer<ReturnType<typeof adminEventPatchSchema>>;
+export type EventPatch = z.infer<ReturnType<typeof eventPatchSchema>>;

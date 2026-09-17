@@ -84,7 +84,7 @@ resolves it to a user row and its role on every request, and every route declare
 | `POST /api/users` (the caller names the role; defaults to player) | ✓ | ✓ (anonymous too) |
 | `PUT` / `DELETE /api/events/:id/rsvp`, `GET /api/me/rsvps` | ✓ | 403 |
 | `POST /api/events`, `GET /api/me/hosted` | 403 | ✓ |
-| `GET /api/events/:id/attendees` | 403 | ✓ only for the owner |
+| `PATCH /api/events/:id`, `GET /api/events/:id/attendees` | 403 | ✓ only for the owner |
 
 An unknown `X-User-Id` is a 401 everywhere, which the client treats as "your stored identity is gone — pick
 again". Errors are always `{ error: { code, message, details? } }`; validation failures list every bad field
@@ -241,6 +241,15 @@ half-second spinner.
 - **No pagination** (`LIMIT 200`); ~50 live events fit on one screen.
 - **RSVP lives on the card**, not behind the detail page: the primary user is on a phone on a commute, so the
   decision happens where the information is.
+- **An organizer edits their own event** from its page — the same `EventForm` that posts one, prefilled, and
+  sending **only the fields that changed**. `PATCH /api/events/:id` is the admin's patch route with a
+  different gate: same `eventPatchSchema`, same write, same capacity guard and same room-key rotation, but
+  ownership is read off the row rather than from anything the client said, and a cancelled event is a 409
+  (only an admin can restore one, so an edit would file changes into something nobody can see). It is
+  deliberately *not* audited — `audit()` writes the trail the dashboard reads as "recent admin actions", and
+  an organizer fixing their own table is not one. Where that button sits, the page used to offer "Switch to a
+  player to RSVP"; the header's switcher does that on every page now, so the primary slot went back to the
+  reader's own business.
 - Validation runs twice on purpose — the shared zod schema in the browser to skip a round-trip, and the same
   schema on the server, which is the one that counts.
 
@@ -384,13 +393,14 @@ the next section calls beyond the brief.
 | **Board** (frontend + API) | Sort by date/popular, day-grouped agenda, month calendar with a windowed `?from=&to=` query for past months, filter dropdown | 3 h |
 | **Board trim** (frontend) | Sort control retired, deselectable day cells, whole-span upcoming pane, filter row on one line | 0.5 h |
 | **Identity switcher** (frontend) | Anchored dropdown off the name button, role colours and icons, focus return | 0.5 h |
+| **Organizer editing** (frontend + API) | `PATCH /api/events/:id` with an ownership gate, one form for post and edit, changed-fields-only patch, 8 route tests | 1.5 h |
 | **Venues** (backend) | Google Places proxied through the Worker, server-resolved coordinates, D1 spend ceiling, mini map, tap-to-navigate | 2 h |
 | **Review pass** (UX) | 60 screenshots × 2 critic passes, 11 defects fixed, the desktop breakpoint | 2 h |
 | **Data & content** | 64-event seed with clusters/past/cancelled, descriptions, game-type taxonomy research | 2 h |
 | **Polish** (frontend) | Name-as-button header, role badge, segmented View switch, description field end to end, head count | 1.5 h |
 | **Week agenda** (frontend + windowed `/me` endpoints) | Week strip + day pane on My RSVP, Organize and the board, past attendance, shared segmented control | 2.5 h |
 
-Roughly **21 hours** all told, of which the core the brief asked for was the first four.
+Roughly **22.5 hours** all told, of which the core the brief asked for was the first four.
 
 ## How it was built
 
@@ -439,6 +449,9 @@ cares about — S1–S4 are the same code and the same tests they were at hour f
 - **The review pass and desktop breakpoint** — because "a stranger could open it and use it" is a claim
   worth testing with fresh eyes, and the findings were real.
 - **Descriptions, head count, role badge** — small, each closing a gap the audit or the review found.
+- **Organizer editing** — because "post it and live with it" is not a product. It is the one place the
+  public API and the operator API do the same thing, and they do it through the same schema and the same
+  write on purpose.
 
 If a reviewer would rather see the four-hour version, it is `git checkout 5d98851`.
 

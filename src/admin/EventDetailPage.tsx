@@ -24,9 +24,9 @@ import {
   DESCRIPTION_MAX,
   LOCATION_MAX,
   TITLE_MAX,
-  adminEventPatchSchema,
+  eventPatchSchema,
 } from "../../shared/schemas";
-import type { AdminEventPatch } from "../../shared/schemas";
+import type { EventPatch } from "../../shared/schemas";
 import { ApiError } from "../api/client";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBanner } from "../components/ErrorBanner";
@@ -134,7 +134,7 @@ function EditForm({ event }: { event: AdminEventDetail }) {
       return;
     }
 
-    const parsed = adminEventPatchSchema(new Date()).safeParse(patch);
+    const parsed = eventPatchSchema(new Date()).safeParse(patch);
     if (!parsed.success) {
       const next: FieldErrors = {};
       for (const issue of parsed.error.issues) {
@@ -147,7 +147,7 @@ function EditForm({ event }: { event: AdminEventDetail }) {
     }
 
     setErrors({});
-    patchEvent.mutate(parsed.data as AdminEventPatch, {
+    patchEvent.mutate(parsed.data as EventPatch, {
       onError: (error: unknown) => {
         if (error instanceof ApiError && error.code === "VALIDATION_FAILED" && error.details) {
           const next: FieldErrors = {};
@@ -273,7 +273,7 @@ function EditForm({ event }: { event: AdminEventDetail }) {
           disabled={!event.place || patchEvent.isPending}
           onClick={() => {
             setPlaceId(null);
-            patchEvent.mutate({ placeId: null } as AdminEventPatch);
+            patchEvent.mutate({ placeId: null } as EventPatch);
           }}
         >
           Remove venue link

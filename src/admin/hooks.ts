@@ -20,7 +20,7 @@ import type {
   Page,
   RsvpResponse,
 } from "../../shared/api-types";
-import type { AdminEventPatch } from "../../shared/schemas";
+import type { EventPatch } from "../../shared/schemas";
 import { ApiError, apiFetch } from "../api/client";
 import type { AdminEventsFilter, AdminUsersFilter } from "../api/hooks";
 import { queryKeys, useAfterAdminWrite } from "../api/hooks";
@@ -138,7 +138,7 @@ export function useUnsuspendUser(id: string) {
 }
 
 export function usePatchEvent(id: string) {
-  return useAdminMutation<AdminEventPatch, AdminEvent>(
+  return useAdminMutation<EventPatch, AdminEvent>(
     (userId, patch) =>
       apiFetch<AdminEvent>(`/api/admin/events/${encodeURIComponent(id)}`, { method: "PATCH", body: patch, userId }),
     () => "Event updated.",

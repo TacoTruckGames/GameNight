@@ -30,7 +30,7 @@ import type {
   User,
 } from "../../shared/api-types";
 import type { GameType } from "../../shared/game-types";
-import { ADMIN_PAGE_SIZE, type AdminEventPatch, type AdminEventsQuery, type AdminUsersQuery } from "../../shared/schemas";
+import { ADMIN_PAGE_SIZE, type EventPatch, type AdminEventsQuery, type AdminUsersQuery } from "../../shared/schemas";
 
 // ------------------------------------------------------------------- rows --
 
@@ -619,10 +619,10 @@ export type PlaceUpdate = { kind: "clear" } | { kind: "set"; place: ResolvedPlac
  * A new key names a room that has never existed, which hydrates from D1 — the
  * new capacity — on its next call.
  */
-export async function adminUpdateEvent(
+export async function updateEvent(
   db: D1Database,
   id: string,
-  patch: AdminEventPatch,
+  patch: EventPatch,
   rotateRoom: string | null,
   place: PlaceUpdate | null = null,
 ): Promise<string[]> {

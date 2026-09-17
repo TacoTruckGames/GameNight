@@ -4,7 +4,7 @@ import type { ApiErrorBody, AttendeesResponse, EventDetail, EventSummary } from 
 import { env } from "cloudflare:test";
 
 import { DESCRIPTION_MAX } from "../../shared/schemas";
-import { api, cancelEvent, inDays, seedEvent, seedUser, seedUsers } from "../helpers";
+import { api, cancelEvent, inDays, putRsvp, seedAdmin, seedEvent, seedUser, seedUsers } from "../helpers";
 
 /** The list is shared across tests, so always look for *our* event in it. */
 function find(list: EventSummary[], id: string): EventSummary | undefined {
@@ -716,5 +716,144 @@ describe("event descriptions", () => {
     const card = find(list.body, body.id);
     expect(card).toBeDefined();
     expect(card && "description" in card).toBe(false);
+  });
+});
+
+describe("PATCH /api/events/:id", () => {
+  const patch = (id: string, body: unknown, as?: string) =>
+    api<EventDetail>(`/api/events/${id}`, { method: "PATCH", body, as });
+  /** The same call when the interesting half of the answer is the error. */
+  const patchFails = (id: string, body: unknown, as?: string) =>
+    api<ApiErrorBody>(`/api/events/${id}`, { method: "PATCH", body, as });
+
+  it("lets the owning organizer change their own event", async () => {
+    const organizer = await seedUser({ role: "organizer" });
+    const event = await seedEvent({ organizer, title: "Old Title", capacity: 6 });
+    const startsAt = inDays(9);
+
+    const { status, body } = await patch(
+      event.id,
+      { title: "New Title", gameType: "rpg", startsAt, location: "Back Room", capacity: 10 },
+      organizer.id,
+    );
+
+    expect(status).toBe(200);
+    expect(body.title).toBe("New Title");
+    expect(body.gameType).toBe("rpg");
+    expect(body.location).toBe("Back Room");
+    expect(body.capacity).toBe(10);
+    expect(body.seatsLeft).toBe(10);
+    expect(body.organizerId).toBe(organizer.id);
+    // Stored in the one format, whatever offset arrived.
+    expect(body.startsAt).toMatch(/Z$/);
+    expect(Date.parse(body.startsAt)).toBe(Date.parse(startsAt));
+
+    // …and the change is in the row, not only in the response.
+    const reread = await api<EventDetail>(`/api/events/${event.id}`);
+    expect(reread.body.title).toBe("New Title");
+    expect(reread.body.capacity).toBe(10);
+  });
+
+  it("leaves absent fields alone and clears a description with an explicit null", async () => {
+    const organizer = await seedUser({ role: "organizer" });
+    const event = await seedEvent({ organizer, title: "Keep Me" });
+
+    await patch(event.id, { description: "Bring dice." }, organizer.id);
+    expect((await api<EventDetail>(`/api/events/${event.id}`)).body.description).toBe("Bring dice.");
+
+    // One field sent, and only that field moves.
+    const { body } = await patch(event.id, { capacity: 12 }, organizer.id);
+    expect(body.title).toBe("Keep Me");
+    expect(body.description).toBe("Bring dice.");
+
+    const cleared = await patch(event.id, { description: null }, organizer.id);
+    expect(cleared.body.description).toBeNull();
+  });
+
+  it("raising capacity rotates the room key, so a hydrated room cannot keep saying full", async () => {
+    const organizer = await seedUser({ role: "organizer" });
+    const players = await seedUsers(2);
+    const event = await seedEvent({ organizer, capacity: 2 });
+
+    // Fill it through the DO, so the room is hydrated and caching capacity 2.
+    for (const player of players) expect((await putRsvp(event.id, player.id)).status).toBe(201);
+    const third = await seedUser();
+    expect((await putRsvp(event.id, third.id)).status).toBe(409);
+
+    const { body } = await patch(event.id, { capacity: 4 }, organizer.id);
+    expect(body.capacity).toBe(4);
+    expect(body.isFull).toBe(false);
+
+    // The seat the old room would have refused.
+    expect((await putRsvp(event.id, third.id)).status).toBe(201);
+  });
+
+  it("refuses a capacity below the people already coming, as a field error", async () => {
+    const organizer = await seedUser({ role: "organizer" });
+    const players = await seedUsers(3);
+    const event = await seedEvent({ organizer, capacity: 8, rsvpPlayerIds: players.map((p) => p.id) });
+
+    const { status, body } = await patchFails(event.id, { capacity: 2 }, organizer.id);
+
+    expect(status).toBe(400);
+    expect(body.error.code).toBe("VALIDATION_FAILED");
+    expect(body.error.details?.[0]?.path).toBe("capacity");
+    expect(body.error.details?.[0]?.message).toContain("3");
+    // Nothing was written.
+    expect((await api<EventDetail>(`/api/events/${event.id}`)).body.capacity).toBe(8);
+  });
+
+  it("refuses a start time in the past and an empty patch", async () => {
+    const organizer = await seedUser({ role: "organizer" });
+    const event = await seedEvent({ organizer });
+
+    const past = await patchFails(event.id, { startsAt: inDays(-1) }, organizer.id);
+    expect(past.status).toBe(400);
+    expect(past.body.error.details?.[0]?.path).toBe("startsAt");
+
+    const empty = await patchFails(event.id, {}, organizer.id);
+    expect(empty.status).toBe(400);
+    expect(empty.body.error.code).toBe("VALIDATION_FAILED");
+  });
+
+  it("is the owning organizer's alone", async () => {
+    const owner = await seedUser({ role: "organizer" });
+    const other = await seedUser({ role: "organizer" });
+    const player = await seedUser();
+    const admin = await seedAdmin();
+    const event = await seedEvent({ organizer: owner, title: "Mine" });
+
+    expect((await patch(event.id, { title: "Yours" })).status).toBe(401);
+    expect((await patch(event.id, { title: "Yours" }, player.id)).status).toBe(403);
+    // An admin is not an organizer on this route — they have their own.
+    expect((await patch(event.id, { title: "Yours" }, admin.id)).status).toBe(403);
+
+    const stranger = await patchFails(event.id, { title: "Yours" }, other.id);
+    expect(stranger.status).toBe(403);
+    expect(stranger.body.error.code).toBe("FORBIDDEN");
+
+    expect((await api<EventDetail>(`/api/events/${event.id}`)).body.title).toBe("Mine");
+  });
+
+  it("404s an event that does not exist, and 409s one that was cancelled", async () => {
+    const organizer = await seedUser({ role: "organizer" });
+    const event = await seedEvent({ organizer });
+
+    expect((await patch("evt_missing", { title: "x" }, organizer.id)).status).toBe(404);
+
+    await cancelEvent(event.id);
+    const { status, body } = await patchFails(event.id, { title: "x" }, organizer.id);
+    expect(status).toBe(409);
+    expect(body.error.code).toBe("EVENT_CANCELLED");
+  });
+
+  it("checks who you are before it checks what you sent", async () => {
+    const organizer = await seedUser({ role: "organizer" });
+    const player = await seedUser();
+    const event = await seedEvent({ organizer });
+
+    // A patch that would fail validation, from someone not allowed to send it:
+    // the 403 has to win, or the route leaks that the event exists.
+    expect((await patch(event.id, { capacity: -5 }, player.id)).status).toBe(403);
   });
 });

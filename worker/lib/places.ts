@@ -23,6 +23,12 @@
  *    the failure taxonomy and the retry policy without touching the network.
  */
 
+import type { Context } from "hono";
+
+import type { PlaceUpdate } from "../db/queries";
+import type { AppEnv } from "./context";
+import { ApiError, fieldError } from "./errors";
+import { reportError } from "./report";
 import { nowIso } from "./time";
 
 // ------------------------------------------------------------- the vendor --
@@ -542,4 +548,61 @@ export async function resolvePlaceId(
   const result = await client.details(placeId, { sessionToken });
   if (!result.ok) return { ok: false, reason: result.reason };
   return { ok: true, place: { ...result.value, resolvedAt: nowIso() } };
+}
+
+/**
+ * **This is where an edit refuses to lie.**
+ *
+ * `POST /api/events` degrades silently when Google is unreachable: the
+ * organizer wanted to post a game and the map is a garnish, so the event is
+ * created with no place and the UI says so in one line. *Editing* a venue is
+ * doing only that, deliberately, on a screen opened to fix a wrong one —
+ * whether the hand on it is the owning organizer's or an operator's. Returning
+ * 200 with the old coordinates still in the row would say the fix landed when
+ * it did not, and they would close the tab.
+ *
+ * So the asymmetry is exact, and it is three cases:
+ *   - `placeId: null`     → unlink. No network call; clearing always works.
+ *   - `not_found`         → 400 on the `placeId` field. The id is stale; that is
+ *                           the caller's problem, and it is actionable.
+ *   - anything else       → 503 `PLACE_UNAVAILABLE`, nothing written. Ours.
+ *
+ * `undefined` (the field absent) means "not editing the venue" and is the only
+ * path that touches neither the network nor the place columns.
+ */
+export async function resolvePlaceForPatch(
+  c: Context<AppEnv>,
+  placeId: string | null | undefined,
+  sessionToken: string | undefined,
+): Promise<PlaceUpdate | null> {
+  if (placeId === undefined) return null;
+  if (placeId === null) return { kind: "clear" };
+
+  const outcome = await resolvePlaceId(c.env, c.env.DB, placeId, sessionToken);
+  if (outcome.ok) return { kind: "set", place: outcome.place };
+
+  if (outcome.reason === "not_found") {
+    throw new ApiError(
+      400,
+      "VALIDATION_FAILED",
+      "Please fix the highlighted fields.",
+      fieldError("placeId", "Google no longer recognises that place. Search for the venue again."),
+    );
+  }
+
+  // "No key configured" is not a failure and never reaches the Errors page —
+  // but it is still a 503 here, because nothing was written and saying
+  // otherwise would be the lie this whole function exists to avoid.
+  if (outcome.reason !== "unconfigured") {
+    await reportError(c.env.DB, "places.details", new Error(`Place lookup failed: ${outcome.reason}`), {
+      reason: outcome.reason,
+      placeId: redact(placeId).slice(0, 128),
+    });
+  }
+
+  throw new ApiError(
+    503,
+    "PLACE_UNAVAILABLE",
+    "We couldn't confirm that venue just now, so nothing was changed. Try again in a moment.",
+  );
 }

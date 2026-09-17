@@ -14,6 +14,11 @@ import type { ApiErrorBody, ApiErrorCode, ApiFieldError } from "../../shared/api
 import type { AppEnv } from "./context";
 import { reportError } from "./report";
 
+/** One field, one message — the `details` shape a form maps straight onto its inputs. */
+export function fieldError(path: string, message: string): ApiFieldError[] {
+  return [{ path, message }];
+}
+
 export class ApiError extends Error {
   readonly status: ContentfulStatusCode;
   readonly code: ApiErrorCode;
