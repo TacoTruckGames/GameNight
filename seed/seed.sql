@@ -147,14 +147,21 @@ INSERT INTO users (id, name, role) VALUES
 -- rows and hand-written RSVP sets are untouched.
 INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, capacity, rsvp_count, room_key,
                     place_id, place_address, place_lat, place_lng, place_resolved_at) VALUES
-  -- No verified place: a fictional shop, exactly as an organizer would type it.
-  -- One of only three such rows left on the board (with `evt_league_finals_draft`
-  -- and the house game `evt_dnd_curse_amber`), and the reason to keep any: the
-  -- free-text path has to stay visible next to the linked one.
+  -- Lake City Branch (real public library).
+  --
+  -- This row, `evt_league_finals_draft` and `evt_dnd_curse_amber` were the last
+  -- three free-text venues on the board — a fictional shop and somebody's dining
+  -- room, kept so the unverified path stayed visible in the demo. They are gone:
+  -- every event now carries a place Google issued, because a venue with no place
+  -- id cannot show a map and cannot be navigated to, and three rows that could
+  -- do neither read as broken rather than as a deliberate edge case. The path
+  -- itself is still reachable — the picker's "use what I typed" row posts a
+  -- free-text venue, and `venues.mjs` covers what that renders.
   ('evt_friday_draft', 'org_cardboard', 'Friday Night Draft', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+2 days','+20 hours','+7 hours'),
-   'Cardboard Castle, 114 Pike St', 8, 0, lower(hex(randomblob(8))),
-   NULL, NULL, NULL, NULL, NULL),
+   'Lake City Library, meeting room', 8, 0, lower(hex(randomblob(8))),
+   'ChIJhWb17mQRkFQRNqp3mBpKXrQ', '12501 28th Ave NE, Seattle, WA 98125, USA', 47.719716, -122.298113,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- Capitol Hill Branch (real public library).
   ('evt_commander_pod', 'org_cardboard', 'Commander Pod Night', 'card',
@@ -235,10 +242,12 @@ INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, cap
    'Northgate Community Center, multipurpose room', 16, 0, lower(hex(randomblob(8))),
    'ChIJNauPGVYRkFQRBY2bPEB3jfU', '10510 5th Ave NE, Seattle, WA 98125, USA', 47.705455, -122.32236,
    strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+  -- Greenwood Branch (real public library). Was "Greenwood House, dining room".
   ('evt_dnd_curse_amber', 'org_metro', 'D&D: The Curse of Amberfall', 'rpg',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+1 days','+23 hours','+7 hours'),
-   'Greenwood House, dining room', 6, 0, lower(hex(randomblob(8))),
-   NULL, NULL, NULL, NULL, NULL),
+   'Greenwood Library, meeting room', 6, 0, lower(hex(randomblob(8))),
+   'ChIJ7eJjtyMUkFQRlrk_dVTDvxk', '8016 Greenwood Ave N, Seattle, WA 98103, USA', 47.687452, -122.354757,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- +2 days (2 more, alongside Friday Night Draft)
   ('evt_catan_tournament', 'org_dicegoblin', 'Catan Tournament', 'board',
@@ -401,10 +410,12 @@ INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, cap
    'Central Library, Room 2B', 30, 0, lower(hex(randomblob(8))),
    'ChIJ55fLWVtBkFQR0v31eadEoLM', '1000 4th Ave, Seattle, WA 98104, USA', 47.606766, -122.332644,
    strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+  -- Delridge Community Center (real). Was the same fictional shop as above.
   ('evt_league_finals_draft', 'org_cardboard', 'Draft League Finals', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+19 days','+19 hours','+7 hours'),
-   'Cardboard Castle, 114 Pike St', 16, 0, lower(hex(randomblob(8))),
-   NULL, NULL, NULL, NULL, NULL),
+   'Delridge Community Center, main hall', 16, 0, lower(hex(randomblob(8))),
+   'ChIJu0pJilJAkFQRy5Q1Wb-lKxY', '4501 Delridge Wy SW, Seattle, WA 98106, USA', 47.563315, -122.364384,
+   strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   ('evt_warhammer_doubles', 'org_metro', 'Warhammer Doubles Night', 'miniatures',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+19 days','+20 hours','+7 hours'),
    'Green Lake Community Center, main hall', 8, 0, lower(hex(randomblob(8))),

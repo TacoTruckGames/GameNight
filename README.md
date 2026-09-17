@@ -402,13 +402,16 @@ And the real cost lever is the **300 ms debounce**, not the session token: with 
 Google still bills the first 12 autocomplete requests of a session, so the token only pays off past ~4.2
 requests per session and a debounced session lands near 3.
 
-Demo data note: the seeded venues are **real public civic facilities** — five Seattle library branches, three
+Demo data note: the seeded venues are **real public civic facilities** — seven Seattle library branches, four
 community centres, Magnuson Park and the Bellevue library — so the map links resolve; the events, organizers
 and people are invented, and no real private business is implied to be hosting anything. Their place ids,
 addresses and coordinates were resolved once from the Places API at authoring time and written into
-`seed.sql` by hand, so `pnpm db:reset:local` still runs offline, with no key, for free. Three events keep no
-venue on purpose — a house game and two rows at a shop nobody has indexed — because the free-text path has to
-stay visible beside the linked one, and a private home never gets a pin.
+`seed.sql` by hand, so `pnpm db:reset:local` still runs offline, with no key, for free. **All 64 events carry
+one.** Three used to keep free text on purpose — a house game and two rows at a fictional shop — to leave the
+unverified path visible; a venue with no place id can show no map and cannot be navigated to, so those three
+read as broken rows rather than as a deliberate edge case. The path itself is still reachable, and still
+covered: the picker's "use what I typed" row posts a free-text venue, and `venues.mjs` asserts what it
+renders.
 
 ### Look and feel
 
@@ -561,7 +564,9 @@ cares about — S1–S4 are the same code and the same tests they were at hour f
 - **Venues** — because an address a phone can navigate to is the difference between a listing and an
   event you attend; it is keyless-safe and its whole cost surface is capped in D1. The mini map is itself the
   link to turn-by-turn, so there is no Directions button under it — that was the same tap twice. A venue with
-  no map keeps the button, because then it is the only route to navigation. **The form shows the map too**,
+  no map does not get one either: no map means Google never confirmed the place, and turn-by-turn to a string
+  like "Greenwood House, dining room" is a promise nobody can keep. The venue label is a link to a Maps
+  *search* for the same words, which degrades honestly — a search that finds nothing shows you that. **The form shows the map too**,
   the moment a suggestion is picked, so an organizer sees where they just said the table is before they post
   it. That needed a second route: `EventMiniMap` is keyed by event id, and a form has no event yet.
   `/api/places/map` takes the label instead — Static Maps geocodes it inside the same billed request, so a
