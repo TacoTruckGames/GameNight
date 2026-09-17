@@ -39,7 +39,6 @@ export function EventCard({
           {attendanceLabel(event.attendeeCount, past)}
         </span>
         <span className="card__meta">
-          {past ? <span className="badge badge--past">Past</span> : null}{past ? " " : null}
           <span className="badge">{gameTypeLabel(event.gameType)}</span> Hosted by {event.organizerName}
         </span>
       </Link>

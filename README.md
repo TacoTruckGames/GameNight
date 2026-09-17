@@ -199,7 +199,8 @@ half-second spinner.
   two ends are computed in *local* time and sent as UTC, because the cells bucket by local day. Monday-first
   so the weekend sits together, a count per day, tap a day to get the ordinary cards beneath — the card
   stays the RSVP surface because a title does not fit a phone-width cell. Past days list normally, greyed,
-  with the RSVP button reading "Started" for a table you never had a seat at. **Nothing is selected on
+  with an "Ended" chip and no action at all — a finished night cannot be joined, and the seat you held on one
+  cannot be given back, so a button there would only offer to rewrite history. **Nothing is selected on
   arrival**: the pane shows the whole span on screen, upcoming only, and a day cell is a filter you apply to
   it. Pressing the open cell takes the filter off again, so `aria-pressed` means what it says in both
   directions and the overview is always one press away. An opinionated default — today, or the first day
@@ -221,8 +222,8 @@ half-second spinner.
   tap-a-day-for-the-cards pane — and the personal pages ask `/api/me/rsvps` and `/api/me/hosted` the
   windowed question the board asks `/api/events`: local Monday 00:00 to the next Monday, computed in the
   reader's zone and sent as UTC, because the strip buckets by local day. Past weeks therefore show what you
-  went to, greyed as past cards with a "Past" badge and an "Ended" chip — though a past card you hold a
-  seat on keeps "Cancel RSVP", since "Started" is the state of a table you never joined. **List** is the
+  went to, greyed, with an "Ended" chip and no button — one word for the state, in one place, said by the
+  component whose job that is. **List** is the
   unwindowed, upcoming-only agenda, unchanged and one tap away. Week leads because the question a personal
   agenda is opened with is "am I double-booked on Saturday?", which a flat list makes you answer by reading
   every date. An empty week says "nothing this week" rather than "you have never RSVP'd": a window cannot know

@@ -409,14 +409,6 @@ a {
   white-space: nowrap;
 }
 
-/* The one thing on a past card that is NOT muted: it is the reason the rest of
-   the card is. Full-strength text on the alt surface, so it reads first. */
-.badge--past {
-  background: var(--color-surface-alt);
-  color: var(--color-text);
-  font-weight: 700;
-}
-
 .seat-chip {
   display: inline-flex;
   align-items: center;

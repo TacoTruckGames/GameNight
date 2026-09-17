@@ -1,11 +1,16 @@
 /**
- * One tap, on the card.
+ * One tap, on the card — or nothing at all, which is a state too.
  *
  * The primary user is on a phone on a commute, so RSVP does not live behind a
  * detail page — the card is the decision point. The button never guesses: it
  * shows a pending label while the server decides and the surrounding card only
  * changes after the refetch (see `api/hooks.ts` on why there are no optimistic
  * updates).
+ *
+ * Two states render nothing: a cancelled event you have no seat on, and any
+ * event that has already started. Both are cases where `SeatChip` beside this
+ * button has already said the only true thing there is to say, and a disabled
+ * button repeating it in a second vocabulary is noise with a tap target.
  */
 
 import type { EventStatus } from "../../shared/api-types";
@@ -38,9 +43,18 @@ export function RsvpButton({
   const cancelled = status === "cancelled";
   const className = `btn btn--sm${block ? " btn--block" : ""}`;
 
-  // Cancelling your own RSVP stays available on a cancelled event — clearing it
-  // off your list is the one thing you might still want to do, and the API
-  // allows DELETE (only PUT is refused with `EVENT_CANCELLED`).
+  // A finished night is not a seating question. You cannot join it, and you
+  // cannot un-attend it either — the seat you held is a fact now, and the card's
+  // "Ended" chip is the whole statement. So the action slot is empty rather than
+  // carrying a disabled "Started" that says what the chip just said, or a
+  // "Cancel RSVP" that offers to rewrite history. This outranks `joined` and
+  // `cancelled` both.
+  if (started) return null;
+
+  // Cancelling your own RSVP stays available on a cancelled event that has not
+  // happened yet — clearing it off your list is the one thing you might still
+  // want to do, and the API allows DELETE (only PUT is refused with
+  // `EVENT_CANCELLED`).
   if (joined) {
     return (
       <button
@@ -58,14 +72,6 @@ export function RsvpButton({
 
   // Nothing to offer: the event is off, and you have no seat to release.
   if (cancelled) return null;
-
-  if (started) {
-    return (
-      <button type="button" className={`${className} btn--secondary`} disabled>
-        Started
-      </button>
-    );
-  }
 
   if (isFull) {
     return (

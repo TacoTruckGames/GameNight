@@ -79,7 +79,6 @@ export function EventDetailPage() {
       <div className="stack">
         <h1 className="page-title">{detail.title}</h1>
         <p className="card__meta">
-          {past ? <span className="badge badge--past">Past</span> : null}{past ? " " : null}
           <span className="badge">{gameTypeLabel(detail.gameType)}</span> Hosted by {detail.organizerName}
         </p>
       </div>
