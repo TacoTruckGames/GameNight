@@ -9,12 +9,13 @@
  * Labelled and full-width like the View and Sort controls below it — the three
  * together read as one stack of settings rather than three loose shapes.
  *
- * `FILTER_GAME_TYPES` omits `board_games` — still a valid tag, just too broad
- * to filter on.
+ * Every category is a filter option. "Board games" was once left out for being
+ * too broad — but under category-level types every bucket is that broad by
+ * design; the filter narrows to a kind of night and `?q=` finds the exact game.
  */
 
 import { useId } from "react";
-import { FILTER_GAME_TYPES, GAME_TYPE_LABELS } from "../../shared/game-types";
+import { GAME_TYPES, GAME_TYPE_LABELS } from "../../shared/game-types";
 
 export function GameTypeFilter({ value, onChange }: { value: string; onChange: (next: string) => void }) {
   const selectId = useId();
@@ -30,7 +31,7 @@ export function GameTypeFilter({ value, onChange }: { value: string; onChange: (
         onChange={(event) => onChange(event.target.value)}
       >
         <option value="">All</option>
-        {FILTER_GAME_TYPES.map((gameType) => (
+        {GAME_TYPES.map((gameType) => (
           <option key={gameType} value={gameType}>
             {GAME_TYPE_LABELS[gameType]}
           </option>

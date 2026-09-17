@@ -63,14 +63,14 @@ describe("GET /api/events", () => {
   });
 
   it("filters by gameType", async () => {
-    const warhammer = await seedEvent({ gameType: "warhammer" });
-    const dnd = await seedEvent({ gameType: "dnd" });
+    const warhammer = await seedEvent({ gameType: "miniatures" });
+    const dnd = await seedEvent({ gameType: "rpg" });
 
-    const { body } = await api<EventSummary[]>("/api/events?gameType=warhammer");
+    const { body } = await api<EventSummary[]>("/api/events?gameType=miniatures");
 
     expect(find(body, warhammer.id)).toBeDefined();
     expect(find(body, dnd.id)).toBeUndefined();
-    expect(body.every((event) => event.gameType === "warhammer")).toBe(true);
+    expect(body.every((event) => event.gameType === "miniatures")).toBe(true);
   });
 
   it("400s on an unknown gameType", async () => {
@@ -179,13 +179,13 @@ describe("GET /api/events", () => {
 
     it("combines with gameType and q", async () => {
       const token = crypto.randomUUID().slice(0, 8);
-      const wanted = await seedEvent({ title: `${token} wanted`, gameType: "warhammer", startsAt: inDays(-8) });
-      const wrongType = await seedEvent({ title: `${token} wrong type`, gameType: "dnd", startsAt: inDays(-8) });
-      const wrongTerm = await seedEvent({ title: "unrelated past", gameType: "warhammer", startsAt: inDays(-8) });
-      const outside = await seedEvent({ title: `${token} outside`, gameType: "warhammer", startsAt: inDays(-80) });
+      const wanted = await seedEvent({ title: `${token} wanted`, gameType: "miniatures", startsAt: inDays(-8) });
+      const wrongType = await seedEvent({ title: `${token} wrong type`, gameType: "rpg", startsAt: inDays(-8) });
+      const wrongTerm = await seedEvent({ title: "unrelated past", gameType: "miniatures", startsAt: inDays(-8) });
+      const outside = await seedEvent({ title: `${token} outside`, gameType: "miniatures", startsAt: inDays(-80) });
 
       const { status, body } = await api<EventSummary[]>(
-        `/api/events?from=${inDays(-9)}&to=${inDays(-7)}&gameType=warhammer&q=${token}`,
+        `/api/events?from=${inDays(-9)}&to=${inDays(-7)}&gameType=miniatures&q=${token}`,
       );
 
       expect(status).toBe(200);
@@ -324,7 +324,7 @@ describe("POST /api/events", () => {
   function payload(overrides: Record<string, unknown> = {}) {
     return {
       title: "New Event",
-      gameType: "commander",
+      gameType: "card",
       startsAt: inDays(5),
       location: "Somewhere",
       capacity: 6,
@@ -360,7 +360,7 @@ describe("POST /api/events", () => {
     expect(status).toBe(201);
     expect(body).toMatchObject({
       title: "Padded Title",
-      gameType: "commander",
+      gameType: "card",
       capacity: 7,
       attendeeCount: 0,
       seatsLeft: 7,
@@ -561,7 +561,7 @@ describe("event descriptions", () => {
       as: organizer.id,
       body: {
         title: "Described Night",
-        gameType: "commander",
+        gameType: "card",
         startsAt: inDays(5),
         location: "Somewhere",
         capacity: 6,

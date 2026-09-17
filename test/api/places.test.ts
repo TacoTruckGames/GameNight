@@ -82,7 +82,7 @@ const SEATTLE = {
 function newEventBody(extra: Record<string, unknown> = {}) {
   return {
     title: "Verified Venue Night",
-    gameType: "board_games",
+    gameType: "board",
     startsAt: inDays(5),
     location: "Central Library, Room 2B",
     capacity: 6,

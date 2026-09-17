@@ -150,7 +150,7 @@ describe("the admin gate", () => {
         await api("/api/events", {
           method: "POST",
           as: admin.id,
-          body: { title: "Nope", gameType: "dnd", startsAt: inDays(5), location: "X", capacity: 4 },
+          body: { title: "Nope", gameType: "rpg", startsAt: inDays(5), location: "X", capacity: 4 },
         })
       ).status,
     ).toBe(403);
@@ -222,7 +222,7 @@ describe("suspension", () => {
     const { status, body } = await api<ApiErrorBody>("/api/events", {
       method: "POST",
       as: organizer.id,
-      body: { title: "Should not exist", gameType: "dnd", startsAt: inDays(5), location: "Hall", capacity: 4 },
+      body: { title: "Should not exist", gameType: "rpg", startsAt: inDays(5), location: "Hall", capacity: 4 },
     });
     expect(status).toBe(403);
     expect(body.error.code).toBe("ACCOUNT_SUSPENDED");
@@ -372,11 +372,11 @@ describe("editing an event", () => {
     const { status, body } = await api<AdminEvent>(`/api/admin/events/${event.id}`, {
       method: "PATCH",
       as: admin.id,
-      body: { title: "New Title", location: "New Hall", gameType: "warhammer", startsAt: inDays(9) },
+      body: { title: "New Title", location: "New Hall", gameType: "miniatures", startsAt: inDays(9) },
     });
 
     expect(status).toBe(200);
-    expect(body).toMatchObject({ title: "New Title", location: "New Hall", gameType: "warhammer" });
+    expect(body).toMatchObject({ title: "New Title", location: "New Hall", gameType: "miniatures" });
     expect(body.startsAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/); // normalised
     expect(await roomKeyOf(event.id)).toBe(before);
 

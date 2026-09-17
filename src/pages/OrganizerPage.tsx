@@ -56,7 +56,7 @@ function NewEventForm() {
   };
 
   const [title, setTitle] = useState("");
-  const [gameType, setGameType] = useState<GameType>("magic_draft");
+  const [gameType, setGameType] = useState<GameType>("card");
   const [startsAtLocal, setStartsAtLocal] = useState(() => defaultEventStartValue(48));
   const [location, setLocation] = useState("");
   const [placeId, setPlaceId] = useState<string | null>(null);

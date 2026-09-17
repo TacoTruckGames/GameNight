@@ -142,34 +142,34 @@ INSERT INTO users (id, name, role) VALUES
 INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, capacity, rsvp_count, room_key,
                     place_id, place_address, place_lat, place_lng, place_resolved_at) VALUES
   -- No verified place: a fictional shop, exactly as an organizer would type it.
-  ('evt_friday_draft', 'org_cardboard', 'Friday Night Draft', 'magic_draft',
+  ('evt_friday_draft', 'org_cardboard', 'Friday Night Draft', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+2 days','+20 hours','+7 hours'),
    'Cardboard Castle, 114 Pike St', 8, 0, lower(hex(randomblob(8))),
    NULL, NULL, NULL, NULL, NULL),
 
   -- No verified place.
-  ('evt_commander_pod', 'org_cardboard', 'Commander Pod Night', 'commander',
+  ('evt_commander_pod', 'org_cardboard', 'Commander Pod Night', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+3 days','+19.5 hours','+7 hours'),
    'Cardboard Castle, 114 Pike St', 4, 0, lower(hex(randomblob(8))),
    NULL, NULL, NULL, NULL, NULL),
 
   -- Seattle Central Library (real public library). The label keeps the room
   -- number the organizer cares about; the address is Google's canonical form.
-  ('evt_dnd_sunken_vault', 'org_metro', 'D&D One-Shot: The Sunken Vault', 'dnd',
+  ('evt_dnd_sunken_vault', 'org_metro', 'D&D One-Shot: The Sunken Vault', 'rpg',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+4 days','+19.5 hours','+7 hours'),
    'Central Library, Room 2B', 5, 0, lower(hex(randomblob(8))),
    'seed_place_spl_central', '1000 4th Ave, Seattle, WA 98104, USA', 47.6067, -122.3325,
    strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- Seattle Public Library, Ballard Branch (real public library).
-  ('evt_board_game_meetup', 'org_metro', 'Board Game Meetup', 'board_games',
+  ('evt_board_game_meetup', 'org_metro', 'Board Game Meetup', 'board',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+6 days','+19 hours','+7 hours'),
    'Ballard Library, meeting room', 12, 0, lower(hex(randomblob(8))),
    'seed_place_spl_ballard', '5614 22nd Ave NW, Seattle, WA 98107, USA', 47.6686, -122.3856,
    strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 
   -- Green Lake Community Center (real city community centre).
-  ('evt_warhammer_open', 'org_metro', 'Warhammer 40k Open Play', 'warhammer',
+  ('evt_warhammer_open', 'org_metro', 'Warhammer 40k Open Play', 'miniatures',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+9 days','+18.5 hours','+7 hours'),
    'Green Lake Community Center, main hall', 6, 0, lower(hex(randomblob(8))),
    'seed_place_greenlake_cc', '7201 E Green Lake Dr N, Seattle, WA 98115, USA', 47.6807, -122.3283,
@@ -185,7 +185,7 @@ INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, cap
 
   -- Past event: must never appear in the upcoming list, and RSVPs to it 409.
   -- No verified place.
-  ('evt_last_week_draft', 'org_cardboard', 'Last Week''s Draft', 'magic_draft',
+  ('evt_last_week_draft', 'org_cardboard', 'Last Week''s Draft', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','-3 days','+20 hours','+7 hours'),
    'Cardboard Castle, 114 Pike St', 8, 0, lower(hex(randomblob(8))),
    NULL, NULL, NULL, NULL, NULL);
@@ -222,15 +222,15 @@ INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, cap
   ('evt_midweek_modern', 'org_cardboard', 'Midweek Modern Night', 'other',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+1 days','+19.5 hours','+7 hours'),
    'Cardboard Castle, 114 Pike St', 16, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
-  ('evt_dnd_curse_amber', 'org_metro', 'D&D: The Curse of Amberfall', 'dnd',
+  ('evt_dnd_curse_amber', 'org_metro', 'D&D: The Curse of Amberfall', 'rpg',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+1 days','+23 hours','+7 hours'),
    'Greenwood House, dining room', 6, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
 
   -- +2 days (2 more, alongside Friday Night Draft)
-  ('evt_catan_tournament', 'org_dicegoblin', 'Catan Tournament', 'board_games',
+  ('evt_catan_tournament', 'org_dicegoblin', 'Catan Tournament', 'board',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+2 days','+19 hours','+7 hours'),
    'Dice Goblin Loft, 3rd floor', 16, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
-  ('evt_kill_team_night', 'org_metro', 'Kill Team Skirmish Night', 'warhammer',
+  ('evt_kill_team_night', 'org_metro', 'Kill Team Skirmish Night', 'miniatures',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+2 days','+20.5 hours','+7 hours'),
    'Green Lake Community Center, main hall', 8, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
 
@@ -240,59 +240,59 @@ INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, cap
    'Cardboard Castle, 114 Pike St', 12, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
 
   -- +4 days (2 more)
-  ('evt_board_game_potluck', 'org_library', 'Board Game Potluck', 'board_games',
+  ('evt_board_game_potluck', 'org_library', 'Board Game Potluck', 'board',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+4 days','+18.5 hours','+7 hours'),
    'Ballard Library, meeting room', 20, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
-  ('evt_commander_precon', 'org_dicegoblin', 'Precon Commander Night', 'commander',
+  ('evt_commander_precon', 'org_dicegoblin', 'Precon Commander Night', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+4 days','+20.5 hours','+7 hours'),
    'Dice Goblin Loft, back tables', 8, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
 
   -- +6 days (3 more)
-  ('evt_draft_set_release', 'org_cardboard', 'Booster Draft: Set Release', 'magic_draft',
+  ('evt_draft_set_release', 'org_cardboard', 'Booster Draft: Set Release', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+6 days','+20 hours','+7 hours'),
    'Cardboard Castle, 114 Pike St', 8, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
-  ('evt_dnd_gilded_fox', 'org_metro', 'D&D One-Shot: Tomb of the Gilded Fox', 'dnd',
+  ('evt_dnd_gilded_fox', 'org_metro', 'D&D One-Shot: Tomb of the Gilded Fox', 'rpg',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+6 days','+22 hours','+7 hours'),
    'Central Library, Room 4A', 6, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
-  ('evt_wargame_intro', 'org_library', 'Intro to Miniature Wargaming', 'warhammer',
+  ('evt_wargame_intro', 'org_library', 'Intro to Miniature Wargaming', 'miniatures',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+6 days','+18.5 hours','+7 hours'),
    'Magnuson Park, Building 30', 10, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
 
   -- +7 days (1)
-  ('evt_family_game_hour', 'org_library', 'Family Game Hour', 'board_games',
+  ('evt_family_game_hour', 'org_library', 'Family Game Hour', 'board',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+7 days','+18 hours','+7 hours'),
    'Ballard Library, meeting room', 24, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
 
   -- +9 days (2 more, alongside Warhammer 40k Open Play)
-  ('evt_commander_chaos', 'org_dicegoblin', 'Chaos Commander: Four-Player Pods', 'commander',
+  ('evt_commander_chaos', 'org_dicegoblin', 'Chaos Commander: Four-Player Pods', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+9 days','+19.5 hours','+7 hours'),
    'Dice Goblin Loft, 3rd floor', 16, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
-  ('evt_rpg_open_table', 'org_metro', 'Open Table RPG Night', 'dnd',
+  ('evt_rpg_open_table', 'org_metro', 'Open Table RPG Night', 'rpg',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+9 days','+21 hours','+7 hours'),
    'Greenwood House, dining room', 7, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
 
   -- +10 days (1)
-  ('evt_draft_vintage_cube', 'org_cardboard', 'Vintage Cube Draft', 'magic_draft',
+  ('evt_draft_vintage_cube', 'org_cardboard', 'Vintage Cube Draft', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+10 days','+20 hours','+7 hours'),
    'Cardboard Castle, 114 Pike St', 8, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
 
   -- +12 days — Game Fest, day one (4). One venue, four staggered slots.
-  ('evt_fest_warhammer_tourney', 'org_library', 'Game Fest: Warhammer 40k Tournament', 'warhammer',
+  ('evt_fest_warhammer_tourney', 'org_library', 'Game Fest: Warhammer 40k Tournament', 'miniatures',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+12 days','+18 hours','+7 hours'),
    'Magnuson Park, Building 30', 16, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
-  ('evt_fest_flagship_draft', 'org_cardboard', 'Game Fest: Flagship Draft', 'magic_draft',
+  ('evt_fest_flagship_draft', 'org_cardboard', 'Game Fest: Flagship Draft', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+12 days','+18.5 hours','+7 hours'),
    'Magnuson Park, Building 30', 32, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
-  ('evt_fest_commander_gauntlet', 'org_dicegoblin', 'Game Fest: Commander Gauntlet', 'commander',
+  ('evt_fest_commander_gauntlet', 'org_dicegoblin', 'Game Fest: Commander Gauntlet', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+12 days','+19.5 hours','+7 hours'),
    'Magnuson Park, Building 30', 20, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
-  ('evt_fest_dnd_marathon', 'org_metro', 'Game Fest: D&D Marathon', 'dnd',
+  ('evt_fest_dnd_marathon', 'org_metro', 'Game Fest: D&D Marathon', 'rpg',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+12 days','+20.5 hours','+7 hours'),
    'Magnuson Park, Building 30', 8, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
 
   -- +13 days — Game Fest, day two (5). The heaviest day on the board; the
   -- open library is the one event here that carries a verified place.
-  ('evt_fest_board_library', 'org_library', 'Game Fest: Open Board Game Library', 'board_games',
+  ('evt_fest_board_library', 'org_library', 'Game Fest: Open Board Game Library', 'board',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+13 days','+18 hours','+7 hours'),
    'Magnuson Park, Building 30', 40, 0, lower(hex(randomblob(8))),
    'seed_place_magnuson_park', '7400 Sand Point Way NE, Seattle, WA 98115, USA', 47.6806, -122.2570,
@@ -300,47 +300,47 @@ INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, cap
   ('evt_fest_learn_anything', 'org_cardboard', 'Game Fest: Learn to Play Anything', 'other',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+13 days','+19 hours','+7 hours'),
    'Magnuson Park, Building 30', 24, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
-  ('evt_fest_sealed_finals', 'org_cardboard', 'Game Fest: Sealed Finals', 'magic_draft',
+  ('evt_fest_sealed_finals', 'org_cardboard', 'Game Fest: Sealed Finals', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+13 days','+20 hours','+7 hours'),
    'Magnuson Park, Building 30', 16, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
-  ('evt_fest_indie_rpg', 'org_metro', 'Game Fest: Indie RPG Showcase', 'dnd',
+  ('evt_fest_indie_rpg', 'org_metro', 'Game Fest: Indie RPG Showcase', 'rpg',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+13 days','+21 hours','+7 hours'),
    'Magnuson Park, Building 30', 12, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
-  ('evt_fest_closing_pods', 'org_dicegoblin', 'Game Fest: Closing Commander Pods', 'commander',
+  ('evt_fest_closing_pods', 'org_dicegoblin', 'Game Fest: Closing Commander Pods', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+13 days','+23 hours','+7 hours'),
    'Magnuson Park, Building 30', 12, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
 
   -- +14 days (2 more, alongside Learn to Play Magic)
-  ('evt_kids_board_club', 'org_library', 'Kids Board Game Club', 'board_games',
+  ('evt_kids_board_club', 'org_library', 'Kids Board Game Club', 'board',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+14 days','+18.5 hours','+7 hours'),
    'Ballard Library, meeting room', 18, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
-  ('evt_warhammer_narrative', 'org_metro', 'Narrative Warhammer Campaign, Session 1', 'warhammer',
+  ('evt_warhammer_narrative', 'org_metro', 'Narrative Warhammer Campaign, Session 1', 'miniatures',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+14 days','+20 hours','+7 hours'),
    'Green Lake Community Center, main hall', 6, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
 
   -- +16 days (1)
-  ('evt_draft_two_headed', 'org_cardboard', 'Two-Headed Giant Draft', 'magic_draft',
+  ('evt_draft_two_headed', 'org_cardboard', 'Two-Headed Giant Draft', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+16 days','+19.5 hours','+7 hours'),
    'Cardboard Castle, 114 Pike St', 12, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
 
   -- +17 days (2)
-  ('evt_commander_budget', 'org_dicegoblin', 'Budget Commander Brawl', 'commander',
+  ('evt_commander_budget', 'org_dicegoblin', 'Budget Commander Brawl', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+17 days','+20.5 hours','+7 hours'),
    'Dice Goblin Loft, back tables', 8, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
-  ('evt_dnd_west_marches', 'org_metro', 'West Marches: Session 12', 'dnd',
+  ('evt_dnd_west_marches', 'org_metro', 'West Marches: Session 12', 'rpg',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+17 days','+22 hours','+7 hours'),
    'Greenwood House, dining room', 6, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
 
   -- +19 days — league finals night (4), three organizers running at once.
-  ('evt_library_game_day', 'org_library', 'Library Game Day', 'board_games',
+  ('evt_library_game_day', 'org_library', 'Library Game Day', 'board',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+19 days','+18 hours','+7 hours'),
    'Central Library, Room 2B', 30, 0, lower(hex(randomblob(8))),
    'seed_place_spl_central', '1000 4th Ave, Seattle, WA 98104, USA', 47.6067, -122.3325,
    strftime('%Y-%m-%dT%H:%M:%SZ','now')),
-  ('evt_league_finals_draft', 'org_cardboard', 'Draft League Finals', 'magic_draft',
+  ('evt_league_finals_draft', 'org_cardboard', 'Draft League Finals', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+19 days','+19 hours','+7 hours'),
    'Cardboard Castle, 114 Pike St', 16, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
-  ('evt_warhammer_doubles', 'org_metro', 'Warhammer Doubles Night', 'warhammer',
+  ('evt_warhammer_doubles', 'org_metro', 'Warhammer Doubles Night', 'miniatures',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+19 days','+20 hours','+7 hours'),
    'Green Lake Community Center, main hall', 8, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
   ('evt_puzzle_night', 'org_dicegoblin', 'Co-op Puzzle Night', 'other',
@@ -348,28 +348,28 @@ INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, cap
    'Dice Goblin Loft, 3rd floor', 10, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
 
   -- +20 days (1)
-  ('evt_dnd_saltmarsh', 'org_metro', 'D&D: Saltmarsh Pirates', 'dnd',
+  ('evt_dnd_saltmarsh', 'org_metro', 'D&D: Saltmarsh Pirates', 'rpg',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+20 days','+19.5 hours','+7 hours'),
    'Greenwood House, dining room', 6, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
 
   -- +22 days (2)
-  ('evt_board_heavy_euro', 'org_dicegoblin', 'Heavy Euro Games Evening', 'board_games',
+  ('evt_board_heavy_euro', 'org_dicegoblin', 'Heavy Euro Games Evening', 'board',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+22 days','+18.5 hours','+7 hours'),
    'Dice Goblin Loft, 3rd floor', 12, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
-  ('evt_draft_chaos_cube', 'org_cardboard', 'Chaos Cube Draft', 'magic_draft',
+  ('evt_draft_chaos_cube', 'org_cardboard', 'Chaos Cube Draft', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+22 days','+20 hours','+7 hours'),
    'Cardboard Castle, 114 Pike St', 8, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
 
   -- +24 days (1)
-  ('evt_commander_cedh', 'org_dicegoblin', 'cEDH Practice Pods', 'commander',
+  ('evt_commander_cedh', 'org_dicegoblin', 'cEDH Practice Pods', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+24 days','+20.5 hours','+7 hours'),
    'Dice Goblin Loft, back tables', 8, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
 
   -- +26 days (3)
-  ('evt_dnd_beginners', 'org_library', 'D&D for Absolute Beginners', 'dnd',
+  ('evt_dnd_beginners', 'org_library', 'D&D for Absolute Beginners', 'rpg',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+26 days','+18.5 hours','+7 hours'),
    'Ballard Library, meeting room', 12, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
-  ('evt_warhammer_paint', 'org_metro', 'Paint and Play Warhammer', 'warhammer',
+  ('evt_warhammer_paint', 'org_metro', 'Paint and Play Warhammer', 'miniatures',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+26 days','+19.5 hours','+7 hours'),
    'Green Lake Community Center, main hall', 10, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
   ('evt_trivia_night', 'org_cardboard', 'Tabletop Trivia Night', 'other',
@@ -377,25 +377,25 @@ INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, cap
    'Cardboard Castle, 114 Pike St', 20, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
 
   -- +27 days (1)
-  ('evt_draft_team_league', 'org_cardboard', 'Team Draft League', 'magic_draft',
+  ('evt_draft_team_league', 'org_cardboard', 'Team Draft League', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+27 days','+20 hours','+7 hours'),
    'Cardboard Castle, 114 Pike St', 12, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
 
   -- +30 days (1)
-  ('evt_board_game_swap', 'org_library', 'Board Game Swap Meet', 'board_games',
+  ('evt_board_game_swap', 'org_library', 'Board Game Swap Meet', 'board',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+30 days','+18 hours','+7 hours'),
    'Central Library, Room 2B', 25, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
 
   -- +33 days (2)
-  ('evt_commander_cracked_packs', 'org_dicegoblin', 'Commander Cracked Packs', 'commander',
+  ('evt_commander_cracked_packs', 'org_dicegoblin', 'Commander Cracked Packs', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+33 days','+20.5 hours','+7 hours'),
    'Dice Goblin Loft, 3rd floor', 16, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
-  ('evt_dnd_campaign_finale', 'org_metro', 'D&D Campaign Finale', 'dnd',
+  ('evt_dnd_campaign_finale', 'org_metro', 'D&D Campaign Finale', 'rpg',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+33 days','+22 hours','+7 hours'),
    'Greenwood House, dining room', 6, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
 
   -- +35 days (1) — the far edge of the five-week window, barely signed up yet.
-  ('evt_prerelease_draft', 'org_cardboard', 'Set Prerelease Draft', 'magic_draft',
+  ('evt_prerelease_draft', 'org_cardboard', 'Set Prerelease Draft', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+35 days','+19.5 hours','+7 hours'),
    'Cardboard Castle, 114 Pike St', 16, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL);
 
@@ -410,27 +410,27 @@ INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, cap
 -- pushes the admin table onto a second page.
 INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, capacity, rsvp_count, room_key,
                     place_id, place_address, place_lat, place_lng, place_resolved_at) VALUES
-  ('evt_past_commander_league', 'org_dicegoblin', 'Commander League Night', 'commander',
+  ('evt_past_commander_league', 'org_dicegoblin', 'Commander League Night', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','-2 days','+20.5 hours','+7 hours'),
    'Dice Goblin Loft, 3rd floor', 12, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
-  ('evt_past_board_brunch', 'org_library', 'Board Game Brunch', 'board_games',
+  ('evt_past_board_brunch', 'org_library', 'Board Game Brunch', 'board',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','-2 days','+18.5 hours','+7 hours'),
    'Ballard Library, meeting room', 20, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
   -- Ran full. A past FULL event is its own small regression test: the seat bar
   -- and the "FULL" badge have to render for an event nobody can join any more.
-  ('evt_past_dnd_icespire', 'org_metro', 'D&D: Dragon of Icespire, Session 4', 'dnd',
+  ('evt_past_dnd_icespire', 'org_metro', 'D&D: Dragon of Icespire, Session 4', 'rpg',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','-4 days','+22 hours','+7 hours'),
    'Greenwood House, dining room', 6, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
-  ('evt_past_warhammer_league', 'org_metro', 'Warhammer League Round 2', 'warhammer',
+  ('evt_past_warhammer_league', 'org_metro', 'Warhammer League Round 2', 'miniatures',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','-6 days','+19.5 hours','+7 hours'),
    'Green Lake Community Center, main hall', 8, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
-  ('evt_past_thursday_draft', 'org_cardboard', 'Thursday Draft', 'magic_draft',
+  ('evt_past_thursday_draft', 'org_cardboard', 'Thursday Draft', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','-8 days','+20 hours','+7 hours'),
    'Cardboard Castle, 114 Pike St', 8, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
   ('evt_past_learn_rpg', 'org_library', 'Learn an RPG in One Night', 'other',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','-11 days','+19 hours','+7 hours'),
    'Central Library, Room 4A', 15, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL),
-  ('evt_past_autumn_swap', 'org_library', 'Autumn Game Swap', 'board_games',
+  ('evt_past_autumn_swap', 'org_library', 'Autumn Game Swap', 'board',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','-16 days','+18 hours','+7 hours'),
    'Magnuson Park, Building 30', 24, 0, lower(hex(randomblob(8))), NULL, NULL, NULL, NULL, NULL);
 
@@ -454,27 +454,27 @@ INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, cap
 INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, capacity, rsvp_count, room_key,
                     status, cancelled_at,
                     place_id, place_address, place_lat, place_lng, place_resolved_at) VALUES
-  ('evt_cancel_late_pod', 'org_dicegoblin', 'Late Night Commander Pod', 'commander',
+  ('evt_cancel_late_pod', 'org_dicegoblin', 'Late Night Commander Pod', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+7 days','+21 hours','+7 hours'),
    'Dice Goblin Loft, back tables', 8, 0, lower(hex(randomblob(8))),
    'cancelled', strftime('%Y-%m-%dT%H:%M:%SZ','now','-2 days'),
    NULL, NULL, NULL, NULL, NULL),
-  ('evt_cancel_grand_melee', 'org_metro', 'Warhammer Grand Melee', 'warhammer',
+  ('evt_cancel_grand_melee', 'org_metro', 'Warhammer Grand Melee', 'miniatures',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+13 days','+19 hours','+7 hours'),
    'Green Lake Community Center, main hall', 12, 0, lower(hex(randomblob(8))),
    'cancelled', strftime('%Y-%m-%dT%H:%M:%SZ','now','-1 days'),
    NULL, NULL, NULL, NULL, NULL),
-  ('evt_cancel_frostmaiden', 'org_metro', 'D&D: Rime of the Frostmaiden, Session 1', 'dnd',
+  ('evt_cancel_frostmaiden', 'org_metro', 'D&D: Rime of the Frostmaiden, Session 1', 'rpg',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+20 days','+20.5 hours','+7 hours'),
    'Greenwood House, dining room', 6, 0, lower(hex(randomblob(8))),
    'cancelled', strftime('%Y-%m-%dT%H:%M:%SZ','now','-6 hours'),
    NULL, NULL, NULL, NULL, NULL),
-  ('evt_cancel_board_marathon', 'org_library', 'Board Game Marathon', 'board_games',
+  ('evt_cancel_board_marathon', 'org_library', 'Board Game Marathon', 'board',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+26 days','+18 hours','+7 hours'),
    'Ballard Library, meeting room', 20, 0, lower(hex(randomblob(8))),
    'cancelled', strftime('%Y-%m-%dT%H:%M:%SZ','now','-3 days'),
    NULL, NULL, NULL, NULL, NULL),
-  ('evt_cancel_snow_draft', 'org_cardboard', 'Snow Day Draft', 'magic_draft',
+  ('evt_cancel_snow_draft', 'org_cardboard', 'Snow Day Draft', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','-5 days','+20 hours','+7 hours'),
    'Cardboard Castle, 114 Pike St', 8, 0, lower(hex(randomblob(8))),
    'cancelled', strftime('%Y-%m-%dT%H:%M:%SZ','now','-6 days'),

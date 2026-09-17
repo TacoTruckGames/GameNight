@@ -16,7 +16,7 @@ const schema = createEventSchema(NOW);
 function valid(overrides: Record<string, unknown> = {}) {
   return {
     title: "Friday Night Draft",
-    gameType: "magic_draft",
+    gameType: "card",
     startsAt: "2026-09-20T19:00:00Z",
     location: "Cardboard Castle",
     capacity: 8,
@@ -162,9 +162,9 @@ describe("eventsQuerySchema", () => {
   });
 
   it("trims a search term and keeps a valid game type", () => {
-    expect(eventsQuerySchema.parse({ q: "  draft  ", gameType: "commander" })).toEqual({
+    expect(eventsQuerySchema.parse({ q: "  draft  ", gameType: "card" })).toEqual({
       q: "draft",
-      gameType: "commander",
+      gameType: "card",
       sort: "date",
     });
   });

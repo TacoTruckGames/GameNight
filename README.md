@@ -148,10 +148,16 @@ half-second spinner.
   that from `/api/me/rsvps`). That is what makes the hot path cacheable later.
 - **Timestamps** are stored and transmitted as UTC ISO-8601 at second precision and displayed in the
   browser's local zone. Past events are hidden from the board and refuse RSVPs (`409 EVENT_STARTED`).
-- **Game type** is a small fixed enum (Magic Draft, Commander, D&D, Board games, Warhammer, Other),
-  validated by zod, not by a DB constraint, so adding one is a code change rather than a migration. The
-  board's filter is a native `<select>` — chips wrapped to two rows on a phone and pushed the first card
-  below the fold — and it offers all but "Board games", a real tag that is simply too broad to filter on.
+- **Game type** is a category of night — Card games, Board games, RPG, Miniatures, Other — not a game and
+  not a format. The specific game belongs in the title ("Friday Night Draft", "Pokémon League"). The first
+  cut mixed three levels (a Magic format, one specific RPG, a whole category) and had no home for a Pokémon
+  league or a Pathfinder table; the two products built for exactly this job agree on the category level —
+  Tabletop.Events seeds "Board Game, Card Game, Miniatures, RPG" and Warhorn offers board / card / RPG /
+  miniature / other — whereas store calendars go by franchise and grow a bucket per new TCG. A metro-wide
+  board that libraries and home groups post to needs buckets that hold for every organizer. The trade is a
+  coarser filter; text search finds the exact game. The enum is validated by zod, not a DB constraint, so
+  adding one is a code change rather than a migration, and an unknown value renders as "Other" rather than
+  breaking a card.
 - **Search** is a case-insensitive `LIKE` over title and location plus the game-type filter — correct at
   50 events and at 5,000; full-text search would be gold-plating.
 - **Description** (`events.description`, nullable, 500 characters, optional) is the half-paragraph a title

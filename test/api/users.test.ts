@@ -51,7 +51,7 @@ describe("POST /api/users", () => {
       method: "POST",
       body: {
         title: "Opening Night",
-        gameType: "board_games",
+        gameType: "board",
         startsAt: new Date(Date.now() + 86_400_000).toISOString(),
         location: "Back Room",
         capacity: 6,

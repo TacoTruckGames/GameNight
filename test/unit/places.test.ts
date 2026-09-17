@@ -580,7 +580,7 @@ describe("toEventSummary — the place invariant", () => {
       id: "evt_1",
       organizer_id: "org_1",
       title: "Game Night",
-      game_type: "board_games",
+      game_type: "board",
       starts_at: "2030-01-01T19:00:00Z",
       location: "Central Library, Room 2B",
       capacity: 6,

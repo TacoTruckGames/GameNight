@@ -111,7 +111,7 @@ export async function seedEvent(options: SeedEventOptions = {}): Promise<SeededE
     organizerId: organizer.id,
     organizerName: organizer.name,
     title: options.title ?? `Test Event ${crypto.randomUUID().slice(0, 8)}`,
-    gameType: options.gameType ?? "board_games",
+    gameType: options.gameType ?? "board",
     startsAt: options.startsAt ?? inDays(3),
     location: options.location ?? "Test Hall",
     capacity: options.capacity ?? 4,
