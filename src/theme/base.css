@@ -2036,14 +2036,34 @@ textarea.input {
   }
 
   /* Two columns, three ways to earn them. The month grid and the week strip are
-     navigators: they take the left column and the day you picked takes the
-     right, which is the shape that made the month worth widening. */
+     navigators, and they sit on the *right*: the events are what the page is
+     for, so they take the left column where reading starts, and the calendar
+     sits beside them as the control that changes them — the shape that made the
+     month worth widening in the first place.
+
+     Placed by CSS rather than by reordering the markup, because the markup's
+     order is the one a phone and a screen reader need: the navigator comes
+     before the results it filters, and stacked on a narrow screen the calendar
+     has to be above the day it selected, not below it. `grid-row: 1` pins it
+     beside the first cards; everything else — the day's cards, "+ New Event",
+     an empty state — falls down the left column in source order. */
   .board-calendar,
   .page--wide .week-agenda {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     align-items: start;
     gap: var(--space-5);
+  }
+
+  .board-calendar > .cal,
+  .page--wide .week-agenda > .cal {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .board-calendar > :not(.cal),
+  .page--wide .week-agenda > :not(.cal) {
+    grid-column: 1;
   }
 
   /* A list has no navigator, so the cards themselves take the width — but the
