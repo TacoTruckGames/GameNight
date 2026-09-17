@@ -6,8 +6,12 @@ import { App } from "./App";
 import { createQueryClient } from "./api/hooks";
 import { ToastProvider } from "./components/Toast";
 import { IdentityProvider } from "./identity/IdentityContext";
+import { trackScrollbarGutter } from "./lib/scrollbar";
 import "./theme/tokens.css";
 import "./theme/base.css";
+
+// Before the first paint: the bars read `--scrollbar-gutter` on their first layout.
+trackScrollbarGutter();
 
 const root = document.getElementById("root");
 if (!root) throw new Error("#root missing from index.html");

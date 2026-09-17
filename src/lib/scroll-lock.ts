@@ -21,15 +21,13 @@
  * directions.
  *
  * The scrollbar is the other half of this. A pinned body is not a scrolling
- * document, so a classic scrollbar vanishes and every fixed bar on screen jumps
- * sideways by its width at the moment the sheet opens. `scrollbar-gutter:
- * stable` holds that column open — applied here, for exactly as long as the
- * lock lasts, and only when a scrollbar was really occupying it. It used to be
- * a permanent rule in `base.css`, which held the column open on every screen,
- * scrolling or not: a strip of page background down the right edge with the
- * header band and the tab bar stopping short of it. Where scrollbars are
- * overlays — every phone, and a Mac by default — the measurement is zero and
- * none of this happens at all.
+ * document, so a classic scrollbar would vanish and every fixed bar on screen
+ * would jump sideways by its width at the moment the sheet opened.
+ * `html { scrollbar-gutter: stable }` in `base.css` holds that column open at
+ * all times — it is also what keeps the board from shifting when a view
+ * switches from short to long — so the pin removes nothing and this module
+ * has nothing to reserve. See `src/lib/scrollbar.ts` for how the bars extend
+ * under the reserved column.
  *
  * ## Counted, not a boolean
  *
@@ -48,7 +46,6 @@ function lock() {
   if (depth++ > 0) return;
 
   const { body } = document;
-  const root = document.documentElement;
   const y = window.scrollY;
   const previous = {
     position: body.style.position,
@@ -57,12 +54,6 @@ function lock() {
     right: body.style.right,
     width: body.style.width,
   };
-  const previousGutter = root.style.scrollbarGutter;
-
-  // Measured before anything moves: the difference is the classic scrollbar's
-  // width, and zero where scrollbars float over the content.
-  if (window.innerWidth - root.clientWidth > 0) root.style.scrollbarGutter = "stable";
-
   body.style.position = "fixed";
   body.style.top = `-${y}px`;
   body.style.left = "0";
@@ -73,7 +64,6 @@ function lock() {
 
   release = () => {
     Object.assign(body.style, previous);
-    root.style.scrollbarGutter = previousGutter;
     window.scrollTo(0, y);
   };
 }
