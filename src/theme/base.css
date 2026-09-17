@@ -913,6 +913,13 @@ a {
   font-weight: 650;
 }
 
+/* Rides on a `.field__label` without competing with it: same size, normal
+   weight, muted — a qualifier rather than part of the name. */
+.field__optional {
+  font-weight: 400;
+  color: var(--color-muted);
+}
+
 .field__error {
   color: var(--color-danger);
   font-size: var(--font-size-sm);

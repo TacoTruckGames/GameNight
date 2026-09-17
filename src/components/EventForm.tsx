@@ -385,8 +385,12 @@ export function EventForm({ event, onDone }: { event?: EditableEvent; onDone?: (
       </div>
 
       <div className="field">
+        {/* "(Optional)" belongs to the label, not to a line under the box:
+            whether a field is required is something you need before you decide
+            to fill it in, and a note below the control arrives after. The
+            examples that used to sit there are already in the placeholder. */}
         <label className="field__label" htmlFor={ids.description}>
-          Description
+          Description <span className="field__optional">(Optional)</span>
         </label>
         <textarea
           id={ids.description}
@@ -402,7 +406,6 @@ export function EventForm({ event, onDone }: { event?: EditableEvent; onDone?: (
           aria-invalid={errors.description !== undefined}
           aria-describedby={describedBy("description", ids.description)}
         />
-        <p className="text-sm muted">Optional. What to bring, what you'll play, how to find the table.</p>
         {errors.description ? (
           <p className="field__error" id={`${ids.description}-error`}>
             {errors.description}
