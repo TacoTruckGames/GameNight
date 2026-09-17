@@ -1715,9 +1715,12 @@ textarea.input {
   font-size: var(--font-size-sm);
 }
 
+/* No padding of its own. Two lines already clear the 44px target on their own —
+   see the measurement in the suite — so the padding was pure inset, and it read
+   as a gap between the card's edge and the first thing in it. */
 .venue__link:has(.venue__lines) {
   align-items: flex-start;
-  padding-block: var(--space-2);
+  padding-block: 0;
 }
 
 .venue__directions {
