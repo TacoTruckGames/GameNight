@@ -19,13 +19,15 @@ import { gameTypeLabel } from "../../shared/game-types";
 import { useAttendees, useMapsConfig } from "../api/hooks";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBanner } from "../components/ErrorBanner";
+import { Icon } from "../components/Icon";
 import { EventForm } from "../components/EventForm";
 import { EventMiniMap } from "../components/EventMiniMap";
 import { MapLink } from "../components/MapLink";
 import { SeatChip } from "../components/SeatChip";
 import { Sheet } from "../components/Sheet";
 import { Skeleton } from "../components/Skeleton";
-import { formatEventDateTime, formatEventWhen, toDateTimeAttr } from "../lib/datetime";
+import { attendanceLabel } from "../lib/attendance";
+import { formatEventDateTime, formatEventWhen, isPastEvent, toDateTimeAttr } from "../lib/datetime";
 
 export function AttendeesPage({ asSheet = false }: { asSheet?: boolean }) {
   const { id = "" } = useParams();
@@ -56,6 +58,7 @@ export function AttendeesPage({ asSheet = false }: { asSheet?: boolean }) {
   }
 
   const { event, attendees: list } = attendees.data;
+  const past = isPastEvent(event.startsAt);
 
   const body = (
     <>
@@ -94,14 +97,22 @@ export function AttendeesPage({ asSheet = false }: { asSheet?: boolean }) {
           {/* The organizer's own words, the same way the player's sheet shows
               them. Absent is ordinary and renders as nothing at all. */}
           {event.description !== null ? <p className="text-lines">{event.description}</p> : null}
+          {/* The same two chips the player sees, in the same words. "12 seats
+              taken" was the same number said from the other side of the table,
+              and an organizer comparing their listing to what a player reads
+              should not have to translate it. */}
           <div className="detail__facts">
             <SeatChip
               seatsLeft={event.seatsLeft}
               capacity={event.capacity}
               isFull={event.isFull}
               status={event.status}
+              past={past}
             />
-            <span className="badge">{list.length === 1 ? "1 seat taken" : `${list.length} seats taken`}</span>
+            <span className="badge badge--count">
+              <Icon name="player" size={14} />
+              {attendanceLabel(list.length, past)}
+            </span>
           </div>
         </div>
         {/* The board's cards open this page now, not the public one, so this is

@@ -290,6 +290,10 @@ half-second spinner.
   and a headline that wraps is not a headline — so it reads "Sat, Sep 19 · 7:30 PM", with the year added
   only when it is not this one. That evicted the game-type tag, which became the eyebrow above the title: a
   category that announces the event reads as a heading, and it leaves the title a full line at every width.
+  The facts under it are one chip per fact — **Going** (green, yours), **N / M Seats Left**, **N Going** —
+  where the first two used to be crammed into one pill reading "Going · 5 of 16 left", which looks like one
+  fact and is two. Both roles get the same words: an organizer's copy used to say "12 seats taken", the same
+  number from the other side of the table, which is a translation to do while checking your own listing.
   On a phone you can also **drag the sheet away**, which is the gesture the other two are a keyboard
   and a small target standing in for. **The whole panel is the handle** once you are at the top of it; the
   grip is only the exception that also works mid-scroll, which is what a grip is for, and it lives outside

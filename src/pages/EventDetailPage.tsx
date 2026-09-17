@@ -29,12 +29,13 @@ import { isPastEvent } from "../lib/datetime";
 import { mapsDirectionsUrl } from "../../shared/maps-links";
 import { useEvent, useMapsConfig, useMyRsvpIds } from "../api/hooks";
 import { ErrorBanner } from "../components/ErrorBanner";
+import { Icon } from "../components/Icon";
 import { EventForm } from "../components/EventForm";
 import { EventMiniMap } from "../components/EventMiniMap";
 import { MapLink } from "../components/MapLink";
 import { RsvpButton } from "../components/RsvpButton";
 import { Sheet } from "../components/Sheet";
-import { SeatChip } from "../components/SeatChip";
+import { GoingChip, SeatChip } from "../components/SeatChip";
 import { Skeleton } from "../components/Skeleton";
 import { useIdentity } from "../identity/IdentityContext";
 import { formatEventWhen, toDateTimeAttr } from "../lib/datetime";
@@ -141,16 +142,22 @@ export function EventDetailPage({ asSheet = false }: { asSheet?: boolean }) {
               bigger card. Absent is the ordinary case, and an absent paragraph
               renders as nothing at all — no heading left standing over it. */}
           {detail.description !== null ? <p className="text-lines">{detail.description}</p> : null}
+          {/* Three separate facts, because they are three: whether you have a
+              seat, whether the table has any, and how many people that is. They
+              used to be two, with the first two crammed into one pill. */}
           <div className="detail__facts">
+            {joined && !past && !cancelled ? <GoingChip /> : null}
             <SeatChip
               seatsLeft={detail.seatsLeft}
               capacity={detail.capacity}
               isFull={detail.isFull}
-              joined={joined}
               status={detail.status}
               past={past}
             />
-            <span className="badge">{attendanceLabel(detail.attendeeCount, past)}</span>
+            <span className="badge badge--count">
+              <Icon name="player" size={14} />
+              {attendanceLabel(detail.attendeeCount, past)}
+            </span>
           </div>
           {cancelled ? (
             <p className="text-sm muted">

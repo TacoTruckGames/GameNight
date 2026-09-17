@@ -1,15 +1,12 @@
 /**
  * The honest count (S3), in a handful of words.
  *
- * "Going" leads once you have a seat — but it no longer *replaces* the count.
- * How full the table is stays useful after you join: it is what you check
- * before telling a friend to grab a seat, and the board, My RSVP and the detail
- * page all render this same state.
+ * On the sheet this answers one question — how full is the table — and nothing
+ * else. Whether *you* are going is a different question with a different answer
+ * shape, so it is a different chip (`GoingChip`); the two used to be crammed
+ * into one pill as "Going · 5 of 16 left", which read as one fact and is two.
  *
- * "Going" rather than "You're in": one word instead of three, in a line that
- * also has to carry the seat count and the game type on an 88px card, and it
- * is the word the rest of the product already uses for the same fact ("9
- * going"). Green plus a tick still says it is *your* state, not the table's.
+ * The card still needs them as one line, and gets it from `seatLabel` below.
  *
  * The icon repeats what the leading word says so the states are still distinct
  * states without colour.
@@ -67,7 +64,6 @@ export function SeatChip({
   past?: boolean;
 }) {
   const state = seatState({ isFull, seatsLeft, status, joined, past });
-  const full = isFull || seatsLeft <= 0;
 
   if (state === "cancelled")
     return (
@@ -83,15 +79,6 @@ export function SeatChip({
         Ended
       </span>
     );
-  if (state === "joined")
-    // A middle dot rather than a second sentence: the chip is one nowrap line
-    // and has to survive a 390px-wide card next to the RSVP button.
-    return (
-      <span className="seat-chip seat-chip--mine">
-        <Icon name="in" size={16} />
-        Going · {full ? "table full" : `${seatsLeft} of ${capacity} left`}
-      </span>
-    );
   if (state === "full")
     return (
       <span className="seat-chip seat-chip--full">
@@ -102,7 +89,24 @@ export function SeatChip({
   return (
     <span className="seat-chip seat-chip--open">
       <Icon name="seat" size={16} />
-      {seatsLeft} of {capacity} seats left
+      {seatsLeft} / {capacity} Seats Left
+    </span>
+  );
+}
+
+/**
+ * "Going" — that *you* are, in green, on its own.
+ *
+ * Its own chip rather than a prefix on the seat count, because it answers a
+ * different question: the seat chip says how full the table is, this says
+ * whether you have one of them. Tick plus green, so the colour is never the
+ * only thing carrying it.
+ */
+export function GoingChip() {
+  return (
+    <span className="seat-chip seat-chip--mine">
+      <Icon name="in" size={16} />
+      Going
     </span>
   );
 }

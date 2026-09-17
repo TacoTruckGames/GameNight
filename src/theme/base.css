@@ -592,6 +592,11 @@ a {
   white-space: nowrap;
 }
 
+/* A badge that leads with an icon needs the gap a plain one does not. */
+.badge--count {
+  gap: 5px;
+}
+
 .seat-chip {
   display: inline-flex;
   align-items: center;
