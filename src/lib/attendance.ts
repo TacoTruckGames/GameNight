@@ -6,9 +6,11 @@
  * is also the `current attendee count` the brief asks the board to show, which
  * "7 of 16 seats left" only implies by subtraction.
  *
- * Zero gets words rather than a bare "0 Going", which reads like a verdict on
- * the event rather than a fact about the clock. Past tense follows the clock
- * too: "6 Went" on a finished night, not "6 Going".
+ * Zero is "0 Going" — a number, like every other count on the board, so a
+ * column of cards lines up and an organizer scanning for the empty table finds
+ * a zero rather than a sentence. It used to be "No one yet", which read
+ * gentler and sorted worse. Past tense follows the clock: "6 Went" on a
+ * finished night, not "6 Going", and "0 Went" for the one nobody came to.
  *
  * Title case because these are chips, not sentences — they sit beside "Seats
  * Left" and "FULL", and a lowercase one among them reads as a fragment of a
@@ -16,7 +18,6 @@
  */
 
 export function attendanceLabel(attendeeCount: number, past = false): string {
-  if (past) return attendeeCount <= 0 ? "No attendees" : `${attendeeCount} Went`;
-  if (attendeeCount <= 0) return "No one yet";
-  return `${attendeeCount} Going`;
+  const count = Math.max(0, attendeeCount);
+  return past ? `${count} Went` : `${count} Going`;
 }

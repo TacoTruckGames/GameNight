@@ -112,6 +112,19 @@ export function GoingChip() {
 }
 
 /**
+ * The seats, as the card and the sheet both say them: "3/15 Seats Left".
+ *
+ * The sheet's chip spells it with spaces around the slash and room for an
+ * icon; the card's meta line is one of three short lines and gets the compact
+ * form — but it is the same words, so nobody reading a card and then its sheet
+ * has to translate. It used to be "3 of 16 left" here and "3 / 16 Seats Left"
+ * there, which were two ways of saying one thing.
+ */
+export function seatsLeftLabel(seatsLeft: number, capacity: number): string {
+  return `${seatsLeft}/${capacity} Seats Left`;
+}
+
+/**
  * The same five states as one line of text, for the card.
  *
  * The chip is a pill with an icon and needs a row to itself; the card has three
@@ -129,10 +142,10 @@ export function seatLabel(state: SeatState, seatsLeft: number, capacity: number)
       // "Full", not "table full": it is the same fact the next case states, and
       // a card that says one of them one way and the other another way reads as
       // two different facts.
-      return seatsLeft <= 0 ? "Going · Full" : `Going · ${seatsLeft} of ${capacity} left`;
+      return seatsLeft <= 0 ? "Going · Full" : `Going · ${seatsLeftLabel(seatsLeft, capacity)}`;
     case "full":
       return "Full";
     default:
-      return `${seatsLeft} of ${capacity} left`;
+      return seatsLeftLabel(seatsLeft, capacity);
   }
 }

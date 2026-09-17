@@ -8,10 +8,10 @@
  * finished nights on purpose, and two cards that drifted apart once already
  * (see `DayGroupedList`) should not be given a second chance to.
  *
- * The one difference that is not cosmetic: the meta line says who is coming,
- * not whether you can get in. An organizer's question about their own table is
- * "how many turned up", and `seatLabel`'s "7 of 16 left" answers a question
- * they are not asking.
+ * The one difference that is not cosmetic: the meta line leads with who is
+ * coming, not with whether you can get in. An organizer's first question about
+ * their own table is "how many turned up"; the seats follow, in the player's
+ * words, because the second question is "against how many".
  */
 
 import { Link, useLocation } from "react-router";
@@ -21,7 +21,7 @@ import { attendanceLabel } from "../lib/attendance";
 import { formatEventTime, isPastEvent, toDateTimeAttr } from "../lib/datetime";
 import { Icon } from "./Icon";
 import { MapLink } from "./MapLink";
-import { seatState } from "./SeatChip";
+import { seatState, seatsLeftLabel } from "./SeatChip";
 
 export function HostedEventCard({ event }: { event: EventSummary }) {
   const past = isPastEvent(event.startsAt);
@@ -46,15 +46,16 @@ export function HostedEventCard({ event }: { event: EventSummary }) {
         {event.title}
       </Link>
 
-      {/* "8 Going · Full · Card games". The head count alone leaves the one
-          thing an organizer acts on to arithmetic — 8 of 8 is a table that
-          turns people away, and it looks exactly like 8 of 20 until you go and
-          find the capacity. "Full" is the word the player's card uses for the
-          same state, so it is the word here. Cancelled outranks it, and a
-          finished night is not a seating question at all. */}
+      {/* "5 Going · 3/8 Seats Left · Card games", or "8 Going · Full · …". The
+          head count alone left the one thing an organizer acts on to arithmetic
+          — 5 going looks the same at a table of 8 and a table of 20 until you go
+          and find the capacity — so the seats follow it, in the same words the
+          player's card and the sheet use for the same fact. Cancelled outranks
+          it, and a finished night is not a seating question at all. */}
       <span className={`ecard__meta ecard__meta--${state === "joined" ? "open" : state}`}>
         {state === "cancelled" ? "Cancelled" : attendanceLabel(event.attendeeCount, past)}
-        {state === "full" ? " · Full" : ""} · {gameTypeLabel(event.gameType)}
+        {state === "full" ? " · Full" : state === "open" ? ` · ${seatsLeftLabel(event.seatsLeft, event.capacity)}` : ""} ·{" "}
+        {gameTypeLabel(event.gameType)}
       </span>
 
       {/* Covered by the title's stretched link, same as the player's card, so
