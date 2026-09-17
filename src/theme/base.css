@@ -17,12 +17,12 @@
 
 html {
   -webkit-text-size-adjust: 100%;
-  /* Reserve the scrollbar's column whether or not the page is currently
-     scrollable. A modal pins `<body>`, which stops the document scrolling; with
-     a classic scrollbar that column would disappear and every fixed bar on
-     screen would jump sideways the instant a sheet opened. Costs nothing where
-     scrollbars are overlays. */
-  scrollbar-gutter: stable;
+  /* No `scrollbar-gutter` here. It was reserved permanently so that pinning
+     `<body>` for a modal could not make the fixed bars jump sideways — and on a
+     classic-scrollbar platform that left a strip of page background down the
+     right edge of every screen, with the header band and the tab bar stopping
+     short of it. `useScrollLock` reserves it for the moment it is needed
+     instead, and only where a scrollbar was actually taking that column. */
 }
 
 body {

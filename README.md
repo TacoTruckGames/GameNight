@@ -338,9 +338,11 @@ half-second spinner.
   which scrolled the page underneath while a dialog sat on top calling itself modal. So the pointer goes to
   the scrim, `useScrollLock` pins `<body>` at `top: -<scrollY>px` (not `overflow: hidden`, which iOS Safari
   ignores) and scrolls back to the same offset on release, and Tab cycles inside the panel instead of walking
-  into a background nobody can see. `html { scrollbar-gutter: stable }` is the other half of the pin: a
-  pinned body is not a scrolling document, so a classic scrollbar would vanish and every fixed bar would jump
-  sideways by its width the moment a sheet opened.
+  into a background nobody can see. `scrollbar-gutter: stable` is the other half of the pin: a
+  pinned body is not a scrolling document, so a classic scrollbar vanishes and every fixed bar would jump
+  sideways by its width the moment a sheet opened. The lock reserves that column for exactly as long as it
+  holds, and only where a scrollbar was really taking it — as a permanent rule it left a strip of page
+  background down the right edge of every screen, with the header band and the tab bar stopping short of it.
 - **The sheet is a sheet, not a 1400px panel.** Below 900px it is full-bleed, as a bottom sheet should be.
   Past it, it takes a column and centres — centred with `margin-inline`, never `translateX(-50%)`, because
   the drag writes `transform: translateY(...)` inline and would throw a centring transform to the left edge
