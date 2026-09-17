@@ -1,6 +1,10 @@
 /**
  * Day-grouped event cards.
  *
+ * The day headings themselves live in `DayGroupedList`, which the organizer's
+ * hosted list shares with a different card. This is the player-facing pairing:
+ * grouped days plus the RSVP-able `EventCard`.
+ *
  * Used twice: the agenda passes every group, the calendar's selected-day pane
  * passes exactly one — so a day reads the same whichever way you arrived at it,
  * heading included.
@@ -11,7 +15,8 @@
  */
 
 import type { EventSummary } from "../../shared/api-types";
-import { eventCountLabel, formatDayHeading, type DayGroup } from "../lib/calendar";
+import type { DayGroup } from "../lib/calendar";
+import { DayGroupedList } from "./DayGroupedList";
 import { EventCard } from "./EventCard";
 
 export function AgendaList({
@@ -26,22 +31,8 @@ export function AgendaList({
   busy?: boolean;
 }) {
   return (
-    <div className="stack stack--loose" aria-busy={busy}>
-      {groups.map((group) => (
-        <section className="agenda" key={group.key}>
-          <h2 className="agenda__head">
-            {formatDayHeading(group.key)}{" "}
-            <span className="agenda__count">· {eventCountLabel(group.events.length)}</span>
-          </h2>
-          <ul className="stack">
-            {group.events.map((event) => (
-              <li key={event.id}>
-                <EventCard event={event} joined={myRsvpIds.has(event.id)} showRsvp={showRsvp} />
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
-    </div>
+    <DayGroupedList groups={groups} busy={busy}>
+      {(event) => <EventCard event={event} joined={myRsvpIds.has(event.id)} showRsvp={showRsvp} />}
+    </DayGroupedList>
   );
 }

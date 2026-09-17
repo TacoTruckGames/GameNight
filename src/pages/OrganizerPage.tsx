@@ -8,7 +8,7 @@
  * fields, so both paths look identical to the user.
  */
 
-import { useId, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { Link } from "react-router";
 import type { GameType } from "../../shared/game-types";
@@ -28,8 +28,10 @@ import { ErrorBanner } from "../components/ErrorBanner";
 import { MapLink } from "../components/MapLink";
 import { PlaceCombobox } from "../components/PlaceCombobox";
 import { SeatChip } from "../components/SeatChip";
+import { DayGroupedList } from "../components/DayGroupedList";
 import { EventListSkeleton } from "../components/Skeleton";
 import { useToast } from "../components/Toast";
+import { groupByDay } from "../lib/calendar";
 import { defaultEventStartValue, formatEventDateTime, localInputToIso, toDateTimeAttr } from "../lib/datetime";
 
 type FieldErrors = Partial<
@@ -328,6 +330,10 @@ function NewEventForm() {
 
 function HostedEvents() {
   const hosted = useHostedEvents();
+  // Same day headings as the board and My events; `data` is a stable reference
+  // between renders, so the memo actually holds.
+  const events = hosted.data;
+  const groups = useMemo(() => groupByDay(events ?? []), [events]);
 
   if (hosted.isPending) return <EventListSkeleton label="Loading your events" />;
   if (hosted.isError) return <ErrorBanner error={hosted.error} onRetry={() => void hosted.refetch()} />;
@@ -336,10 +342,9 @@ function HostedEvents() {
   }
 
   return (
-    <ul className="stack" aria-busy={hosted.isFetching}>
-      {hosted.data?.map((event) => (
-        <li key={event.id}>
-          <article className="card">
+    <DayGroupedList groups={groups} busy={hosted.isFetching}>
+      {(event) => (
+        <article className="card">
             <Link className="card__link" to={`/organize/events/${event.id}`}>
               <span className="card__title">{event.title}</span>
               <span className="card__meta">
@@ -361,11 +366,10 @@ function HostedEvents() {
               <Link className="btn btn--sm btn--secondary" to={`/organize/events/${event.id}`}>
                 {event.attendeeCount === 1 ? "1 attendee" : `${event.attendeeCount} attendees`}
               </Link>
-            </div>
-          </article>
-        </li>
-      ))}
-    </ul>
+          </div>
+        </article>
+      )}
+    </DayGroupedList>
   );
 }
 
