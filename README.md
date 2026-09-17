@@ -251,7 +251,11 @@ half-second spinner.
   only one card fitted the week view. The new one is a 3×3 grid — a 50px time rail, then title, seat state
   and venue — and one placement does the work: the **title spans to the right edge** with the action *below*
   it, because a button beside a title truncates the title and a button under it cannot. The action then
-  costs no row of its own either, being 44px against two 13px lines. Three things left the card: the date
+  costs no row of its own either, being 44px against two 13px lines. **The whole card opens the event** —
+  the title's link is stretched across it, and only the RSVP button lifts itself back above. That is the
+  trick this card used to refuse because it eats text selection; the reason went away when the venue stopped
+  being a link, since the title truncates to one line and the full text of both is on the sheet the tap
+  opens. Three things left the card: the date
   (every list already writes "Thu, Sep 17 · 2 events" directly above it), the host, and "9 going" — which
   is `capacity - seatsLeft` said a second way. All three are on the sheet. The venue stopped being a link,
   which is what freed a whole 44px tap target for a line of muted text; it is a link where there is room

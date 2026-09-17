@@ -47,6 +47,8 @@ export function HostedEventCard({ event }: { event: EventSummary }) {
         {gameTypeLabel(event.gameType)}
       </span>
 
+      {/* Covered by the title's stretched link, same as the player's card, so
+          the whole row opens the door list. */}
       <MapLink event={event} compact />
 
       {/* Tense-neutral on purpose: this is the door list, before and after. */}

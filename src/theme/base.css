@@ -367,6 +367,7 @@ a {
    height of rows 2–3 and the card lands on three lines plus 10px of padding.
    88px, against the 222px this replaced. */
 .ecard {
+  position: relative;
   display: grid;
   grid-template-columns: 50px minmax(0, 1fr) auto;
   grid-template-rows: auto auto auto;
@@ -474,6 +475,29 @@ a {
   white-space: nowrap;
 }
 
+/* The whole card opens the event, not just its title — a 358×88 card with one
+   tappable line in it is a target you have to aim at.
+
+   This is the stretched-link trick, which `EventCard` used to refuse: it eats
+   text selection across the card. The reason it refused is gone. Back then the
+   venue was a link you might want to read and copy; now it is plain text, the
+   title truncates to one line, and the full text of both lives on the sheet
+   that this very tap opens. What is left to select was never worth the aim.
+
+   The link keeps its own focus ring on the text, so a keyboard user still sees
+   precisely what is focused rather than a rectangle around the whole row. */
+.ecard__title::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+}
+
+/* It looks pressable before it is pressed. */
+.ecard:hover {
+  border-color: var(--color-border-strong);
+}
+
 /* Bottom-right, spanning the two short lines it sits beside. Matches both the
    player's `<button>` and the organizer's door-list `<a>`.
 
@@ -489,6 +513,10 @@ a {
   align-self: end;
   min-width: 70px;
   margin-left: var(--space-3);
+  /* Above the stretched link, or RSVP would open the event instead of taking
+     the seat — the one place on the card that must not. */
+  position: relative;
+  z-index: 1;
 }
 
 .card__link {

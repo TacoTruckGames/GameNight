@@ -78,7 +78,9 @@ export function EventCard({
       </span>
 
       {/* A sibling of the title link, never a child — and no longer a link
-          itself, so it costs one line instead of a tap target. */}
+          itself, so it costs one line instead of a tap target. The title's
+          stretched `::after` covers this, which is what makes the whole card
+          open the event; the RSVP button lifts itself back above it. */}
       <MapLink event={event} compact />
 
       {showRsvp ? (
