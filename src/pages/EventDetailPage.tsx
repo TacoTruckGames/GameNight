@@ -26,7 +26,6 @@ import { Link, useNavigate, useParams } from "react-router";
 import { gameTypeLabel } from "../../shared/game-types";
 import { attendanceLabel } from "../lib/attendance";
 import { isPastEvent } from "../lib/datetime";
-import { mapsDirectionsUrl } from "../../shared/maps-links";
 import { useEvent, useMapsConfig, useMyRsvpIds } from "../api/hooks";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { Icon } from "../components/Icon";
@@ -140,29 +139,21 @@ export function EventDetailPage({ asSheet = false }: { asSheet?: boolean }) {
         <div className="stack">
           {/* The venue block: the label you can tap, the address Google
               confirmed (only when it adds something the label does not already
-              say), the map, and the one button the phone user came for. */}
+              say), and the map.
+
+              No Directions button. Where there is a map it was the same tap
+              twice — the map is itself a link to that URL. Where there is none
+              the venue is free text Google never confirmed ("Greenwood House,
+              dining room"), and turn-by-turn to a string like that is a promise
+              nobody can keep: Maps either fails or routes somewhere confidently
+              wrong. The label above it is a link to a Maps *search* for the same
+              words, which is the honest version of the same offer — a search
+              that finds nothing shows you it found nothing. */}
           <div className="venue">
             <MapLink event={detail} className="card__address venue__link" withAddress />
-            {/* The map is itself a link to the same directions URL, so where
-                there is a map the button underneath was a second copy of it.
-                Where there is none — a free-text venue, or a deployment with no
-                maps key — it is the only way to navigation, so it stays. The
-                venue label above links to a Maps *search*, which is close but
-                not the same thing, and not what someone standing outside with a
-                phone wants. */}
             {detail.place !== null && maps.map ? (
               <EventMiniMap eventId={detail.id} place={detail.place} location={detail.location} />
-            ) : (
-              <a
-                className="btn btn--secondary venue__directions"
-                href={mapsDirectionsUrl(detail)}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Directions
-                <span className="visually-hidden"> — opens in Google Maps</span>
-              </a>
-            )}
+            ) : null}
           </div>
           {/* The organizer's own words, and the reason this page is not just a
               bigger card. Absent is the ordinary case, and an absent paragraph

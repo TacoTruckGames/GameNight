@@ -1807,11 +1807,6 @@ textarea.input {
   padding-block: 0;
 }
 
-.venue__directions {
-  align-self: stretch;
-  text-decoration: none;
-}
-
 /* ---- the static mini map ---- */
 
 /* The <a> is the box: fixed aspect, so the space is reserved before the image
@@ -2002,14 +1997,12 @@ textarea.input {
   }
 
   /* A 640px "Cancel RSVP" gives a destructive action the weight of a primary
-     one, and a 640px "Directions" outweighs the address it belongs to. Sized
-     to their words and packed left instead.
+     one. Sized to its words and packed left instead.
 
      `:not(form)` is load-bearing: the organizer's "Post event" and the admin
      editor's "Save changes" are `.btn--block` submits inside `<form class=
      "card">`, and a full-width submit closing a form is correct. */
-  .card:not(form) > .btn--block,
-  .venue__directions {
+  .card:not(form) > .btn--block {
     width: auto;
     align-self: flex-start;
   }
