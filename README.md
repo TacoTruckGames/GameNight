@@ -177,11 +177,13 @@ half-second spinner.
 - **Sort** (`?sort=`) is `date` (soonest first, the default) or `popular`: fullest-first by *ratio* of seats
   taken, so a 3-of-4 table outranks a 4-of-8 one, tie-broken by start time. Full tables sort last under
   `popular` — they are the most popular of all, but the top of the board should be seats you can still take.
-  Both orderings end in `e.id`, so the order is total and a refresh never reshuffles equal rows.
-- **Agenda headers.** Under the default `date` sort the board groups cards by *local* day ("Fri, Sep 18 ·
-  3 events"); `popular` stays flat because a rank has no day boundaries. Grouping is a client-side pass over
-  the same list keyed by an `Intl`-derived local day, never by the UTC string — a 7 PM Pacific table must not
-  land under Saturday.
+  Both orderings end in `e.id`, so the order is total and a refresh never reshuffles equal rows. **The board
+  no longer offers the choice**: a filter row already carrying search, game type and a three-way View switch
+  had nothing left to spend on order, and soonest-first is how a listings page is read anyway. The parameter
+  stays on the API, documented and tested, because the ranking is the interesting half of it.
+- **Agenda headers.** The board groups cards by *local* day ("Fri, Sep 18 · 3 events") in all three views.
+  Grouping is a client-side pass over the same list keyed by an `Intl`-derived local day, never by the UTC
+  string — a 7 PM Pacific table must not land under Saturday.
 - **Week / Month / List** are three readings of one `GET /api/events` — no second endpoint, no second
   cache, just a different question. **Week** is the default: "what can I get to in the next few days" is
   what someone opens a board with, and seven cells answer it without the scrolling thirty demand on a
@@ -189,9 +191,8 @@ half-second spinner.
   Both dated views have to fill the days *behind* today — a grid you cannot page backwards through is a
   broken grid — so they send a **date window**, `?from=&to=`, half-open and covering exactly the span on
   screen. List sends neither and keeps the endpoint's upcoming-only default, which is both the cacheable
-  one and the honest one for a view whose job is "find a table you can still join"; it is also the only
-  view with an order to choose, since a grid is chronological by construction and Sort is therefore hidden
-  in the other two. A window rather than an `includePast` flag: past-inclusive with `ORDER BY starts_at`
+  one and the honest one for a view whose job is "find a table you can still join". A window rather than an
+  `includePast` flag: past-inclusive with `ORDER BY starts_at`
   would come back oldest-first and could spend the 200-row cap before reaching anything joinable, whereas a
   window is bounded by construction. Both ends or neither — half a window is a 400, not a guess. Same
   search and type filters, same cap, and cancelled events stay off the board in every mode. Every window's
@@ -362,7 +363,7 @@ the next section calls beyond the brief.
 | **Venues** (backend) | Google Places proxied through the Worker, server-resolved coordinates, D1 spend ceiling, mini map, tap-to-navigate | 2 h |
 | **Review pass** (UX) | 60 screenshots × 2 critic passes, 11 defects fixed, the desktop breakpoint | 2 h |
 | **Data & content** | 64-event seed with clusters/past/cancelled, descriptions, game-type taxonomy research | 2 h |
-| **Polish** (frontend) | Name-as-button header, role badge, segmented View/Sort, description field end to end, head count | 1.5 h |
+| **Polish** (frontend) | Name-as-button header, role badge, segmented View switch, description field end to end, head count | 1.5 h |
 | **Week agenda** (frontend + windowed `/me` endpoints) | Week strip + day pane on My RSVP, Organize and the board, past attendance, shared segmented control | 2.5 h |
 
 Roughly **20 hours** all told, of which the core the brief asked for was the first four.

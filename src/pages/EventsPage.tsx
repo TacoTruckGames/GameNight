@@ -6,8 +6,12 @@
  * - **Week** (the default): the seven days on screen, `?from=&to=`.
  * - **Month**: the month on screen, same window a month wide.
  * - **List**: no window at all, so it stays upcoming-only — its job is still
- *   "find a table you can still join" — and it is the only view that sorts by
- *   anything but the clock.
+ *   "find a table you can still join".
+ *
+ * All three are soonest-first. The board briefly offered a Sort control beside
+ * the View switch; one row of filters carrying search, game type, view *and*
+ * order was more chrome than a board this size earns, and the clock is the
+ * order a listings page is read in anyway. `?sort=` still exists on the API.
  *
  * Both dated views send a window because a grid with nothing behind today is a
  * grid you cannot page backwards through. Their two ends are computed in
@@ -21,7 +25,6 @@
  */
 
 import { useEffect, useId, useMemo, useState } from "react";
-import { DEFAULT_EVENT_SORT, type EventSort } from "../../shared/event-sort";
 import { SEARCH_MAX } from "../../shared/schemas";
 import { useEvents, useMyRsvpIds } from "../api/hooks";
 import { AgendaList } from "../components/AgendaList";
@@ -29,7 +32,6 @@ import { BoardViewSwitch, DEFAULT_BOARD_VIEW, type BoardView } from "../componen
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { EventCard } from "../components/EventCard";
-import { EventSortControl } from "../components/EventSort";
 import { Icon } from "../components/Icon";
 import { GameTypeFilter } from "../components/GameTypeFilter";
 import { MonthCalendar } from "../components/MonthCalendar";
@@ -56,7 +58,6 @@ export function EventsPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [gameType, setGameType] = useState("");
-  const [sort, setSort] = useState<EventSort>(DEFAULT_EVENT_SORT);
   const [view, setView] = useState<BoardView>(DEFAULT_BOARD_VIEW);
   const [weekStart, setWeekStart] = useState<DayKey>(() => startOfWeek(dayKey(new Date())!));
   const [month, setMonth] = useState<YearMonth>(() => monthOf(dayKey(new Date())!));
@@ -68,10 +69,6 @@ export function EventsPage() {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [search]);
-
-  // A grid is chronological by construction, so only list view has an order to
-  // choose — and asking for the default elsewhere shares the query cache with it.
-  const effectiveSort = view === "list" ? sort : DEFAULT_EVENT_SORT;
 
   // One window per dated view; list asks for none and gets the upcoming board.
   // `new Date(y, 12, 1)` and `day + 7` both roll into the next month or year on
@@ -85,7 +82,7 @@ export function EventsPage() {
       };
     return {};
   }, [view, weekStart, month]);
-  const events = useEvents({ q: debouncedSearch, gameType, sort: effectiveSort, ...window });
+  const events = useEvents({ q: debouncedSearch, gameType, ...window });
   const myRsvpIds = useMyRsvpIds();
   const filtered = debouncedSearch !== "" || gameType !== "";
 
@@ -144,7 +141,6 @@ export function EventsPage() {
         </div>
         <GameTypeFilter value={gameType} onChange={setGameType} />
         <BoardViewSwitch value={view} onChange={setView} />
-        {view === "list" ? <EventSortControl value={sort} onChange={setSort} /> : null}
       </div>
 
       {events.isPending ? (
@@ -247,16 +243,8 @@ export function EventsPage() {
             />
           )}
         </div>
-      ) : sort === "date" ? (
-        <AgendaList groups={groups} myRsvpIds={myRsvpIds} showRsvp={isPlayer} busy={events.isFetching} />
       ) : (
-        <ul className="stack" aria-busy={events.isFetching}>
-          {events.data?.map((event) => (
-            <li key={event.id}>
-              <EventCard event={event} joined={myRsvpIds.has(event.id)} showRsvp={isPlayer} />
-            </li>
-          ))}
-        </ul>
+        <AgendaList groups={groups} myRsvpIds={myRsvpIds} showRsvp={isPlayer} busy={events.isFetching} />
       )}
     </div>
   );

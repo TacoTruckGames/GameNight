@@ -1525,8 +1525,7 @@ textarea.input {
 
      Direct children only: the day pane *inside* a week agenda is the right-hand
      column already, and must not split again. */
-  .page--wide > .day-groups,
-  .page--wide > ul.stack {
+  .page--wide > .day-groups {
     display: block;
     columns: 2;
     column-gap: var(--space-5);
@@ -1535,8 +1534,7 @@ textarea.input {
   /* `break-inside` keeps a day — heading and its cards — whole in one column,
      and the margin replaces the flex `gap` that `display: block` just turned
      off. */
-  .page--wide > .day-groups > .agenda,
-  .page--wide > ul.stack > li {
+  .page--wide > .day-groups > .agenda {
     break-inside: avoid;
     margin-bottom: var(--space-4);
   }
