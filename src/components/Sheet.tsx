@@ -37,6 +37,14 @@
  * Release decides on distance *or* speed. 110px is a deliberate throw; a short
  * flick is also a deliberate throw, and refusing it because the finger did not
  * travel far enough is the thing that makes a sheet feel stuck.
+ *
+ * ## `setPointerCapture` is called late, and that is load-bearing
+ *
+ * Capturing on `pointerdown` — which an earlier version of this did — retargets
+ * the click that follows onto the capturing element. Every button and link
+ * inside the sheet then stops working, silently, because their clicks are being
+ * delivered to the panel instead. Capture happens the moment a drag *engages*,
+ * so a press that never became a drag is left entirely alone.
  */
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
@@ -58,6 +66,8 @@ type Gesture = {
   velocity: number;
   /** null until the first meaningful move decides, then locked. */
   mode: "dismiss" | "scroll" | null;
+  /** The pointer has been captured; do not ask for it twice. */
+  captured: boolean;
 };
 
 export function Sheet({
@@ -103,7 +113,7 @@ export function Sheet({
     // Mid-read, the body is a scroll container first and a sheet second — the
     // grip is the deliberate exception, which is what a grip is for.
     if (!onGrip && (bodyRef.current?.scrollTop ?? 0) > 0) return false;
-    gesture.current = { from: y, last: y, at: timeStamp, velocity: 0, mode: onGrip ? "dismiss" : null };
+    gesture.current = { from: y, last: y, at: timeStamp, velocity: 0, mode: onGrip ? "dismiss" : null, captured: false };
     return true;
   };
 
@@ -202,12 +212,18 @@ export function Sheet({
         style={dragY ? { transform: `translateY(${dragY}px)` } : undefined}
         onPointerDown={(event) => {
           if (!mouseOnly(event) || event.button !== 0) return;
-          if (begin(event.clientY, event.target, event.timeStamp)) {
-            event.currentTarget.setPointerCapture(event.pointerId);
-          }
+          begin(event.clientY, event.target, event.timeStamp);
         }}
         onPointerMove={(event) => {
-          if (mouseOnly(event)) move(event.clientY, event.timeStamp);
+          if (!mouseOnly(event)) return;
+          move(event.clientY, event.timeStamp);
+          // Late, and only once the drag is real — see the header. Capturing on
+          // the press would retarget the click and kill every control in here.
+          const g = gesture.current;
+          if (g && g.mode === "dismiss" && !g.captured && dragY > 0) {
+            g.captured = true;
+            event.currentTarget.setPointerCapture(event.pointerId);
+          }
         }}
         onPointerUp={(event) => {
           if (mouseOnly(event)) end();
