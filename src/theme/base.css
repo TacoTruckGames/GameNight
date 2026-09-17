@@ -727,6 +727,21 @@ textarea.input {
   line-height: 1.5;
 }
 
+/* iOS Safari measures a `datetime-local` against its own rendered value — "Sep
+   18, 2026 at 7:00 PM" — and ignores `width: 100%`, so the control grows wider
+   than the card it is in and its right edge disappears off the phone. Turning
+   the native appearance off hands sizing back to the box model; the field still
+   opens the system picker, it just stops choosing its own width. `max-width` is
+   the belt to that brace, and the value goes back to the left edge where every
+   other field's value starts. */
+.input[type="datetime-local"] {
+  appearance: none;
+  -webkit-appearance: none;
+  min-width: 0;
+  max-width: 100%;
+  text-align: left;
+}
+
 .input[aria-invalid="true"],
 .select[aria-invalid="true"] {
   border-color: var(--color-danger);
