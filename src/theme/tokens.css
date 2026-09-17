@@ -38,6 +38,12 @@
   --brand-bg: #290d4a;
   --brand-bg-deep: #0f051c;
   --brand-glow: #0291ff;
+  /* The edge on the current tab in the header. The glow blue above is the band's
+     own light source and reads as a different system's colour when it outlines a
+     control; this is the palette's light purple — the accent's dark-mode value,
+     designed to sit on exactly this dark band. Theme-constant, because the band
+     is. */
+  --brand-edge: #a49fda;
   --brand-text: #ffffff;
   --brand-muted: #c9c4ea;
   --brand-line: rgb(255 255 255 / 25%);

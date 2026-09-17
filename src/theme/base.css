@@ -1519,12 +1519,13 @@ textarea.input {
     color: var(--brand-muted);
   }
 
-  /* Pill + white text + a glow edge: three cues, so the current tab does not
-     rest on colour alone. The edge is 5.2:1 on the band, the label 7.7:1 on
-     the pill. */
+  /* Pill + white text + a light-purple edge: three cues, so the current tab does
+     not rest on colour alone. The edge is on the palette rather than on the
+     band's blue light source, which read as a borrowed colour outlining a
+     control; both clear 3:1 on the band and the label is 7.7:1 on the pill. */
   .tab[aria-current="page"] {
     background: var(--brand-line);
-    border-color: var(--brand-glow);
+    border-color: var(--brand-edge);
     color: var(--brand-text);
   }
 

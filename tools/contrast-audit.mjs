@@ -47,6 +47,8 @@ const PAIRS = [
   ["--brand-bg", "--role-player"],
   ["--brand-bg", "--role-organizer"],
   ["--admin-bar-bg", "--brand-bg", 3],
+  // The current tab's edge in the desktop header — an indicator, so 3:1.
+  ["--brand-edge", "--brand-bg", 3],
   ["--color-focus", "--color-bg", 3],
   ["--color-focus", "--color-surface", 3],
 ];
