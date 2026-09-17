@@ -493,7 +493,14 @@ cares about — S1–S4 are the same code and the same tests they were at hour f
 - **Venues** — because an address a phone can navigate to is the difference between a listing and an
   event you attend; it is keyless-safe and its whole cost surface is capped in D1. The mini map is itself the
   link to turn-by-turn, so there is no Directions button under it — that was the same tap twice. A venue with
-  no map keeps the button, because then it is the only route to navigation.
+  no map keeps the button, because then it is the only route to navigation. **The form shows the map too**,
+  the moment a suggestion is picked, so an organizer sees where they just said the table is before they post
+  it. That needed a second route: `EventMiniMap` is keyed by event id, and a form has no event yet.
+  `/api/places/map` takes the label instead — Static Maps geocodes it inside the same billed request, so a
+  preview costs one map and no Place Details, and returns the byte-identical image the coordinates would.
+  The event route is bounded by an id and a matching `place_id`; this one has no id to bind to, so it is
+  gated to organizers, which is also why the component fetches it by hand: an `<img src>` cannot send
+  `X-User-Id`, and pointing a plain `<img>` at it answers 401 forever.
 - **The review pass and desktop breakpoint** — because "a stranger could open it and use it" is a claim
   worth testing with fresh eyes, and the findings were real.
 - **Descriptions, head count, role badge** — small, each closing a gap the audit or the review found.

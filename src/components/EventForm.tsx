@@ -32,6 +32,7 @@ import { ApiError } from "../api/client";
 import { useCreateEvent, useUpdateEvent } from "../api/hooks";
 import { ErrorBanner } from "./ErrorBanner";
 import { PlaceCombobox } from "./PlaceCombobox";
+import { PlacePreviewMap } from "./PlacePreviewMap";
 import { useToast } from "./Toast";
 import { defaultEventStartValue, isoToLocalInput, localInputToIso } from "../lib/datetime";
 
@@ -355,6 +356,10 @@ export function EventForm({ event, onDone }: { event?: EventDetail; onDone?: () 
         ) : null}
         {errors.placeId ? <p className="field__error">{errors.placeId}</p> : null}
         {placeNote ? <p className="field__note">{placeNote}</p> : null}
+        {/* Only once a suggestion has been picked. Free text is not a place —
+            there is nothing to show, and geocoding a half-typed line would
+            render a confident map of somewhere the organizer did not mean. */}
+        {placeId !== null ? <PlacePreviewMap query={location} /> : null}
       </div>
 
       <div className="field">

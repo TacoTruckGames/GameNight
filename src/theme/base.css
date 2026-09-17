@@ -1682,6 +1682,15 @@ textarea.input {
   height: auto;
 }
 
+/* The same image, in a form rather than on a card: it needs its own rounded
+   edge because it has no `.minimap` anchor wrapped around it to borrow one. */
+.place-preview {
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+
 /* One line, not a second image: Google has no dark tile set on the free Static
    Maps SKU, so a full-brightness map is the single glaring rectangle on a dark
    page. Knocking it back is enough to sit in the page rather than shout at it,

@@ -119,14 +119,27 @@ export interface SuggestOptions {
   bias?: LocationBias | undefined;
 }
 
-export interface StaticMapOptions {
-  lat: number;
-  lng: number;
+/**
+ * Where to centre a static map, and how big.
+ *
+ * Two ways to say where, because there are two moments. A posted event has
+ * coordinates in its row, resolved once at write time. A venue being *typed*
+ * into the form has none — resolving them would mean a Place Details call per
+ * preview, at 3× the price of the map itself — so the preview centres on the
+ * label Google gave the picker, which the Static Maps API geocodes as part of
+ * the same billed request. The two produce the byte-identical image; this was
+ * checked against the live API before the second form was added.
+ *
+ * (`center=place_id:…` is not a third way. It answers 200 and returns a blank
+ * tile — 6KB against 27KB for the same venue — which is the most expensive kind
+ * of wrong: it looks like it worked.)
+ */
+export type StaticMapOptions = {
   width: number;
   height: number;
   scale: 1 | 2;
   zoom?: number;
-}
+} & ({ lat: number; lng: number; query?: undefined } | { query: string });
 
 /** The seam. Narrower than `fetch` on purpose: a test double only has to be this. */
 export type Fetcher = (input: string, init?: RequestInit) => Promise<Response>;
@@ -388,7 +401,7 @@ export function createPlacesClient(options: PlacesClientOptions): PlacesClient {
   const signingSecret = options.signingSecret;
 
   async function staticMapUrl(map: StaticMapOptions): Promise<string> {
-    const center = `${map.lat},${map.lng}`;
+    const center = map.query === undefined ? `${map.lat},${map.lng}` : map.query;
     const url = new URL(`${staticOrigin}/maps/api/staticmap`);
     url.searchParams.set("center", center);
     url.searchParams.set("zoom", String(map.zoom ?? DEFAULT_ZOOM));

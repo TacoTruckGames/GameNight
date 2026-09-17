@@ -166,6 +166,27 @@ async function reportUpstream(
 
 // ----------------------------------------------------------------- map --
 
+/**
+ * The preview map, for a venue that is being typed rather than posted.
+ *
+ * `q` is the label the picker put in the field — Google's own formatted string
+ * for a place the organizer selected — and Static Maps geocodes it inside the
+ * same billed request, so a preview costs one map and no Place Details.
+ *
+ * **Organizer-only, and that is the whole containment story.** The event map is
+ * bounded by an event id plus a `v` that must match the stored place; this one
+ * takes free text, so an anonymous version of it would be an open proxy where
+ * every distinct string mints a fresh billed render. Behind the same gate as
+ * the picker itself the caller is someone who can already post events, the size is one of two
+ * presets, `q` is capped, and the daily `static_map` ceiling still fails closed.
+ */
+const previewMapQuerySchema = z.object({
+  q: z.string().trim().min(1).max(200),
+  w: z.string().optional(),
+  h: z.string().optional(),
+  scale: z.string().optional(),
+});
+
 const mapQuerySchema = z.object({
   w: z.string().optional(),
   h: z.string().optional(),
@@ -186,6 +207,49 @@ const mapQuerySchema = z.object({
  * renderable set to venues that someone actually posted a game at, which also
  * drives the cache hit rate to nearly one.
  */
+places.get("/places/map", async (c) => {
+  requireOrganizerOrAdmin(c);
+
+  const cacheKey = c.req.url;
+  const cached = await caches.default.match(cacheKey);
+  if (cached) {
+    const hit = new Response(cached.body, cached);
+    hit.headers.set("X-Map-Cache", "HIT");
+    return hit;
+  }
+
+  const { q, w, h, scale: scaleRaw } = parseQuery(c, previewMapQuerySchema);
+  const width = Number(w);
+  const height = Number(h);
+  const scale = scaleRaw === undefined ? 1 : Number(scaleRaw);
+  const preset = MAP_PRESETS.find((size) => size.width === width && size.height === height);
+  if (!preset || (scale !== 1 && scale !== 2)) {
+    throw new ApiError(400, "VALIDATION_FAILED", "That map size is not one we render.");
+  }
+
+  const client = placesFromEnv(c.env);
+  if (!client) return unavailable();
+  if (!(await chargeBudget(c.env.DB, "static_map"))) return unavailable();
+
+  const rendered = await client.staticMap({ query: q, width: preset.width, height: preset.height, scale: scale === 2 ? 2 : 1 });
+  if (!rendered.ok) {
+    await reportUpstream(c.env.DB, "places.map", rendered.reason, { query: redact(q).slice(0, 128) });
+    return unavailable();
+  }
+
+  const headers = new Headers();
+  headers.set("Content-Type", rendered.value.headers.get("Content-Type") ?? "image/png");
+  headers.set("Cache-Control", `public, max-age=${MAP_MAX_AGE}, s-maxage=${MAP_S_MAX_AGE}`);
+  headers.set("X-Map-Cache", "MISS");
+  const response = new Response(rendered.value.body, { status: 200, headers });
+  c.executionCtx.waitUntil(
+    caches.default.put(cacheKey, response.clone()).catch(() => {
+      /* an unwritable cache costs money, not correctness */
+    }),
+  );
+  return response;
+});
+
 places.get("/events/:id/map", async (c) => {
   const cacheKey = c.req.url;
 
