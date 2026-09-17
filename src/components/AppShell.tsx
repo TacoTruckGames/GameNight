@@ -57,7 +57,9 @@ export function AppShell() {
           </span>
           <nav className="shell__tabs" aria-label="Main">
             <div className="shell__tabs-inner">
-              <Tab to="/" label="Events" icon="events" end />
+              {/* An organizer's board is their own events, so the tab says whose
+                  it is. A player's is everybody's, and "Events" is already that. */}
+              <Tab to="/" label={isOrganizer ? "Our Events" : "Events"} icon="events" end />
               {isOrganizer ? (
                 <Tab to="/organize" label="Organize" icon="organize" />
               ) : isAdmin ? null : (

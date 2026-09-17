@@ -147,9 +147,18 @@ export function useUsers(): UseQueryResult<User[], unknown> {
   });
 }
 
-export function useEvents(filter: EventsFilter): UseQueryResult<EventSummary[], unknown> {
+export function useEvents(
+  filter: EventsFilter,
+  /**
+   * Off for an organizer, whose board is their own events and comes from
+   * `useHostedEvents` instead. Without it both queries would run on every
+   * board render and one of the two answers would be thrown away.
+   */
+  options: { enabled?: boolean } = {},
+): UseQueryResult<EventSummary[], unknown> {
   const { userId } = useIdentity();
   return useQuery({
+    enabled: options.enabled ?? true,
     queryKey: queryKeys.eventList(filter),
     queryFn: ({ signal }) => {
       const params = new URLSearchParams();

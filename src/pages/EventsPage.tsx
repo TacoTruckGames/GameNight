@@ -1,7 +1,17 @@
 /**
- * The board. Search + game-type filter, then the same RSVP-able cards in one of
- * three shapes, all from one `useEvents` hook and one endpoint — no second data
- * source, just a different question asked of it:
+ * The board. Search + game-type filter, then cards in one of three shapes.
+ *
+ * **Whose board it is depends on who is reading.** A player sees everybody's
+ * events, from the cacheable public endpoint. An organizer sees their own, from
+ * `/api/me/hosted`, with cards that link to the door list instead of offering a
+ * seat — because an organizer's question about a board is "who is coming to my
+ * tables", and they had been answering it on a second page that carried a
+ * duplicate of this one underneath a form.
+ *
+ * Both hooks are called on every render, as hooks must be, and each is disabled
+ * for the role it does not serve, so exactly one request goes out. The three
+ * views below are the same three either way — one hook, one endpoint per role,
+ * no second data source, just a different question asked of it:
  *
  * - **Week** (the default): the seven days on screen, `?from=&to=`.
  * - **Month**: the month on screen, same window a month wide.
@@ -25,13 +35,16 @@
  */
 
 import { useEffect, useId, useMemo, useState } from "react";
+import type { EventSummary } from "../../shared/api-types";
 import { SEARCH_MAX } from "../../shared/schemas";
-import { useEvents, useMyRsvpIds } from "../api/hooks";
+import { useEvents, useHostedEvents, useMyRsvpIds } from "../api/hooks";
 import { AgendaList } from "../components/AgendaList";
+import { DayGroupedList } from "../components/DayGroupedList";
 import { BoardViewSwitch, DEFAULT_BOARD_VIEW, type BoardView } from "../components/BoardViewSwitch";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { EventCard } from "../components/EventCard";
+import { HostedEventCard } from "../components/HostedEventCard";
 import { Icon } from "../components/Icon";
 import { GameTypeFilter } from "../components/GameTypeFilter";
 import { MonthCalendar } from "../components/MonthCalendar";
@@ -56,7 +69,7 @@ import {
 const DEBOUNCE_MS = 250;
 
 export function EventsPage() {
-  const { isPlayer } = useIdentity();
+  const { isPlayer, isOrganizer } = useIdentity();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [gameType, setGameType] = useState("");
@@ -87,15 +100,41 @@ export function EventsPage() {
         from: new Date(month.year, month.month - 1, 1).toISOString(),
         to: new Date(month.year, month.month, 1).toISOString(),
       };
-    return {};
+    return undefined;
   }, [view, weekStart, month]);
-  const events = useEvents({ q: debouncedSearch, gameType, ...window });
+
+  // Two boards, one page. A player's is everybody's events, from the cacheable
+  // public endpoint; an organizer's is their own, from `/api/me/hosted` — the
+  // same list `/organize` used to carry underneath its form, which meant an
+  // organizer had two places to look at their own week. Both hooks are called
+  // every render because hooks must be, and each is switched off for the role
+  // it does not serve, so exactly one request goes out.
+  const publicEvents = useEvents({ q: debouncedSearch, gameType, ...(window ?? {}) }, { enabled: !isOrganizer });
+  const hostedEvents = useHostedEvents(window);
+  const events = isOrganizer ? hostedEvents : publicEvents;
   const myRsvpIds = useMyRsvpIds();
   const filtered = debouncedSearch !== "" || gameType !== "";
 
+  // `/api/me/hosted` takes a window and nothing else — no `q`, no `gameType` —
+  // so for an organizer the two filters are applied here. That is affordable
+  // precisely because the endpoint is already capped at 200 rows: this is a
+  // filter over one organizer's own events, not over a database.
+  const rows: EventSummary[] = useMemo(() => {
+    const all = events.data ?? [];
+    if (!isOrganizer) return all;
+    const needle = debouncedSearch.toLowerCase();
+    return all.filter(
+      (event) =>
+        (gameType === "" || event.gameType === gameType) &&
+        (needle === "" ||
+          event.title.toLowerCase().includes(needle) ||
+          event.location.toLowerCase().includes(needle)),
+    );
+  }, [events.data, isOrganizer, debouncedSearch, gameType]);
+
   const todayKey = dayKey(new Date())!; // `new Date()` is always valid; per render is fine
   const thisWeek = startOfWeek(todayKey);
-  const groups = useMemo(() => groupByDay(events.data ?? []), [events.data]);
+  const groups = useMemo(() => groupByDay(rows), [rows]);
   const counts = useMemo(() => new Map(groups.map((group) => [group.key, group.events.length])), [groups]);
 
   // Derived, never synced into state by an effect: the tap if that day still has
@@ -124,6 +163,23 @@ export function EventsPage() {
     setMonth(next);
     setSelectedDay(null);
   };
+  // One card per role. The organizer's links to the door list and counts seats;
+  // the player's links to the event and offers the seat.
+  const card = (event: EventSummary) =>
+    isOrganizer ? (
+      <HostedEventCard event={event} />
+    ) : (
+      <EventCard event={event} joined={myRsvpIds.has(event.id)} showRsvp={isPlayer} />
+    );
+  const agenda = (dayGroups: typeof groups, busy?: boolean) =>
+    isOrganizer ? (
+      <DayGroupedList groups={dayGroups} busy={busy}>
+        {card}
+      </DayGroupedList>
+    ) : (
+      <AgendaList groups={dayGroups} myRsvpIds={myRsvpIds} showRsvp={isPlayer} busy={busy} />
+    );
+
   const clearFilters = () => {
     setSearch("");
     setGameType("");
@@ -135,7 +191,7 @@ export function EventsPage() {
   // with the width differs, and that is the stylesheet's business.
   return (
     <div className="page--wide">
-      <h1 className="page-title">Upcoming Events</h1>
+      <h1 className="page-title">{isOrganizer ? "Our Upcoming Events" : "Upcoming Events"}</h1>
 
       <div className="filters">
         <div className="filters__row">
@@ -172,13 +228,19 @@ export function EventsPage() {
         <EventListSkeleton />
       ) : events.isError ? (
         <ErrorBanner error={events.error} onRetry={() => void events.refetch()} />
-      ) : view === "list" && (events.data?.length ?? 0) === 0 ? (
+      ) : view === "list" && rows.length === 0 ? (
         // List view only: an empty week or month is an ordinary thing to page
         // through, so those views keep their controls on screen and say so in
         // their own empty states rather than replacing themselves with this one.
         <EmptyState
-          title={filtered ? "No upcoming events match" : "No upcoming events yet"}
-          hint={filtered ? "Try a different search or clear the filters." : "Check back soon — organizers post new tables regularly."}
+          title={filtered ? "No upcoming events match" : isOrganizer ? "You haven't posted anything yet" : "No upcoming events yet"}
+          hint={
+            filtered
+              ? "Try a different search or clear the filters."
+              : isOrganizer
+                ? "Post one from the Organize tab and it will appear here."
+                : "Check back soon — organizers post new tables regularly."
+          }
           action={
             filtered ? (
               <button type="button" className="btn btn--sm btn--secondary" onClick={clearFilters}>
@@ -224,7 +286,7 @@ export function EventsPage() {
             />
           }
         >
-          {(event) => <EventCard event={event} joined={myRsvpIds.has(event.id)} showRsvp={isPlayer} />}
+          {card}
         </WeekAgenda>
       ) : view === "month" ? (
         // `board-calendar` is the desktop hook only: wide enough, the grid and
@@ -239,14 +301,14 @@ export function EventsPage() {
             onMonthChange={showMonth}
           />
           {selectedGroup ? (
-            <AgendaList groups={[selectedGroup]} myRsvpIds={myRsvpIds} showRsvp={isPlayer} busy={events.isFetching} />
+            agenda([selectedGroup], events.isFetching)
           ) : events.isPlaceholderData ? (
             // Still last month's rows, and every one of them falls outside the
             // month now on screen — without this the pane would flash "no events"
             // on the way to every month that has some.
             <EventListSkeleton count={1} label="Loading this month" />
           ) : wholeMonth.length > 0 ? (
-            <AgendaList groups={wholeMonth} myRsvpIds={myRsvpIds} showRsvp={isPlayer} busy={events.isFetching} />
+            agenda(wholeMonth, events.isFetching)
           ) : thisMonthsGroups.length > 0 ? (
             // The month is not empty, it is *over*: page back and every row on
             // the grid has already started. "No events in September" would be a
@@ -276,7 +338,7 @@ export function EventsPage() {
           )}
         </div>
       ) : (
-        <AgendaList groups={groups} myRsvpIds={myRsvpIds} showRsvp={isPlayer} busy={events.isFetching} />
+        agenda(groups, events.isFetching)
       )}
     </div>
   );

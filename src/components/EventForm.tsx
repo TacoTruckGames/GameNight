@@ -248,7 +248,11 @@ export function EventForm({ event, onDone }: { event?: EventDetail; onDone?: () 
 
   return (
     <form className="card" onSubmit={submit} noValidate>
-      <h2 className="card__title">{editing ? "Edit event" : "Post an event"}</h2>
+      {/* Editing happens below an event you can still see, so it has to say
+          which mode it is in. Posting has the page's own heading directly
+          above it saying exactly that, and a card title repeating it was a
+          line of chrome between the reader and the first field. */}
+      {editing ? <h2 className="card__title">Edit event</h2> : null}
 
       <div className="field">
         <label className="field__label" htmlFor={ids.title}>
@@ -318,7 +322,6 @@ export function EventForm({ event, onDone }: { event?: EventDetail; onDone?: () 
           aria-invalid={errors.startsAt !== undefined}
           aria-describedby={describedBy("startsAt", ids.startsAt)}
         />
-        <p className="text-sm muted">Your local time; stored and shown to players in theirs.</p>
         {errors.startsAt ? (
           <p className="field__error" id={`${ids.startsAt}-error`}>
             {errors.startsAt}

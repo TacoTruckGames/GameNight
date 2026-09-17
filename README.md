@@ -245,6 +245,15 @@ half-second spinner.
   not the things you press. Header 68 → 56, tabs 68 → 53, the View pill 54 → 50. On the week view that is
   1 card fully visible → 4.
 - **No pagination** (`LIMIT 200`); ~50 live events fit on one screen.
+- **An organizer's board is their own events.** The Events tab reads "Our Events" and the page "Our Upcoming
+  Events", and every card links to that event's door list instead of offering a seat — because the question
+  an organizer opens a board with is "who is coming to my tables". `/organize` used to answer it a second
+  time, carrying a duplicate of this list under its form, so an organizer had two places to look at one
+  week; that page is now the posting form and nothing else. Both list hooks are called on every render, as
+  hooks must be, and each is disabled for the role it does not serve, so exactly one request goes out.
+  `/api/me/hosted` takes a window and nothing else, so for an organizer the search and type filters run on
+  the client — affordable precisely because that endpoint is already capped at 200 rows, which makes it a
+  filter over one organizer's own events rather than over a database.
 - **RSVP lives on the card**, not behind the detail page: the primary user is on a phone on a commute, so the
   decision happens where the information is.
 - **The card is 88px, and was 223px.** Measured at 390×844: 66px of the old card was padding and gaps, and
