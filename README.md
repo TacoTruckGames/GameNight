@@ -21,7 +21,7 @@ migrations and re-seeds the demo board every time it starts (seed dates are rela
 and "one seat left" events are always there).
 
 ```sh
-pnpm test                        # 422 tests, incl. the concurrency proofs (~3 s)
+pnpm test                        # 424 tests, incl. the concurrency proofs (~3 s)
 pnpm stress [url] [--players 40] [--capacity 5]   # real-HTTP race against a running server
 pnpm typecheck
 ```
@@ -470,22 +470,118 @@ test error" button exercises that whole path so an operator can trust it before 
 
 ## Reaching the 12-month column
 
-The launch build already has the shape; here is exactly what changes at ~200k players / ~5k live events /
-100× list reads with 10× event-day spikes:
+The brief's table, with the launch column **measured** on production and the 12-month column **designed**:
 
-1. **The list read path** — add a per-colo edge cache (`Cache-Control: public, s-maxage=5` + the Cache API)
-   on `GET /api/events`. The list is identical for every user by design, so this is a one-line change that
-   bounds staleness at ~15 s worst case and caps D1 list reads at ~0.2 QPS per colo *regardless of traffic*.
-   The database does not melt because it never sees the read volume.
-2. **Remaining reads** — D1 read replication (Sessions API) for detail and per-user pages; cursor pagination
-   on the list; an index review once there are thousands of live events.
-3. **Writes** — nothing. Each event is already its own Durable Object, so an event-day spike on one event
-   contends with nothing else, and 5,000 live events are 5,000 independent single-writers.
-4. **Counts** stay a write-through projection; no counters to reconcile.
+| Dimension | Launch (measured) | 12 months (designed for) |
+|---|---|---|
+| Players (registered) | **2,000** on the live board | ~200,000 |
+| Events live at once | 50 upcoming (64 total) | ~5,000 |
+| Traffic shape | 16,611 requests, 0 errors, p50 36–77 ms | read-heavy ~50:1; 10× event-day spikes |
+| Hot path | list with live counts: 251 rps at c=20, p95 102 ms | same list at ~100× — must not melt the database |
+
+### Launch, measured
+
+The board was brought to the launch column through the public signup route and then loaded along the
+brief's read shapes (`pnpm populate`, `pnpm loadtest`, `pnpm stress`, all in `scripts/`, all zero-dependency):
+
+| What | Result on production |
+|---|---|
+| **Signup** — 1,932 `POST /api/users`, 12 in flight | 12.1 s, **160 signups/s**, p50 72 ms · p95 109 · p99 188, every one a 201 |
+| **List** `GET /api/events`, c=20, 15 s | 3,767 req, **251 rps**, p50 77 · p95 102 · p99 173 ms, 20.4 KB, 0 errors |
+| **Calendar** `?from=&to=`, c=10 | 225 rps, p50 43 · p95 63 · p99 123 ms |
+| **Detail** `GET /api/events/:id`, c=10 | 258 rps, p50 36 · p95 59 · p99 102 ms |
+| **Mine** `GET /api/me/rsvps`, rotating 200 players, c=10 | 147 rps, p50 62 · p95 107 · p99 204 ms |
+| **Spike** — the list at c=100 | 3,364 req, **328 rps**, p50 304 · p95 423 · p99 549 ms, 0 errors |
+| **Race** — 40 players, 5 seats (production) | exactly 5 × 201, 35 × 409 `EVENT_FULL`, 951 ms; 20 retries all `already_confirmed` |
+| **Race** — 300 players, 16 seats (local workerd) | exactly 16 × 201, 284 × 409, **588 ms** |
+
+D1's own accounting for the same hour (`wrangler d1 insights`): the list query reads **144 rows in 0.68 ms**
+(64 events + their organizers), detail reads 2 rows in 0.31 ms, the auth lookup 1 row in 0.19 ms, a signup
+writes 1 row in 0.21 ms. Every read is one indexed statement: the list walks `idx_events_starts_at` with a
+`LIMIT`, detail is a primary-key hit, the per-user page walks `idx_rsvps_player`, the organizer's board
+`idx_events_organizer`. **No read ever does a `COUNT(*)`** — `rsvp_count` is a column, recomputed inside the
+same batch that inserts the RSVP, so "live counts" cost nothing on the read side.
+
+Two honest notes on those numbers. The spike's p50 of 304 ms is **the harness, not the server**: one laptop
+running a closed loop plateaued at ~330 rps, and 100 requests in flight over 330 rps is 300 ms by Little's
+law — meanwhile every request succeeded and D1 was answering in under a millisecond. This test proves
+correctness under concurrency and gives the per-request cost; it did not find the server's ceiling, and
+finding it would take distributed load. And populating to 2,000 players found the one thing that did not
+survive the launch column: `GET /api/users` returned every row — **170 KB, and a 2,001-option `<select>`** on
+the landing page, with Alice thirty-sixth. It is bounded now (`?role=&limit=`, 50 by default, signup order,
+3 KB). At 200,000 it would have been a 17 MB response on every landing.
+
+### Why this holds at launch
+
+- **One Worker is the whole backend.** Static assets and the JSON API come from the same edge deployment, so
+  there is nothing to size and nothing between the phone and the code but Cloudflare's network.
+- **D1 is SQLite with transactions.** Every read is one indexed query against a single primary; the
+  denormalised `rsvp_count` means the hot path reads a column, not a join over `rsvps`. A guarded
+  `INSERT … SELECT … WHERE COUNT < capacity` in one batch is the last line of defence against over-booking,
+  and it holds even if a room is lost or bypassed.
+- **A Durable Object per event is the linearization point.** D1 has no `SELECT … FOR UPDATE` and no advisory
+  locks, so the honest alternatives were optimistic retry loops or a global lock. A room keyed by event id
+  is a single writer for exactly the rows that can conflict and nothing else: the 284 losers of a 300-way
+  race are refused from memory and **never touch D1**; only the 16 winners write. Rooms are cheap, rehydrate
+  from D1 when cold or when D1 disagrees with them, and there is no coordination between events — which is
+  the property the next column needs.
+
+### What changes for the 12-month column
+
+Nothing is rewritten. Each dimension of the brief's table has one specific change, and the write path has none.
+
+**200,000 players.** The `users` table is ~50 MB at that size; nothing structural. The admin list is already
+paged at 50; the picker is already bounded. What does change is that the picker stops existing — real
+sessions (Cloudflare Access or OAuth + a signed cookie) replace `X-User-Id`, which is first on the
+"Before real traffic" list for reasons beyond scale.
+
+**5,000 live events.** The list's `LIMIT 200` becomes cursor pagination on `(starts_at, id)`, which
+`idx_events_starts_at` already serves; the board is windowed by week and month today, so the calendar
+queries stay small regardless. `?q=` is a `LIKE` over live rows and is fine at 5,000; if search matters it
+becomes an FTS5 table, which D1 supports. Detail, attendees and the per-user page are keyed lookups and do
+not change.
+
+**Read-heavy at ~100×, with the same list as the hot path.** This is the one change that matters, and it is
+one line of intent: **edge-cache the anonymous list.** `GET /api/events` and its `?from=&to=` windows are
+identical for every user *by design* — `EventSummary` carries no `myRsvp`; whether you are going is a
+separate per-user query — so the response can carry `Cache-Control: public, s-maxage=5,
+stale-while-revalidate=30` and be served by the Cache API at every colo. D1 then sees at most one list
+query per five seconds per colo per distinct query string, a number bounded by geography rather than by
+traffic: the database does not melt because it never sees the read volume. Counts become at most ~5 s
+stale at the edge plus the ~10 s the client already tolerates, and the RSVP response stays authoritative —
+a 409 already refreshes the card on the spot. The remaining reads — detail's `myRsvp`, `/api/me/rsvps`,
+attendees — are the 1-in-50 that are per-user; they go to **D1 read replicas** (the Sessions API), with a
+bookmark after an RSVP so a player reads their own write.
+
+**10× event-day spikes.** Reads are absorbed above. Writes land on a handful of rooms, and each room
+serialises only its own event: measured, one room decides ~500 RSVPs a second with only the winners
+reaching D1, and 5,000 live events are 5,000 independent single-writers with no shared lock to contend
+for. The trade a room makes is location — it lives in one place, so a far-away player pays ~100–200 ms on
+the RSVP itself and nothing on any read — and it is the right trade for an action taken once per event.
+
+### Why this stack, in one line each
+
+**Workers** because the client and the API deploy as one unit to every edge location with nothing to
+operate. **D1** because the data is relational, small, and wants transactions and a point-in-time restore
+(Time Travel), and SQLite answers an indexed query in a fraction of a millisecond. **Durable Objects**
+because the only hard problem in the brief — the last seat — is a single-writer problem, and a DO is a
+single writer you can address by key. **Shared zod schemas** because validation runs in the browser to save
+a round-trip and on the server because that is the one that counts, and they must never disagree.
+**TanStack Query** because "how stale may a count be" is a policy, and it lives in one place.
+
+### What stays the same, on purpose
+
+No sharding — the natural key is the event id and the rooms already are the shards. No second database, no
+queue, no counter service: `rsvp_count` is a projection written in the same batch as the row it counts, so
+there is nothing to reconcile. No optimistic updates: the server's answer to an RSVP is the only answer.
+
+Order of work, if the traffic arrives: the list cache (an afternoon, and the whole hot-path story); real
+sessions; read replicas; cursor pagination; then observability — cache hit rate per colo, room decision
+latency, D1 rows read per request — so the next column is measured too rather than designed.
 
 ## Testing
 
-`pnpm test` runs 399 tests *inside* the Workers runtime (`@cloudflare/vitest-plugin`) against a real local
+`pnpm test` runs 424 tests *inside* the Workers runtime (`@cloudflare/vitest-plugin`) against a real local
 D1 and real Durable Object instances — the same code paths as production, not mocks.
 
 | Suite | What it proves |
@@ -511,6 +607,17 @@ pnpm stress https://gamenight.tacotruckgames.com --players 40 --capacity 5
 
 To see the race by hand: open the app in two browser profiles, pick two different players, and press RSVP
 on the D&D One-Shot (one seat left) in both — one gets in, the other sees "just filled up".
+
+Two more scripts bring a board to the brief's launch column and measure it there — see "Reaching the
+12-month column" for what they found:
+
+```sh
+pnpm populate https://gamenight.tacotruckgames.com --players 2000     # to a target, through the signup API
+pnpm loadtest https://gamenight.tacotruckgames.com --seconds 15 --budget 20000 --json out.json
+```
+
+`loadtest` is all GETs and caps its total request count, so it is safe against a free-plan Worker;
+`populate` writes real rows and never deletes any.
 
 ## Time spent
 
@@ -616,10 +723,11 @@ What is stubbed or simplified, roughly in the order I would harden it:
    players (reads are unaffected). Storage loss is recovered by lazy rehydration from D1, but a periodic
    reconcile alarm that re-derives members from D1 and logs discrepancies would make the DO/D1 divergence
    window observable rather than merely self-healing.
-3. **Read scaling** as described above: list edge cache, read replication, pagination.
-4. **Event lifecycle.** An *organizer* cannot edit, cancel or resize their own event — only an admin can,
-   from the dashboard — and there is no waitlist and no RSVP history (cancel is a hard delete). Organizer
-   self-edit is the obvious next feature; the admin patch path already validates everything it would need.
+3. **Read scaling** — the list edge cache, read replicas and cursor pagination, in that order; the
+   measured case for each is under "Reaching the 12-month column".
+4. **Event lifecycle.** An organizer can now edit, cancel and delete their own events, but there is no
+   waitlist, no RSVP history (cancel is a hard delete), and nothing tells twelve seat-holders that a night
+   moved — a postponed event should notify, and today it only updates.
 5. **Observability.** Workers Logs is on; add request ids, structured logs around the DO write path,
    error-rate alerts, and a D1 Time Travel restore drill.
 6. **CI and browser tests.** `pnpm typecheck && pnpm test` on every push, plus a committed Playwright smoke
