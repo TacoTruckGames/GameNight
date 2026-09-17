@@ -18,3 +18,22 @@ export function toIsoSeconds(date: Date): string {
 export function nowIso(now: Date = new Date()): string {
   return toIsoSeconds(now);
 }
+
+/**
+ * A validated `?from=&to=` window in the storage format.
+ *
+ * Both ends have to make this trip because `starts_at >= ?` is a *string*
+ * comparison: a client that sends an offset (`2026-09-14T00:00:00-07:00`) or
+ * milliseconds is asking the right question in the wrong alphabet, and would
+ * quietly compare wrong. The schema has already established these parse; this
+ * is the one place that re-spells them, for all three callers.
+ */
+export function toStorageWindow({ from, to }: { from?: string | undefined; to?: string | undefined }): {
+  from: string | undefined;
+  to: string | undefined;
+} {
+  return {
+    from: from === undefined ? undefined : toIsoSeconds(new Date(from)),
+    to: to === undefined ? undefined : toIsoSeconds(new Date(to)),
+  };
+}

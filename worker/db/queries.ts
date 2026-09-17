@@ -137,12 +137,13 @@ function likePattern(term: string): string {
   return `%${term.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
 }
 
-export interface EventFilters {
+/**
+ * When a list is asking about. Shared by the board and the two personal lists,
+ * which all answer the same two questions in the same two ways.
+ */
+export interface TimeFilters {
   /** ISO-8601 UTC. Used only when there is no window: events before it are "past" and excluded. */
   now: string;
-  q?: string | undefined;
-  gameType?: GameType | undefined;
-  sort?: EventSort | undefined;
   /**
    * The optional date window, half-open: `from` inclusive, `to` exclusive, both
    * ISO-8601 UTC in the storage format. Both or neither — a lone half is a
@@ -150,6 +151,25 @@ export interface EventFilters {
    */
   from?: string | undefined;
   to?: string | undefined;
+}
+
+export interface EventFilters extends TimeFilters {
+  q?: string | undefined;
+  gameType?: GameType | undefined;
+  sort?: EventSort | undefined;
+}
+
+/**
+ * The two bound values every one of these queries needs: the lower bound it
+ * compares `starts_at >=` against, and the upper bound (or NULL, meaning "no
+ * upper bound") it compares `<` against.
+ *
+ * Both or neither: a half-specified window falls back to upcoming-only rather
+ * than inventing the end the caller did not send.
+ */
+function timeBounds(filters: TimeFilters): { start: string; end: string | null } {
+  const { now, from, to } = filters;
+  return from !== undefined && to !== undefined ? { start: from, end: to } : { start: now, end: null };
 }
 
 /**
@@ -189,10 +209,7 @@ const ORDER_BY: Record<EventSort, string> = {
  * `listPlayerRsvps`.
  */
 export async function listEvents(db: D1Database, filters: EventFilters): Promise<EventSummary[]> {
-  // Both or neither: a half-specified window falls back to the upcoming board
-  // rather than inventing the end the caller did not send.
-  const { from, to } = filters;
-  const window = from !== undefined && to !== undefined ? { from, to } : null;
+  const { start, end } = timeBounds(filters);
 
   const { results } = await db
     .prepare(
@@ -210,12 +227,7 @@ export async function listEvents(db: D1Database, filters: EventFilters): Promise
         ORDER BY ${ORDER_BY[filters.sort ?? DEFAULT_EVENT_SORT]}
         LIMIT 200`,
     )
-    .bind(
-      window?.from ?? filters.now,
-      filters.gameType ?? null,
-      filters.q === undefined ? null : likePattern(filters.q),
-      window?.to ?? null,
-    )
+    .bind(start, filters.gameType ?? null, filters.q === undefined ? null : likePattern(filters.q), end)
     .all<EventRow>();
   return results.map(toEventSummary);
 }
@@ -330,13 +342,20 @@ export async function hasRsvp(db: D1Database, eventId: string, playerId: string)
 }
 
 /**
- * The player's upcoming events, soonest first.
+ * The player's seats, soonest first — upcoming only, or a given week when the
+ * agenda sends a window, exactly as `listEvents`.
  *
  * Deliberately *not* filtered by status: someone holding a seat on an event an
  * admin called off needs to be told, so the cancelled row stays in the list and
- * the client renders it as cancelled.
+ * the client renders it as cancelled. That holds in both modes — paging back a
+ * week should not quietly rewrite what happened to a night you had booked.
  */
-export async function listPlayerRsvps(db: D1Database, playerId: string, now: string): Promise<EventSummary[]> {
+export async function listPlayerRsvps(
+  db: D1Database,
+  playerId: string,
+  filters: TimeFilters,
+): Promise<EventSummary[]> {
+  const { start, end } = timeBounds(filters);
   const { results } = await db
     .prepare(
       `SELECT ${EVENT_COLUMNS}
@@ -344,26 +363,36 @@ export async function listPlayerRsvps(db: D1Database, playerId: string, now: str
          JOIN events e ON e.id = r.event_id
          JOIN users u ON u.id = e.organizer_id
         WHERE r.player_id = ?1 AND e.starts_at >= ?2
+          AND (?3 IS NULL OR e.starts_at < ?3)
         ORDER BY e.starts_at, e.id
         LIMIT 200`,
     )
-    .bind(playerId, now)
+    .bind(playerId, start, end)
     .all<EventRow>();
   return results.map(toEventSummary);
 }
 
-/** The organizer's own upcoming events, soonest first — cancelled ones included. */
-export async function listHostedEvents(db: D1Database, organizerId: string, now: string): Promise<EventSummary[]> {
+/**
+ * The organizer's own events, soonest first — cancelled ones included, and
+ * upcoming-only unless the caller sends a window.
+ */
+export async function listHostedEvents(
+  db: D1Database,
+  organizerId: string,
+  filters: TimeFilters,
+): Promise<EventSummary[]> {
+  const { start, end } = timeBounds(filters);
   const { results } = await db
     .prepare(
       `SELECT ${EVENT_COLUMNS}
          FROM events e
          JOIN users u ON u.id = e.organizer_id
         WHERE e.organizer_id = ?1 AND e.starts_at >= ?2
+          AND (?3 IS NULL OR e.starts_at < ?3)
         ORDER BY e.starts_at, e.id
         LIMIT 200`,
     )
-    .bind(organizerId, now)
+    .bind(organizerId, start, end)
     .all<EventRow>();
   return results.map(toEventSummary);
 }

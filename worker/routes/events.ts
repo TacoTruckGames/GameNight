@@ -23,7 +23,7 @@ import type { AppEnv } from "../lib/context";
 import { ApiError } from "../lib/errors";
 import { redact, resolvePlaceId } from "../lib/places";
 import { reportError } from "../lib/report";
-import { nowIso, toIsoSeconds } from "../lib/time";
+import { nowIso, toIsoSeconds, toStorageWindow } from "../lib/time";
 import { parseJson, parseQuery } from "../lib/validate";
 import { requireOrganizer } from "../middleware/auth";
 
@@ -83,15 +83,14 @@ async function resolveForCreate(
  * or milliseconds must not quietly compare wrong. See `worker/lib/time.ts`.
  */
 events.get("/events", async (c) => {
-  const { q, gameType, sort, from, to } = parseQuery(c, eventsQuerySchema);
+  const { q, gameType, sort, ...window } = parseQuery(c, eventsQuerySchema);
   return c.json(
     await listEvents(c.env.DB, {
       now: nowIso(),
       q,
       gameType,
       sort,
-      from: from === undefined ? undefined : toIsoSeconds(new Date(from)),
-      to: to === undefined ? undefined : toIsoSeconds(new Date(to)),
+      ...toStorageWindow(window),
     }),
   );
 });

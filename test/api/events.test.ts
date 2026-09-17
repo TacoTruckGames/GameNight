@@ -4,7 +4,7 @@ import type { ApiErrorBody, AttendeesResponse, EventDetail, EventSummary } from 
 import { env } from "cloudflare:test";
 
 import { DESCRIPTION_MAX } from "../../shared/schemas";
-import { api, inDays, isoSeconds, seedEvent, seedUser, seedUsers } from "../helpers";
+import { api, cancelEvent, inDays, seedEvent, seedUser, seedUsers } from "../helpers";
 
 /** The list is shared across tests, so always look for *our* event in it. */
 function find(list: EventSummary[], id: string): EventSummary | undefined {
@@ -128,13 +128,6 @@ describe("GET /api/events", () => {
   });
 
   describe("?from=&to= (the date window)", () => {
-    /** Straight into D1, the way an admin cancellation leaves the row. */
-    async function cancel(eventId: string): Promise<void> {
-      await env.DB.prepare("UPDATE events SET status = 'cancelled', cancelled_at = ?2 WHERE id = ?1")
-        .bind(eventId, isoSeconds(new Date()))
-        .run();
-    }
-
     it("returns events inside the window, past ones included", async () => {
       const longAgo = await seedEvent({ startsAt: inDays(-40) });
       const past = await seedEvent({ startsAt: inDays(-20) });
@@ -154,11 +147,15 @@ describe("GET /api/events", () => {
       const after = await seedEvent({ startsAt: inDays(10) });
       // Exactly on each boundary: `from` is inclusive, `to` is exclusive, so a
       // month's last instant belongs to that month and the next month's first
-      // instant does not.
-      const onFrom = await seedEvent({ startsAt: inDays(-5) });
-      const onTo = await seedEvent({ startsAt: inDays(5) });
+      // instant does not. Each boundary is computed once and reused — `inDays`
+      // reads the clock at second precision, and sampling it twice across a
+      // tick would put the seeded row one second off the window it queries.
+      const from = inDays(-5);
+      const to = inDays(5);
+      const onFrom = await seedEvent({ startsAt: from });
+      const onTo = await seedEvent({ startsAt: to });
 
-      const { body } = await api<EventSummary[]>(`/api/events?from=${inDays(-5)}&to=${inDays(5)}`);
+      const { body } = await api<EventSummary[]>(`/api/events?from=${from}&to=${to}`);
 
       expect(find(body, onFrom.id)).toBeDefined();
       expect(find(body, onTo.id)).toBeUndefined();
@@ -169,7 +166,7 @@ describe("GET /api/events", () => {
     it("still hides cancelled events inside the window", async () => {
       const cancelled = await seedEvent({ startsAt: inDays(-15) });
       const kept = await seedEvent({ startsAt: inDays(-15) });
-      await cancel(cancelled.id);
+      await cancelEvent(cancelled.id);
 
       const { body } = await api<EventSummary[]>(`/api/events?from=${inDays(-16)}&to=${inDays(-14)}`);
 
@@ -491,6 +488,103 @@ describe("GET /api/me/hosted", () => {
     const player = await seedUser();
     const { status } = await api<ApiErrorBody>("/api/me/hosted", { as: player.id });
     expect(status).toBe(403);
+  });
+
+  /**
+   * The same window as `GET /api/events`, for the organizer's week agenda.
+   *
+   * Every boundary is a `const` computed once and reused for both the seed and
+   * the query: `inDays` reads the clock, so calling it twice would put a row a
+   * tick outside the window it was meant to sit on.
+   */
+  describe("?from=&to= (the date window)", () => {
+    it("returns the organizer's own past and upcoming events inside the window", async () => {
+      const organizer = await seedUser({ role: "organizer" });
+      const from = inDays(-30);
+      const to = inDays(30);
+      const past = await seedEvent({ organizer, startsAt: inDays(-10) });
+      const upcoming = await seedEvent({ organizer, startsAt: inDays(10) });
+      const outside = await seedEvent({ organizer, startsAt: inDays(60) });
+      const theirs = await seedEvent({ startsAt: inDays(-10) });
+
+      const { status, body } = await api<EventSummary[]>(`/api/me/hosted?from=${from}&to=${to}`, {
+        as: organizer.id,
+      });
+
+      expect(status).toBe(200);
+      // Soonest first, and the night behind today is back — that is the point.
+      expect(body.map((event) => event.id)).toEqual([past.id, upcoming.id]);
+      expect(find(body, outside.id)).toBeUndefined();
+      // Still only the caller's own: a window widens the dates, not the owner.
+      expect(find(body, theirs.id)).toBeUndefined();
+    });
+
+    it("is half-open: `from` inclusive, `to` exclusive", async () => {
+      const organizer = await seedUser({ role: "organizer" });
+      const from = inDays(-5);
+      const to = inDays(5);
+      const onFrom = await seedEvent({ organizer, startsAt: from });
+      const inside = await seedEvent({ organizer, startsAt: inDays(1) });
+      const onTo = await seedEvent({ organizer, startsAt: to });
+
+      const { body } = await api<EventSummary[]>(`/api/me/hosted?from=${from}&to=${to}`, { as: organizer.id });
+
+      expect(body.map((event) => event.id)).toEqual([onFrom.id, inside.id]);
+      expect(find(body, onTo.id)).toBeUndefined();
+    });
+
+    it("keeps the organizer's own cancelled event inside a window", async () => {
+      const organizer = await seedUser({ role: "organizer" });
+      const from = inDays(-20);
+      const to = inDays(-1);
+      const cancelled = await seedEvent({ organizer, startsAt: inDays(-10) });
+      await cancelEvent(cancelled.id);
+
+      const { body } = await api<EventSummary[]>(`/api/me/hosted?from=${from}&to=${to}`, { as: organizer.id });
+
+      // Unlike the public board, which hides them: this is the organizer's own
+      // history, and a night they called off still happened to them.
+      expect(body.map((event) => event.id)).toEqual([cancelled.id]);
+    });
+
+    it("400s on half a window, naming the missing half", async () => {
+      const organizer = await seedUser({ role: "organizer" });
+      const from = inDays(-5);
+      const to = inDays(5);
+
+      const loneFrom = await api<ApiErrorBody>(`/api/me/hosted?from=${from}`, { as: organizer.id });
+      expect(loneFrom.status).toBe(400);
+      expect(loneFrom.body.error.code).toBe("VALIDATION_FAILED");
+      expect(loneFrom.body.error.details?.[0]?.path).toBe("to");
+
+      const loneTo = await api<ApiErrorBody>(`/api/me/hosted?to=${to}`, { as: organizer.id });
+      expect(loneTo.status).toBe(400);
+      expect(loneTo.body.error.details?.[0]?.path).toBe("from");
+    });
+
+    it("treats a blank window as no window at all", async () => {
+      const organizer = await seedUser({ role: "organizer" });
+      const past = await seedEvent({ organizer, startsAt: inDays(-3) });
+      const upcoming = await seedEvent({ organizer, startsAt: inDays(3) });
+
+      const { status, body } = await api<EventSummary[]>("/api/me/hosted?from=&to=", { as: organizer.id });
+
+      expect(status).toBe(200);
+      expect(body.map((event) => event.id)).toEqual([upcoming.id]);
+      expect(find(body, past.id)).toBeUndefined();
+    });
+
+    it("403s a player before it looks at the window", async () => {
+      const player = await seedUser();
+      const from = inDays(-5);
+      const to = inDays(5);
+
+      expect((await api(`/api/me/hosted?from=${from}&to=${to}`, { as: player.id })).status).toBe(403);
+      // Half a window and the wrong role: the role is the honest answer, so the
+      // auth check runs first and a 400 never leaks the shape of a list you
+      // cannot read.
+      expect((await api(`/api/me/hosted?from=${from}`, { as: player.id })).status).toBe(403);
+    });
   });
 });
 

@@ -8,7 +8,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { createEventSchema, createUserSchema, eventsQuerySchema } from "../../shared/schemas";
+import { createEventSchema, createUserSchema, dateWindowQuerySchema, eventsQuerySchema } from "../../shared/schemas";
 
 const NOW = new Date("2026-09-15T12:00:00Z");
 const schema = createEventSchema(NOW);
@@ -178,5 +178,56 @@ describe("eventsQuerySchema", () => {
     expect(eventsQuerySchema.safeParse({ gameType: "chess" }).success).toBe(false);
     expect(eventsQuerySchema.safeParse({ sort: "alphabetical" }).success).toBe(false);
     expect(eventsQuerySchema.safeParse({ q: "x".repeat(81) }).success).toBe(false);
+  });
+
+  // The window rule lives in one place and this schema is one of its consumers;
+  // if the two ever drift apart, this is the test that says so.
+  it("rejects half a window with the same rule the /me lists use", () => {
+    const result = eventsQuerySchema.safeParse({ from: "2026-09-14T00:00:00Z", sort: "popular" });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.issues[0]?.path).toEqual(["to"]);
+  });
+});
+
+describe("dateWindowQuerySchema", () => {
+  const FROM = "2026-09-14T00:00:00Z";
+  const TO = "2026-09-21T00:00:00Z";
+
+  it("treats an absent window as no window", () => {
+    expect(dateWindowQuerySchema.parse({})).toEqual({ from: undefined, to: undefined });
+  });
+
+  it("treats a blank window as no window — `?from=&to=` is a browser, not a caller", () => {
+    expect(dateWindowQuerySchema.parse({ from: "", to: "" })).toEqual({ from: undefined, to: undefined });
+  });
+
+  it("passes a whole window through unchanged, offset and all", () => {
+    expect(dateWindowQuerySchema.parse({ from: FROM, to: TO })).toEqual({ from: FROM, to: TO });
+    // The offset form is the one a browser actually sends: the week strip turns
+    // a local Monday midnight into an instant, and re-spelling it is the
+    // worker's job, not the schema's.
+    const offset = { from: "2026-09-14T00:00:00-07:00", to: "2026-09-21T00:00:00-07:00" };
+    expect(dateWindowQuerySchema.parse(offset)).toEqual(offset);
+  });
+
+  it("rejects half a window, reporting the missing half", () => {
+    const loneFrom = dateWindowQuerySchema.safeParse({ from: FROM });
+    expect(loneFrom.success).toBe(false);
+    if (!loneFrom.success) expect(loneFrom.error.issues[0]?.path).toEqual(["to"]);
+
+    const loneTo = dateWindowQuerySchema.safeParse({ to: TO });
+    expect(loneTo.success).toBe(false);
+    if (!loneTo.success) expect(loneTo.error.issues[0]?.path).toEqual(["from"]);
+  });
+
+  it("reports a malformed end as one issue on that end", () => {
+    const result = dateWindowQuerySchema.safeParse({ from: "last-tuesday", to: TO });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      // One issue, not two: the field failed, so the both-or-neither rule never
+      // ran and cannot pile a second complaint on top of the real one.
+      expect(result.error.issues).toHaveLength(1);
+      expect(result.error.issues[0]?.path).toEqual(["from"]);
+    }
   });
 });

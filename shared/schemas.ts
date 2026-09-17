@@ -137,6 +137,70 @@ export const createUserSchema = z.object({
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 
+// ---------------------------------------------------------- the date window --
+
+/**
+ * The optional **date window**, half-open: `from` inclusive, `to` exclusive.
+ * Absent, a list is upcoming-only (`starts_at >= now`); present, `now` stops
+ * applying and past events come back. The calendar is the caller that needed it
+ * first — a month grid has to show the days behind today — and the two `/api/me`
+ * lists take the same window for the week agenda.
+ *
+ * A window rather than an `includePast` flag on purpose: past-inclusive with
+ * `ORDER BY starts_at` would return oldest-first and could exhaust the 200-row
+ * cap long before reaching anything still joinable. A window is bounded by
+ * construction, so what comes back is always the span the caller asked about.
+ *
+ * Defined once, in three pieces, because three endpoints now share the rule and
+ * a second copy of it is a second chance to drift.
+ */
+const windowEndSchema = z.union([
+  z.iso.datetime({ offset: true, message: "Must be an ISO-8601 date-time" }),
+  z.literal(""),
+]);
+
+/** Spread into any query object that takes the window. */
+export const dateWindowShape = {
+  from: windowEndSchema.optional(),
+  to: windowEndSchema.optional(),
+};
+
+export interface DateWindowQuery {
+  from: string | undefined;
+  to: string | undefined;
+}
+
+/** Blank (`?from=&to=`) is absence, not a value — one "no window" case downstream. */
+function normaliseWindow({ from, to }: { from?: string | undefined; to?: string | undefined }): DateWindowQuery {
+  return {
+    from: from !== undefined && from !== "" ? from : undefined,
+    to: to !== undefined && to !== "" ? to : undefined,
+  };
+}
+
+/**
+ * Half a window is a caller bug, not something to guess the other end of: a
+ * lone `from` would silently mean "everything from here on, past included"
+ * and a lone `to` "everything ever, up to here". The issue is reported
+ * against the *missing* half, which is the field the caller has to add.
+ */
+function requireWholeWindow(query: DateWindowQuery, ctx: z.core.$RefinementCtx<DateWindowQuery>): void {
+  if ((query.from === undefined) === (query.to === undefined)) return;
+  const missing = query.from === undefined ? "from" : "to";
+  const given = missing === "from" ? "to" : "from";
+  ctx.addIssue({
+    code: "custom",
+    path: [missing],
+    message: `Send both from and to, or neither — ${given} was given without ${missing}`,
+  });
+}
+
+/** The whole query string of `GET /api/me/rsvps` and `GET /api/me/hosted`. */
+export const dateWindowQuerySchema = z
+  .object(dateWindowShape)
+  .transform(normaliseWindow)
+  .superRefine(requireWholeWindow);
+
 // --------------------------------------------------------- GET /api/events --
 
 /**
@@ -144,28 +208,14 @@ export type CreateUserInput = z.infer<typeof createUserSchema>;
  * (`?q=&gameType=`) normalise to `undefined` so the route has one "absent"
  * case to branch on.
  *
- * `from`/`to` are the optional **date window**, half-open: `from` inclusive,
- * `to` exclusive. Absent, the list is the upcoming board (`starts_at >= now`);
- * present, `now` stops applying and past events come back. The calendar is the
- * caller that needs this — a month grid has to show the days behind today.
- *
- * A window rather than an `includePast` flag on purpose: past-inclusive with
- * `ORDER BY starts_at` would return oldest-first and could exhaust the 200-row
- * cap long before reaching anything still joinable. A window is bounded by
- * construction, so what comes back is always the span the caller asked about.
+ * `from`/`to` are the shared date window above, rule and all.
  */
-const windowSchema = z.union([
-  z.iso.datetime({ offset: true, message: "Must be an ISO-8601 date-time" }),
-  z.literal(""),
-]);
-
 export const eventsQuerySchema = z
   .object({
     q: z.string().max(SEARCH_MAX, `Search must be ${SEARCH_MAX} characters or fewer`).optional(),
     gameType: z.union([gameTypeSchema, z.literal("")]).optional(),
     sort: z.union([eventSortSchema, z.literal("")]).optional(),
-    from: windowSchema.optional(),
-    to: windowSchema.optional(),
+    ...dateWindowShape,
   })
   .transform(({ q, gameType, sort, from, to }) => ({
     q: q !== undefined && q.trim() !== "" ? q.trim() : undefined,
@@ -173,23 +223,9 @@ export const eventsQuerySchema = z
     // `sort` is the one query param with a meaningful default rather than an
     // "absent" case: a list always has an order.
     sort: sort !== undefined && sort !== "" ? sort : DEFAULT_EVENT_SORT,
-    from: from !== undefined && from !== "" ? from : undefined,
-    to: to !== undefined && to !== "" ? to : undefined,
+    ...normaliseWindow({ from, to }),
   }))
-  // Half a window is a caller bug, not something to guess the other end of: a
-  // lone `from` would silently mean "everything from here on, past included"
-  // and a lone `to` "everything ever, up to here". The issue is reported
-  // against the *missing* half, which is the field the caller has to add.
-  .superRefine((query, ctx) => {
-    if ((query.from === undefined) === (query.to === undefined)) return;
-    const missing = query.from === undefined ? "from" : "to";
-    const given = missing === "from" ? "to" : "from";
-    ctx.addIssue({
-      code: "custom",
-      path: [missing],
-      message: `Send both from and to, or neither — ${given} was given without ${missing}`,
-    });
-  });
+  .superRefine(requireWholeWindow);
 
 export type EventsQuery = z.infer<typeof eventsQuerySchema>;
 export type EventsQueryInput = z.input<typeof eventsQuerySchema>;

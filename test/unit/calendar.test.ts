@@ -16,11 +16,15 @@ import {
   formatDayHeading,
   formatDayLong,
   formatMonthLabel,
+  formatWeekLabel,
   groupByDay,
   monthOf,
   parseDayKey,
   sameMonth,
+  shiftDays,
   shiftMonth,
+  startOfWeek,
+  weekDays,
   weekdayLabels,
 } from "../../src/lib/calendar";
 
@@ -238,5 +242,134 @@ describe("labels", () => {
     [0, "0 events"],
   ])("labels %i as %s", (n, expected) => {
     expect(eventCountLabel(n)).toBe(expected);
+  });
+});
+
+describe("shiftDays", () => {
+  it.each([
+    ["over a month end", "2026-01-31", 1, "2026-02-01"],
+    ["back over a month end", "2026-03-01", -1, "2026-02-28"],
+    ["over a year end", "2026-12-31", 1, "2027-01-01"],
+    ["back over a year end", "2027-01-01", -1, "2026-12-31"],
+    ["onto a leap day", "2028-02-28", 1, "2028-02-29"],
+    ["off a leap day", "2028-02-29", 1, "2028-03-01"],
+    ["past a February that has no 29th", "2027-02-28", 1, "2027-03-01"],
+    ["a week forward", "2026-09-14", 7, "2026-09-21"],
+    ["a week back", "2026-09-14", -7, "2026-09-07"],
+    ["nowhere", "2026-09-14", 0, "2026-09-14"],
+    ["into a single-digit month and day, zero-padded", "2026-08-31", 1, "2026-09-01"],
+    ["a whole non-leap year", "2026-09-14", 365, "2027-09-14"],
+  ])("shifts %s", (_label, key, delta, expected) => {
+    expect(shiftDays(key, delta)).toBe(expected);
+  });
+
+  it("is reversible", () => {
+    for (const delta of [1, -1, 7, -7, 30, 365]) {
+      expect(shiftDays(shiftDays("2026-02-28", delta), -delta)).toBe("2026-02-28");
+    }
+  });
+});
+
+describe("startOfWeek", () => {
+  // 2026-09-14 is a Monday, 09-16 a Wednesday and 09-20 the Sunday that closes
+  // that week — so all three answer with the same Monday.
+  it.each([
+    ["the Monday itself", "2026-09-14"],
+    ["a Wednesday", "2026-09-16"],
+    ["the closing Sunday", "2026-09-20"],
+  ])("takes %s back to 2026-09-14 on a Monday start", (_label, key) => {
+    expect(startOfWeek(key, 1)).toBe("2026-09-14");
+  });
+
+  it.each([
+    ["across a month end", "2026-10-02", "2026-09-28"],
+    ["from a Sunday, which belongs to the week before", "2026-11-01", "2026-10-26"],
+    ["across a year end", "2027-01-01", "2026-12-28"],
+  ])("walks back %s", (_label, key, expected) => {
+    expect(startOfWeek(key, 1)).toBe(expected);
+  });
+
+  it.each([
+    ["a Monday now opens the week before", "2026-09-14", "2026-09-13"],
+    ["a Sunday is its own week start", "2026-11-01", "2026-11-01"],
+    ["across a month end", "2026-09-01", "2026-08-30"],
+    ["across a year end", "2027-01-01", "2026-12-27"],
+  ])("on a Sunday start, %s", (_label, key, expected) => {
+    expect(startOfWeek(key, 0)).toBe(expected);
+  });
+
+  it("defaults to the board's Monday start", () => {
+    expect(startOfWeek("2026-09-16")).toBe(startOfWeek("2026-09-16", 1));
+    expect(startOfWeek("2026-09-16")).toBe("2026-09-14");
+  });
+
+  it("is idempotent — a week start is already the start of its week", () => {
+    for (const weekStartsOn of [0, 1] as const) {
+      for (const key of ["2026-09-16", "2026-11-01", "2027-01-01", "2028-02-29"]) {
+        const start = startOfWeek(key, weekStartsOn);
+        expect(startOfWeek(start, weekStartsOn)).toBe(start);
+      }
+    }
+  });
+});
+
+describe("weekDays", () => {
+  it("returns exactly seven consecutive, strictly increasing days", () => {
+    const days = weekDays("2026-09-14");
+    expect(days).toEqual([
+      "2026-09-14",
+      "2026-09-15",
+      "2026-09-16",
+      "2026-09-17",
+      "2026-09-18",
+      "2026-09-19",
+      "2026-09-20",
+    ]);
+    expect(days).toHaveLength(7);
+    expect(days).toEqual([...days].sort());
+    expect(new Set(days).size).toBe(7);
+  });
+
+  it.each([
+    ["a month end", "2026-09-28", "2026-10-04"],
+    ["a year end", "2026-12-28", "2027-01-03"],
+  ])("crosses %s", (_label, start, lastDay) => {
+    const days = weekDays(start);
+    expect(days).toHaveLength(7);
+    expect(days[6]).toBe(lastDay);
+  });
+
+  it("gives seven days that all map back to the start they came from", () => {
+    for (const [weekStartsOn, start] of [
+      [1, "2026-12-28"],
+      [0, "2026-12-27"],
+    ] as const) {
+      for (const key of weekDays(start)) {
+        expect(startOfWeek(key, weekStartsOn)).toBe(start);
+      }
+    }
+  });
+});
+
+describe("formatWeekLabel", () => {
+  it.each([
+    ["a week inside one month", "2026-09-14", "Sep 14 – 20"],
+    ["a Sunday-start week inside one month", "2026-09-13", "Sep 13 – 19"],
+    ["a week straddling two months", "2026-09-28", "Sep 28 – Oct 4"],
+    ["a week straddling two years", "2026-12-28", "Dec 28, 2026 – Jan 3, 2027"],
+    ["December, still inside its year", "2026-12-21", "Dec 21 – 27"],
+  ])("labels %s", (_label, start, expected) => {
+    expect(formatWeekLabel(start)).toBe(expected);
+  });
+
+  it("separates the ends with a plain-spaced en dash", () => {
+    // `Intl`'s `formatRange` would pad the dash with U+2009 thin spaces here,
+    // which is invisible in a diff and a surprise in every assertion that meets
+    // it. This label is composed by hand precisely so it cannot happen.
+    for (const start of ["2026-09-14", "2026-09-28", "2026-12-28"]) {
+      const label = formatWeekLabel(start);
+      expect(label).toContain(" – ");
+      expect(label).not.toMatch(/[   ]/);
+    }
   });
 });

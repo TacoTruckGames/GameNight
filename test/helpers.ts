@@ -25,6 +25,12 @@ export function isoSeconds(date: Date): string {
   return `${date.toISOString().slice(0, 19)}Z`;
 }
 
+/**
+ * Reads the clock on every call, so two calls a tick apart are two different
+ * strings. A test that uses one of these as a *window boundary* must compute it
+ * once into a const and reuse it — seeding at `inDays(-5)` and then asking for
+ * `?from=inDays(-5)` is a coin flip on whether the row is inside the window.
+ */
 export function inDays(days: number, from: Date = new Date()): string {
   return isoSeconds(new Date(from.getTime() + days * 24 * 60 * 60 * 1000));
 }
@@ -168,6 +174,17 @@ export async function addRsvpsDirectly(eventId: string, playerIds: string[]): Pr
       "UPDATE events SET rsvp_count = (SELECT COUNT(*) FROM rsvps WHERE event_id = ?1) WHERE id = ?1",
     ).bind(eventId),
   ]);
+}
+
+/**
+ * Cancel an event straight in D1, exactly the way an admin cancellation leaves
+ * the row — no Worker, no DO. Used wherever a test needs the "this was called
+ * off" shape rather than the cancelling itself.
+ */
+export async function cancelEvent(eventId: string): Promise<void> {
+  await env.DB.prepare("UPDATE events SET status = 'cancelled', cancelled_at = ?2 WHERE id = ?1")
+    .bind(eventId, isoSeconds(new Date()))
+    .run();
 }
 
 // ------------------------------------------------------------- assertions --

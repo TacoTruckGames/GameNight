@@ -70,6 +70,22 @@ export interface EventsFilter {
   to?: string;
 }
 
+/**
+ * The half-open window the two `/api/me/*` lists take, same contract as the
+ * board's: `from` inclusive, `to` exclusive, ISO-8601, both or neither. With one
+ * the server answers the window and includes the past; without it, upcoming only.
+ */
+export interface DateWindow {
+  from: string;
+  to: string;
+}
+
+/** `?from=…&to=…`, or `""` when there is no window — the caller concatenates. */
+function windowQuery(window?: DateWindow): string {
+  if (!window) return "";
+  return `?${new URLSearchParams({ from: window.from, to: window.to }).toString()}`;
+}
+
 /** The admin lists are filtered entirely from the URL, so the key is the URL's query. */
 export interface AdminUsersFilter {
   q?: string;
@@ -93,8 +109,12 @@ export const queryKeys = {
     ["events", "list", filter.q ?? "", filter.gameType ?? "", filter.sort ?? "", filter.from ?? "", filter.to ?? ""] as const,
   event: (id: string) => ["events", "detail", id] as const,
   attendees: (id: string) => ["events", "attendees", id] as const,
-  myRsvps: (userId: string) => ["me", "rsvps", userId] as const,
-  hosted: (userId: string) => ["me", "hosted", userId] as const,
+  // The window trails the user id, so `["me"]` still clears every week a reader
+  // has paged through and the identity stays at slot 2 for `placeholderData`.
+  myRsvps: (userId: string, window?: DateWindow) =>
+    ["me", "rsvps", userId, window?.from ?? "", window?.to ?? ""] as const,
+  hosted: (userId: string, window?: DateWindow) =>
+    ["me", "hosted", userId, window?.from ?? "", window?.to ?? ""] as const,
   /** Everything the dashboard reads hangs off one prefix, so one write clears it all. */
   admin: {
     all: ["admin"] as const,
@@ -166,26 +186,44 @@ export function useAttendees(id: string): UseQueryResult<AttendeesResponse, unkn
   });
 }
 
-/** The player's own RSVPs — the source of "You're in" on the event list. */
-export function useMyRsvps(): UseQueryResult<EventSummary[], unknown> {
+/**
+ * The player's own RSVPs. Without a window: upcoming only, which is what the
+ * list view and "You're in" want. With one: that week, past included.
+ *
+ * `placeholderData` keeps the previous week's cards up while the next week
+ * loads, so paging the strip doesn't flash a skeleton — but only when the key's
+ * identity slot still matches, because switching user must never show one
+ * person another's seats, however briefly.
+ */
+export function useMyRsvps(window?: DateWindow): UseQueryResult<EventSummary[], unknown> {
   const { userId, isPlayer } = useIdentity();
+  const who = userId ?? "anonymous";
   return useQuery({
-    queryKey: queryKeys.myRsvps(userId ?? "anonymous"),
-    queryFn: ({ signal }) => apiFetch<EventSummary[]>("/api/me/rsvps", { userId, signal }),
+    queryKey: queryKeys.myRsvps(who, window),
+    queryFn: ({ signal }) => apiFetch<EventSummary[]>(`/api/me/rsvps${windowQuery(window)}`, { userId, signal }),
     enabled: userId !== null && isPlayer,
+    placeholderData: (previous, previousQuery) => (previousQuery?.queryKey[2] === who ? previous : undefined),
   });
 }
 
-export function useHostedEvents(): UseQueryResult<EventSummary[], unknown> {
+export function useHostedEvents(window?: DateWindow): UseQueryResult<EventSummary[], unknown> {
   const { userId, isOrganizer } = useIdentity();
+  const who = userId ?? "anonymous";
   return useQuery({
-    queryKey: queryKeys.hosted(userId ?? "anonymous"),
-    queryFn: ({ signal }) => apiFetch<EventSummary[]>("/api/me/hosted", { userId, signal }),
+    queryKey: queryKeys.hosted(who, window),
+    queryFn: ({ signal }) => apiFetch<EventSummary[]>(`/api/me/hosted${windowQuery(window)}`, { userId, signal }),
     enabled: userId !== null && isOrganizer,
+    placeholderData: (previous, previousQuery) => (previousQuery?.queryKey[2] === who ? previous : undefined),
   });
 }
 
-/** Event ids the current player has a seat at. */
+/**
+ * Event ids the current player has a seat at.
+ *
+ * Deliberately zero-arg and unwindowed: this is what the board's "You're in"
+ * chips read, and the board shows every upcoming event, not one week of them. A
+ * window here would un-chip a card the moment the reader paged the agenda.
+ */
 export function useMyRsvpIds(): Set<string> {
   const { data } = useMyRsvps();
   const ids = new Set<string>();

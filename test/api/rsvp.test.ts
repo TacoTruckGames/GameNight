@@ -6,7 +6,18 @@
 import { describe, expect, it } from "vitest";
 
 import type { ApiErrorBody, EventSummary, RsvpResponse } from "../../shared/api-types";
-import { api, deleteRsvp, inDays, projectedCount, putRsvp, rsvpCount, seedEvent, seedUser, seedUsers } from "../helpers";
+import {
+  api,
+  cancelEvent,
+  deleteRsvp,
+  inDays,
+  projectedCount,
+  putRsvp,
+  rsvpCount,
+  seedEvent,
+  seedUser,
+  seedUsers,
+} from "../helpers";
 
 describe("PUT /api/events/:id/rsvp", () => {
   it("confirms a seat with 201, then answers a retry with 200 and no second row", async () => {
@@ -197,5 +208,129 @@ describe("GET /api/me/rsvps", () => {
     const organizer = await seedUser({ role: "organizer" });
     expect((await api("/api/me/rsvps", { as: organizer.id })).status).toBe(403);
     expect((await api("/api/me/rsvps")).status).toBe(401);
+  });
+
+  /**
+   * The board's window, on a personal list — what the week agenda pages through.
+   *
+   * Every boundary is a `const` computed once and reused for both the seed and
+   * the query: `inDays` reads the clock, so calling it twice would put a row a
+   * tick outside the window it was meant to sit on.
+   */
+  describe("?from=&to= (the date window)", () => {
+    it("returns seats inside the window, past ones included and soonest first", async () => {
+      const player = await seedUser();
+      const from = inDays(-30);
+      const to = inDays(30);
+      const past = await seedEvent({ startsAt: inDays(-10), rsvpPlayerIds: [player.id] });
+      const upcoming = await seedEvent({ startsAt: inDays(10), rsvpPlayerIds: [player.id] });
+      const outside = await seedEvent({ startsAt: inDays(60), rsvpPlayerIds: [player.id] });
+
+      const { status, body } = await api<EventSummary[]>(`/api/me/rsvps?from=${from}&to=${to}`, { as: player.id });
+
+      expect(status).toBe(200);
+      // A night you already went to is the reason to page back at all.
+      expect(body.map((event) => event.id)).toEqual([past.id, upcoming.id]);
+      expect(body.map((event) => event.id)).not.toContain(outside.id);
+    });
+
+    it("is half-open: `from` inclusive, `to` exclusive", async () => {
+      const player = await seedUser();
+      const from = inDays(-5);
+      const to = inDays(5);
+      const onFrom = await seedEvent({ startsAt: from, rsvpPlayerIds: [player.id] });
+      const inside = await seedEvent({ startsAt: inDays(1), rsvpPlayerIds: [player.id] });
+      const onTo = await seedEvent({ startsAt: to, rsvpPlayerIds: [player.id] });
+
+      const { body } = await api<EventSummary[]>(`/api/me/rsvps?from=${from}&to=${to}`, { as: player.id });
+
+      expect(body.map((event) => event.id)).toEqual([onFrom.id, inside.id]);
+      expect(body.map((event) => event.id)).not.toContain(onTo.id);
+    });
+
+    it("keeps a cancelled event the player holds a seat at", async () => {
+      const player = await seedUser();
+      const from = inDays(-20);
+      const to = inDays(-1);
+      const cancelled = await seedEvent({ startsAt: inDays(-10), rsvpPlayerIds: [player.id] });
+      await cancelEvent(cancelled.id);
+
+      const { body } = await api<EventSummary[]>(`/api/me/rsvps?from=${from}&to=${to}`, { as: player.id });
+
+      // Same promise as the unwindowed list: someone whose night was called off
+      // gets told, in whichever week they are looking at.
+      expect(body.map((event) => event.id)).toEqual([cancelled.id]);
+      expect(body[0]?.status).toBe("cancelled");
+    });
+
+    it("excludes an event inside the window the player has no seat at", async () => {
+      const player = await seedUser();
+      const from = inDays(-30);
+      const to = inDays(30);
+      const mine = await seedEvent({ startsAt: inDays(-10), rsvpPlayerIds: [player.id] });
+      const notMine = await seedEvent({ startsAt: inDays(-9) });
+
+      const { body } = await api<EventSummary[]>(`/api/me/rsvps?from=${from}&to=${to}`, { as: player.id });
+
+      expect(body.map((event) => event.id)).toEqual([mine.id]);
+      expect(body.map((event) => event.id)).not.toContain(notMine.id);
+    });
+
+    it("400s on `from` without `to`, naming the missing half", async () => {
+      const player = await seedUser();
+      const from = inDays(-5);
+
+      const { status, body } = await api<ApiErrorBody>(`/api/me/rsvps?from=${from}`, { as: player.id });
+
+      expect(status).toBe(400);
+      expect(body.error.code).toBe("VALIDATION_FAILED");
+      expect(body.error.details?.[0]?.path).toBe("to");
+    });
+
+    it("400s on `to` without `from`, naming the missing half", async () => {
+      const player = await seedUser();
+      const to = inDays(5);
+
+      const { status, body } = await api<ApiErrorBody>(`/api/me/rsvps?to=${to}`, { as: player.id });
+
+      expect(status).toBe(400);
+      expect(body.error.code).toBe("VALIDATION_FAILED");
+      expect(body.error.details?.[0]?.path).toBe("from");
+    });
+
+    it("400s on a window end that is not a date-time", async () => {
+      const player = await seedUser();
+      const to = inDays(5);
+
+      const { status, body } = await api<ApiErrorBody>(`/api/me/rsvps?from=last-tuesday&to=${to}`, {
+        as: player.id,
+      });
+
+      expect(status).toBe(400);
+      expect(body.error.details?.[0]?.path).toBe("from");
+    });
+
+    it("treats a blank window as no window at all", async () => {
+      const player = await seedUser();
+      const past = await seedEvent({ startsAt: inDays(-3), rsvpPlayerIds: [player.id] });
+      const upcoming = await seedEvent({ startsAt: inDays(3), rsvpPlayerIds: [player.id] });
+
+      const { status, body } = await api<EventSummary[]>("/api/me/rsvps?from=&to=", { as: player.id });
+
+      expect(status).toBe(200);
+      expect(body.map((event) => event.id)).toEqual([upcoming.id]);
+      expect(body.map((event) => event.id)).not.toContain(past.id);
+    });
+
+    it("answers who-you-are before what-you-typed", async () => {
+      const organizer = await seedUser({ role: "organizer" });
+      const from = inDays(-5);
+
+      // Half a window *and* the wrong role / no role at all. The role is the
+      // useful answer, so the auth check runs first: no 400 describing the
+      // fields of a list the caller may not read.
+      expect((await api(`/api/me/rsvps?from=${from}`, { as: organizer.id })).status).toBe(403);
+      expect((await api(`/api/me/rsvps?from=${from}`)).status).toBe(401);
+    });
   });
 });

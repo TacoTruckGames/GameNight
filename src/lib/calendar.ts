@@ -1,5 +1,6 @@
 /**
- * Civil-date helpers for the month calendar and the day-grouped agenda.
+ * Civil-date helpers for the month calendar, the week agenda and the
+ * day-grouped list.
  *
  * Two rules keep this file honest:
  *
@@ -12,9 +13,15 @@
  *    Workers test runtime is fixed to UTC — so the tests pass explicit zones to
  *    exercise the UTC-midnight boundary that the browser hits for real.
  *
- * 2. Once a date *is* a `DayKey`, zones are done with it. Grid arithmetic and
- *    label formatting run on `Date.UTC(...)` noon and UTC-pinned formatters, so
- *    "2026-09-18" reads as Friday the 18th everywhere, for everyone.
+ * 2. Once a date *is* a `DayKey`, zones are done with it. Grid arithmetic, week
+ *    arithmetic and label formatting run on `Date.UTC(...)` noon and UTC-pinned
+ *    formatters, so "2026-09-18" reads as Friday the 18th everywhere, for
+ *    everyone, and a week that starts on Monday starts on Monday for everyone.
+ *
+ * What is deliberately *not* here: turning a week into the `?from=&to=` window
+ * the API wants. That step is local-time by definition (the reader's Monday
+ * midnight, as an instant), so it cannot be tested in a UTC-pinned runtime and
+ * lives next to its one caller in `WeekAgenda.tsx` instead.
  *
  * Nothing here touches the DOM: the unit test type-checks under the worker
  * tsconfig, which has no DOM lib.
@@ -88,6 +95,16 @@ export function dayKey(at: Date, timeZone?: string): DayKey | null {
   return `${year.padStart(4, "0")}-${pad2(Number(month))}-${pad2(Number(day))}`;
 }
 
+/**
+ * The key of a date read in UTC. For an instant that is a zone decision and
+ * `dayKey` is the one to use; this is for dates *built* by the civil arithmetic
+ * below, where the `Date` is only a carrier for a year/month/day triple that has
+ * already been normalised (month roll-over, leap days) by `Date.UTC`.
+ */
+export function utcDayKey(at: Date): DayKey {
+  return `${String(at.getUTCFullYear()).padStart(4, "0")}-${pad2(at.getUTCMonth() + 1)}-${pad2(at.getUTCDate())}`;
+}
+
 /** "2026-09-18" → { year: 2026, month: 9, day: 18 }. */
 export function parseDayKey(key: DayKey): { year: number; month: number; day: number } {
   return {
@@ -155,7 +172,7 @@ export function buildMonthGrid(
   return Array.from({ length: rows }, (_row, r) =>
     Array.from({ length: 7 }, (_cell, c): MonthCell => {
       const at = new Date(Date.UTC(year, month - 1, 1 - lead + r * 7 + c));
-      const key = `${String(at.getUTCFullYear()).padStart(4, "0")}-${pad2(at.getUTCMonth() + 1)}-${pad2(at.getUTCDate())}`;
+      const key = utcDayKey(at);
       return {
         key,
         day: at.getUTCDate(),
@@ -168,6 +185,31 @@ export function buildMonthGrid(
       };
     }),
   );
+}
+
+/**
+ * `key` moved by `delta` days, wrapping months and years. `Date.UTC` does the
+ * carrying, so "2028-02-28" + 1 is the 29th and "2027-02-28" + 1 is March.
+ */
+export function shiftDays(key: DayKey, delta: number): DayKey {
+  const { year, month, day } = parseDayKey(key);
+  return utcDayKey(new Date(Date.UTC(year, month - 1, day + delta)));
+}
+
+/**
+ * The first day of the week `key` falls in. Same `lead` formula as the month
+ * grid, so a week strip is exactly one of the grid's rows.
+ */
+export function startOfWeek(key: DayKey, weekStartsOn: WeekStart = WEEK_STARTS_ON): DayKey {
+  const { year, month, day } = parseDayKey(key);
+  const dow = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+  const lead = (dow - weekStartsOn + 7) % 7;
+  return utcDayKey(new Date(Date.UTC(year, month - 1, day - lead)));
+}
+
+/** The seven keys of the week beginning at `start`, in order. */
+export function weekDays(start: DayKey): DayKey[] {
+  return Array.from({ length: 7 }, (_day, i) => shiftDays(start, i));
 }
 
 /**
@@ -188,6 +230,14 @@ const dayLong = new Intl.DateTimeFormat(undefined, {
   timeZone: "UTC",
 });
 const weekdayShort = new Intl.DateTimeFormat(undefined, { weekday: "short", timeZone: "UTC" });
+const monthDay = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
+const monthDayYear = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  timeZone: "UTC",
+});
+const dayOnly = new Intl.DateTimeFormat(undefined, { day: "numeric", timeZone: "UTC" });
 
 /** Noon, so no formatter rounding or DST edge can nudge the date. */
 function noonUtc(key: DayKey): Date {
@@ -208,6 +258,30 @@ export function formatDayHeading(key: DayKey): string {
 /** "Friday, September 18" — the aria-label of a day cell. */
 export function formatDayLong(key: DayKey): string {
   return dayLong.format(noonUtc(key));
+}
+
+/**
+ * "Sep 14 – 20", "Sep 28 – Oct 4", "Dec 28, 2026 – Jan 3, 2027" — the week
+ * strip's header, for the week beginning at `start`.
+ *
+ * The year appears on *both* ends or neither, and only when the week straddles
+ * one: inside a year it is noise on a personal agenda, and on one end only it
+ * reads as though the other end had no year.
+ *
+ * Composed by hand from three formatters rather than with `formatRange`, which
+ * in this runtime pads its dash with U+2009 thin spaces — invisible in review,
+ * and a surprise in any test or screen reader that meets it. This is a plain
+ * U+2013 en dash between plain spaces.
+ */
+export function formatWeekLabel(start: DayKey): string {
+  const end = shiftDays(start, 6);
+  const from = parseDayKey(start);
+  const to = parseDayKey(end);
+  if (from.year !== to.year) {
+    return `${monthDayYear.format(noonUtc(start))} – ${monthDayYear.format(noonUtc(end))}`;
+  }
+  const tail = from.month === to.month ? dayOnly.format(noonUtc(end)) : monthDay.format(noonUtc(end));
+  return `${monthDay.format(noonUtc(start))} – ${tail}`;
 }
 
 /**
