@@ -257,10 +257,13 @@ export const ADMIN_PAGE_SIZE = 50;
 /** Blank query-string values normalise to `undefined`, as in `eventsQuerySchema`. */
 const blankToUndefined = (value: unknown) => (typeof value === "string" && value.trim() === "" ? undefined : value);
 
-const pageSchema = z.preprocess(
-  (value) => (typeof value === "string" && value !== "" ? Number(value) : value),
-  z.int().min(1).optional(),
-);
+/** A page number is bounded because `OFFSET` is a scan: page 1,000,000 walks the table to return nothing. */
+export const PAGE_MAX = 1000;
+
+/** `?n=` arrives as a string; blank means absent. Shared by every paged or limited admin query. */
+export const intFromQuery = (value: unknown) => (typeof value === "string" && value !== "" ? Number(value) : value);
+
+const pageSchema = z.preprocess(intFromQuery, z.int().min(1).max(PAGE_MAX).optional());
 
 export const suspendSchema = z.object({
   reason: z.string().trim().max(SUSPEND_REASON_MAX, `Reason must be ${SUSPEND_REASON_MAX} characters or fewer`).optional(),

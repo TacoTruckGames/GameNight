@@ -1,7 +1,7 @@
 name = "gamenight"
 main = "./worker/index.ts"
 compatibility_date = "2026-09-01"
-workers_dev = true
+workers_dev = false           # one origin: the custom domain. A second one splits the edge cache and doubles the surface.
 
 [assets]                       # the vite plugin fills in `directory` at build time
 binding = "ASSETS"

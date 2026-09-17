@@ -30,6 +30,7 @@ import type { AppEnv } from "./context";
 import { ApiError, fieldError } from "./errors";
 import { reportError } from "./report";
 import { nowIso } from "./time";
+import { redact } from "./redact";
 
 // ------------------------------------------------------------- the vendor --
 
@@ -167,11 +168,9 @@ export interface PlacesClientOptions {
  *
  * Everything heading for `reportError` or `console` goes through here.
  */
-export function redact(value: string): string {
-  return value
-    .replace(/\b(key|signature)=[^&\s"']*/gi, "$1=REDACTED")
-    .replace(/AIza[0-9A-Za-z_-]{10,}/g, "AIzaREDACTED");
-}
+// Lives in its own module so `report.ts` can use it without importing the
+// Places client; re-exported here because this is where callers look for it.
+export { redact };
 
 // ------------------------------------------------------------------ budget --
 

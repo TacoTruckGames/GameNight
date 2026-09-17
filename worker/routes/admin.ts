@@ -26,8 +26,7 @@ import {
   eventPatchSchema,
   adminUsersQuerySchema,
   suspendSchema,
-  type SuspendInput,
-} from "../../shared/schemas";
+  type SuspendInput, intFromQuery } from "../../shared/schemas";
 import {
   adminGetEvent,
   adminGetEventRow,
@@ -333,10 +332,7 @@ admin.delete("/admin/errors/:id", async (c) => {
 // ------------------------------------------------------------------ audit --
 
 const auditQuerySchema = z.object({
-  limit: z.preprocess(
-    (value) => (typeof value === "string" && value !== "" ? Number(value) : value),
-    z.int().min(1).max(AUDIT_LIMIT_MAX).optional(),
-  ),
+  limit: z.preprocess(intFromQuery, z.int().min(1).max(AUDIT_LIMIT_MAX).optional()),
 });
 
 admin.get("/admin/audit", async (c) => {

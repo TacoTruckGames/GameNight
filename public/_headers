@@ -1,0 +1,14 @@
+# Served by Workers Static Assets for every non-API path — the Worker never
+# runs for those (`run_worker_first = ["/api/*"]`), so its middleware cannot
+# set them. The policy is what the built client actually needs and nothing
+# more: no inline scripts (Vite emits none), inline *style attributes* only
+# (React's `style={{…}}` on the sheet drag, the scrim and the skeletons),
+# images from this origin plus the `blob:` URL the preview map is drawn from,
+# fetches to this origin only. Maps open in a new tab, which CSP does not govern.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()

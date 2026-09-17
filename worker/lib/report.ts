@@ -16,6 +16,8 @@
  * happening, it is not fixed.
  */
 
+import { redact } from "./redact";
+
 const MESSAGE_MAX = 300;
 const STACK_MAX = 4096;
 
@@ -74,8 +76,13 @@ export async function reportError(
   error: unknown,
   metadata?: Record<string, unknown>,
 ): Promise<void> {
-  const { message, stack } = describe(error);
-  console.error(`[${scope}]`, error);
+  const described = describe(error);
+  // Redacted *before* either sink. Workers Logs and `error_log` are both read
+  // by people, and an upstream URL with a key on it is exactly the kind of
+  // thing that ends up in a message.
+  const message = redact(described.message);
+  const stack = described.stack === null ? null : redact(described.stack);
+  console.error(`[${scope}]`, message);
 
   try {
     const now = new Date().toISOString().slice(0, 19) + "Z";

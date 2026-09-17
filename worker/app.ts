@@ -11,8 +11,10 @@
  */
 
 import { Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
+import { secureHeaders } from "hono/secure-headers";
 
-import { apiNotFound, onError } from "./lib/errors";
+import { ApiError, apiNotFound, onError } from "./lib/errors";
 import type { AppEnv } from "./lib/context";
 import { attachUser } from "./middleware/auth";
 import { admin } from "./routes/admin";
@@ -25,6 +27,41 @@ import { users } from "./routes/users";
 const app = new Hono<AppEnv>();
 
 app.onError(onError);
+
+// The API's own headers. The SPA's come from `public/_headers`, because
+// `run_worker_first = ["/api/*"]` means the asset handler answers everything
+// else without this code running. JSON never executes, so the policy here is
+// the strict one: nothing may embed it, nothing may sniff it.
+app.use(
+  "/api/*",
+  secureHeaders({
+    contentSecurityPolicy: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] },
+    xFrameOptions: "DENY",
+    strictTransportSecurity: "max-age=31536000; includeSubDomains",
+    referrerPolicy: "strict-origin-when-cross-origin",
+  }),
+);
+
+// 16 KB is ten times the largest body this API accepts (a 500-character
+// description with a title, a location and a place token). Without it,
+// `c.req.json()` reads the whole request before zod sees a byte.
+const BODY_LIMIT = 16 * 1024;
+app.use(
+  "/api/*",
+  bodyLimit({
+    maxSize: BODY_LIMIT,
+    onError: (c) => c.json(new ApiError(413, "PAYLOAD_TOO_LARGE", "Request body is too large.").toBody(), 413),
+  }),
+);
+
+// Anything answered *to someone* must not be cached for anyone else. Routes
+// that set their own policy keep it — the map routes are `public` on purpose.
+app.use("/api/*", async (c, next) => {
+  await next();
+  if (c.req.header("X-User-Id") && !c.res.headers.has("Cache-Control")) {
+    c.res.headers.set("Cache-Control", "no-store");
+  }
+});
 
 app.use("/api/*", attachUser);
 

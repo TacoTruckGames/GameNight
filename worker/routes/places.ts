@@ -31,6 +31,7 @@ import {
 import { reportError } from "../lib/report";
 import { parseQuery } from "../lib/validate";
 import { requireOrganizerOrAdmin } from "../middleware/auth";
+import { eventMapKey, previewMapKey, type MapSize } from "../lib/map-key";
 
 export const places = new Hono<AppEnv>();
 
@@ -180,14 +181,15 @@ async function reportUpstream(
  * the picker itself the caller is someone who can already post events, the size is one of two
  * presets, `q` is capped, and the daily `static_map` ceiling still fails closed.
  */
-const previewMapQuerySchema = z.object({
+// `strictObject`, both: an unknown query key is a 400, not a fresh cache key.
+const previewMapQuerySchema = z.strictObject({
   q: z.string().trim().min(1).max(200),
   w: z.string().optional(),
   h: z.string().optional(),
   scale: z.string().optional(),
 });
 
-const mapQuerySchema = z.object({
+const mapQuerySchema = z.strictObject({
   w: z.string().optional(),
   h: z.string().optional(),
   scale: z.string().optional(),
@@ -207,18 +209,8 @@ const mapQuerySchema = z.object({
  * renderable set to venues that someone actually posted a game at, which also
  * drives the cache hit rate to nearly one.
  */
-places.get("/places/map", async (c) => {
-  requireOrganizerOrAdmin(c);
-
-  const cacheKey = c.req.url;
-  const cached = await caches.default.match(cacheKey);
-  if (cached) {
-    const hit = new Response(cached.body, cached);
-    hit.headers.set("X-Map-Cache", "HIT");
-    return hit;
-  }
-
-  const { q, w, h, scale: scaleRaw } = parseQuery(c, previewMapQuerySchema);
+/** The one size vocabulary both map routes accept; anything else is a 400. */
+function parseMapSize(w: string | undefined, h: string | undefined, scaleRaw: string | undefined): MapSize {
   const width = Number(w);
   const height = Number(h);
   const scale = scaleRaw === undefined ? 1 : Number(scaleRaw);
@@ -226,12 +218,28 @@ places.get("/places/map", async (c) => {
   if (!preset || (scale !== 1 && scale !== 2)) {
     throw new ApiError(400, "VALIDATION_FAILED", "That map size is not one we render.");
   }
+  return { width: preset.width, height: preset.height, scale: scale === 2 ? 2 : 1 };
+}
+
+places.get("/places/map", async (c) => {
+  requireOrganizerOrAdmin(c);
+
+  // Parse, then key on the values — see `worker/lib/map-key.ts`.
+  const { q, w, h, scale: scaleRaw } = parseQuery(c, previewMapQuerySchema);
+  const size = parseMapSize(w, h, scaleRaw);
+  const cacheKey = previewMapKey(new URL(c.req.url).origin, q, size);
+  const cached = await caches.default.match(cacheKey);
+  if (cached) {
+    const hit = new Response(cached.body, cached);
+    hit.headers.set("X-Map-Cache", "HIT");
+    return hit;
+  }
 
   const client = placesFromEnv(c.env);
   if (!client) return unavailable();
   if (!(await chargeBudget(c.env.DB, "static_map"))) return unavailable();
 
-  const rendered = await client.staticMap({ query: q, width: preset.width, height: preset.height, scale: scale === 2 ? 2 : 1 });
+  const rendered = await client.staticMap({ query: q, ...size });
   if (!rendered.ok) {
     await reportUpstream(c.env.DB, "places.map", rendered.reason, { query: redact(q).slice(0, 128) });
     return unavailable();
@@ -251,25 +259,19 @@ places.get("/places/map", async (c) => {
 });
 
 places.get("/events/:id/map", async (c) => {
-  const cacheKey = c.req.url;
-
-  // Before D1, before auth, before anything: the whole cost argument for this
-  // feature rests on the second request never reaching Google *or* the database.
+  // Parsing is pure CPU, so it goes before the cache lookup and the key is
+  // built from what was parsed: one key per (event, size, venue). Then, before
+  // D1, before auth, before anything else, the cache — the whole cost argument
+  // for this feature rests on the second request never reaching Google *or*
+  // the database.
+  const { w, h, scale: scaleRaw, v } = parseQuery(c, mapQuerySchema);
+  const size = parseMapSize(w, h, scaleRaw);
+  const cacheKey = eventMapKey(new URL(c.req.url).origin, c.req.param("id"), size, v ?? "");
   const cached = await caches.default.match(cacheKey);
   if (cached) {
     const hit = new Response(cached.body, cached);
     hit.headers.set("X-Map-Cache", "HIT");
     return hit;
-  }
-
-  const { w, h, scale: scaleRaw, v } = parseQuery(c, mapQuerySchema);
-  const width = Number(w);
-  const height = Number(h);
-  const scale = scaleRaw === undefined ? 1 : Number(scaleRaw);
-
-  const preset = MAP_PRESETS.find((size) => size.width === width && size.height === height);
-  if (!preset || (scale !== 1 && scale !== 2)) {
-    throw new ApiError(400, "VALIDATION_FAILED", "That map size is not one we render.");
   }
 
   const row = await getEventPlace(c.env.DB, c.req.param("id"));
@@ -287,13 +289,7 @@ places.get("/events/:id/map", async (c) => {
 
   if (!(await chargeBudget(c.env.DB, "static_map"))) return unavailable();
 
-  const rendered = await client.staticMap({
-    lat: row.place_lat,
-    lng: row.place_lng,
-    width: preset.width,
-    height: preset.height,
-    scale: scale === 2 ? 2 : 1,
-  });
+  const rendered = await client.staticMap({ lat: row.place_lat, lng: row.place_lng, ...size });
   if (!rendered.ok) {
     await reportUpstream(c.env.DB, "places.map", rendered.reason, { eventId: redact(c.req.param("id")) });
     return unavailable();

@@ -147,6 +147,7 @@ export type ApiErrorCode =
   | "FORBIDDEN" //         403 — wrong role, or not the owning organizer
   | "ACCOUNT_SUSPENDED" // 403 — an admin suspended this account; client clears identity
   | "NOT_FOUND" //         404
+  | "PAYLOAD_TOO_LARGE" // 413 — body over 16 KB; nothing this API accepts is that big
   | "EVENT_FULL" //        409 — lost the race for the last seat (S1)
   | "EVENT_STARTED" //     409 — event is in the past
   | "EVENT_CANCELLED" //   409 — the event was cancelled; no new RSVPs, no edits
