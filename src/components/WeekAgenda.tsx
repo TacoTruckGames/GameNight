@@ -9,6 +9,11 @@
  * Deliberately not "Today": the board's pane and this one should never disagree
  * about what a day is called.
  *
+ * A day can also be *un*picked, by pressing the one already open. That is not a
+ * dead end: with nothing selected the pane opens out to the whole week, minus
+ * whatever has already started. So the strip filters rather than gates, and
+ * `aria-pressed` on a cell means what it says in both directions.
+ *
  * The container is a plain `.stack.stack--loose` plus a `week-agenda` hook a
  * wide page can use to set the strip beside the day's cards, not the board's
  * `.board-calendar`: that rule exists to widen a month grid past the reading
@@ -17,9 +22,11 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { DayGroupedList } from "./DayGroupedList";
+import { EmptyState } from "./EmptyState";
 import { EventListSkeleton } from "./Skeleton";
 import { WeekStrip } from "./WeekStrip";
 import { dayKey, groupByDay, parseDayKey, shiftDays, type DayKey } from "../lib/calendar";
+import { upcomingGroups } from "../lib/datetime";
 
 /**
  * The half-open `?from=&to=` window for a week, as instants.
@@ -74,7 +81,10 @@ export function WeekAgenda<T extends { id: string; startsAt: string }>({
   // change therefore retires it automatically, with no effect and no wrapper
   // around `onWeekChange`: the board needs `showMonth` to clear its selection by
   // hand, and this is that guarantee expressed as data instead.
-  const [tap, setTap] = useState<{ week: DayKey; day: DayKey } | null>(null);
+  // `day: null` is a *deliberate* deselect and outranks the fallbacks below;
+  // `tap: null` is "the user hasn't chosen yet", which is what lets today win on
+  // arrival. Two different nulls, so the chain can tell "cleared" from "unset".
+  const [tap, setTap] = useState<{ week: DayKey; day: DayKey | null } | null>(null);
 
   const todayKey = dayKey(new Date())!; // `new Date()` is always valid; per render is fine
   // The end is `start + 7`, never `weekDays(start)[6]`: the exclusive bound is
@@ -86,15 +96,23 @@ export function WeekAgenda<T extends { id: string; startsAt: string }>({
   const counts = useMemo(() => new Map(groups.map((group) => [group.key, group.events.length])), [groups]);
 
   // Selection is derived with a fallback chain, never synced into state by an
-  // effect: this week's tap if it still has events → today → the week's first
-  // day with events → nothing.
+  // effect: this week's choice if there is one → today → the week's first day
+  // with events → nothing.
   const pick = (key: DayKey | null) => (key !== null && counts.has(key) && inWeek(key) ? key : null);
-  const effectiveDay =
-    pick(tap?.week === weekStart ? tap.day : null) ??
-    pick(todayKey) ??
-    groups.find((group) => inWeek(group.key))?.key ??
-    null;
+  const chosen = tap?.week === weekStart ? tap : null;
+  const effectiveDay = chosen
+    ? pick(chosen.day)
+    : (pick(todayKey) ?? groups.find((group) => inWeek(group.key))?.key ?? null);
   const selectedGroup = groups.find((group) => group.key === effectiveDay) ?? null;
+
+  // With no day open the pane shows the week itself, upcoming only. `inWeek`
+  // matters because a placeholder render is still holding the *previous* week's
+  // rows, and none of them belong here.
+  const thisWeeksGroups = useMemo(
+    () => groups.filter((group) => group.key >= weekStart && group.key < shiftDays(weekStart, 7)),
+    [groups, weekStart],
+  );
+  const wholeWeek = useMemo(() => upcomingGroups(thisWeeksGroups), [thisWeeksGroups]);
 
   return (
     <div className="stack stack--loose week-agenda">
@@ -103,7 +121,7 @@ export function WeekAgenda<T extends { id: string; startsAt: string }>({
         todayKey={todayKey}
         counts={counts}
         selectedDay={effectiveDay}
-        onSelectDay={(key) => setTap({ week: weekStart, day: key })}
+        onSelectDay={(key) => setTap({ week: weekStart, day: key === effectiveDay ? null : key })}
         onWeekChange={onWeekChange}
       />
       {selectedGroup ? (
@@ -112,6 +130,15 @@ export function WeekAgenda<T extends { id: string; startsAt: string }>({
         </DayGroupedList>
       ) : loading ? (
         <EventListSkeleton count={1} label="Loading this week" />
+      ) : wholeWeek.length > 0 ? (
+        <DayGroupedList groups={wholeWeek} busy={busy}>
+          {children}
+        </DayGroupedList>
+      ) : thisWeeksGroups.length > 0 ? (
+        // The week is not empty, it is *over* — page back far enough, or deselect
+        // late on a Sunday, and every row here has already started. Saying "no
+        // events" would be a lie the strip immediately contradicts.
+        <EmptyState title="Nothing upcoming" hint="Pick a day above to see what happened." />
       ) : (
         emptyWeek
       )}

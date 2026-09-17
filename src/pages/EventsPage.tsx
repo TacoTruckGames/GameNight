@@ -38,6 +38,7 @@ import { MonthCalendar } from "../components/MonthCalendar";
 import { WeekAgenda, weekWindow } from "../components/WeekAgenda";
 import { EventListSkeleton } from "../components/Skeleton";
 import { useIdentity } from "../identity/IdentityContext";
+import { upcomingGroups } from "../lib/datetime";
 import {
   dayKey,
   formatMonthLabel,
@@ -61,7 +62,11 @@ export function EventsPage() {
   const [view, setView] = useState<BoardView>(DEFAULT_BOARD_VIEW);
   const [weekStart, setWeekStart] = useState<DayKey>(() => startOfWeek(dayKey(new Date())!));
   const [month, setMonth] = useState<YearMonth>(() => monthOf(dayKey(new Date())!));
-  const [selectedDay, setSelectedDay] = useState<DayKey | null>(null); // the user's explicit tap only
+  // The month pane's selection, and only ever the user's own doing. `day: null`
+  // is a deliberate deselect and beats the fallbacks; the outer `null` is "not
+  // chosen yet", which is what lets today win on arrival. `WeekStrip`'s state is
+  // the same two nulls, tagged with its week instead of cleared by hand.
+  const [selectedDay, setSelectedDay] = useState<{ day: DayKey | null } | null>(null);
   const searchId = useId();
 
   // One request per pause in typing, not one per keystroke.
@@ -92,12 +97,22 @@ export function EventsPage() {
   const counts = useMemo(() => new Map(groups.map((group) => [group.key, group.events.length])), [groups]);
 
   // Selection is derived with a fallback chain, never synced into state by an
-  // effect: explicit tap if it still has events in the shown month → today →
-  // first day with events in the shown month → nothing.
+  // effect: the user's own choice for this month if it still has events → today
+  // → first day with events in the shown month → nothing.
   const pick = (key: DayKey | null) => (key !== null && counts.has(key) && sameMonth(monthOf(key), month) ? key : null);
-  const effectiveDay =
-    pick(selectedDay) ?? pick(todayKey) ?? groups.find((group) => sameMonth(monthOf(group.key), month))?.key ?? null;
+  const effectiveDay = selectedDay
+    ? pick(selectedDay.day)
+    : (pick(todayKey) ?? groups.find((group) => sameMonth(monthOf(group.key), month))?.key ?? null);
   const selectedGroup = groups.find((group) => group.key === effectiveDay) ?? null;
+
+  // With no day open the pane shows the month itself, upcoming only. The month
+  // filter matters because a placeholder render still holds the *previous*
+  // month's rows, and none of them belong on this grid.
+  const thisMonthsGroups = useMemo(
+    () => groups.filter((group) => sameMonth(monthOf(group.key), month)),
+    [groups, month],
+  );
+  const wholeMonth = useMemo(() => upcomingGroups(thisMonthsGroups), [thisMonthsGroups]);
 
   // Both of these are reached from two places now (the calendar's own controls
   // and the empty states below), so they live here rather than being retyped —
@@ -210,7 +225,7 @@ export function EventsPage() {
             todayKey={todayKey}
             counts={counts}
             selectedDay={effectiveDay}
-            onSelectDay={setSelectedDay}
+            onSelectDay={(key) => setSelectedDay({ day: key === effectiveDay ? null : key })}
             onMonthChange={showMonth}
           />
           {selectedGroup ? (
@@ -220,6 +235,13 @@ export function EventsPage() {
             // month now on screen — without this the pane would flash "no events"
             // on the way to every month that has some.
             <EventListSkeleton count={1} label="Loading this month" />
+          ) : wholeMonth.length > 0 ? (
+            <AgendaList groups={wholeMonth} myRsvpIds={myRsvpIds} showRsvp={isPlayer} busy={events.isFetching} />
+          ) : thisMonthsGroups.length > 0 ? (
+            // The month is not empty, it is *over*: page back and every row on
+            // the grid has already started. "No events in September" would be a
+            // lie the numbered cells right above it contradict.
+            <EmptyState title="Nothing upcoming" hint="Pick a day to see what happened." />
           ) : (
             <EmptyState
               title={`No events in ${formatMonthLabel(month)}`}

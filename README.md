@@ -199,7 +199,13 @@ half-second spinner.
   two ends are computed in *local* time and sent as UTC, because the cells bucket by local day. Monday-first
   so the weekend sits together, a count per day, tap a day to get the ordinary cards beneath — the card
   stays the RSVP surface because a title does not fit a phone-width cell. Past days list normally, greyed,
-  with the RSVP button reading "Started" for a table you never had a seat at. Day cells are plain labelled
+  with the RSVP button reading "Started" for a table you never had a seat at. **Pressing the open day closes
+  it**, and with nothing selected the pane opens out to the whole span on screen, upcoming only — the strip
+  filters rather than gates, so `aria-pressed` means what it says in both directions and there is a way back
+  to the overview that is not "reload". Past events are left out of that overview deliberately: deselecting
+  is a request for what you can still act on. When a span holds events but every one has started — any week
+  behind today — the pane says "Nothing upcoming" rather than "no events", which the numbered cells directly
+  above it would contradict. Day cells are plain labelled
   buttons (empty days disabled), not an ARIA grid, because a list of buttons is correct with zero
   focus-management code. Only the month grid earns the wide page at ≥1120px; a week is one row and fits the
   reading column at every width.
@@ -360,13 +366,14 @@ the next section calls beyond the brief.
 | **Look and feel** | WotC-derived palette + contrast audit, logo and icon set, identity picker with one tab per role | 1.5 h |
 | **Admin / operations** | Dashboard (suspend accounts, fix events, backend error log, audit log), its own orange-bar shell, FK-safe users-table rebuild | 3 h |
 | **Board** (frontend + API) | Sort by date/popular, day-grouped agenda, month calendar with a windowed `?from=&to=` query for past months, filter dropdown | 3 h |
+| **Board trim** (frontend) | Sort control retired, deselectable day cells, whole-span upcoming pane | 0.5 h |
 | **Venues** (backend) | Google Places proxied through the Worker, server-resolved coordinates, D1 spend ceiling, mini map, tap-to-navigate | 2 h |
 | **Review pass** (UX) | 60 screenshots × 2 critic passes, 11 defects fixed, the desktop breakpoint | 2 h |
 | **Data & content** | 64-event seed with clusters/past/cancelled, descriptions, game-type taxonomy research | 2 h |
 | **Polish** (frontend) | Name-as-button header, role badge, segmented View switch, description field end to end, head count | 1.5 h |
 | **Week agenda** (frontend + windowed `/me` endpoints) | Week strip + day pane on My RSVP, Organize and the board, past attendance, shared segmented control | 2.5 h |
 
-Roughly **20 hours** all told, of which the core the brief asked for was the first four.
+Roughly **20.5 hours** all told, of which the core the brief asked for was the first four.
 
 ## How it was built
 

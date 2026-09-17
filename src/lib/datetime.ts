@@ -3,6 +3,8 @@
  * reader's own time zone — a commuter should never have to do arithmetic.
  */
 
+import type { DayGroup } from "./calendar";
+
 const dayTime = new Intl.DateTimeFormat(undefined, {
   weekday: "short",
   month: "short",
@@ -61,6 +63,28 @@ export function formatUtcDay(day: string): string {
 export function isPastEvent(iso: string, now: Date = new Date()): boolean {
   const at = parse(iso);
   return at !== null && at.getTime() <= now.getTime();
+}
+
+/**
+ * The same day groups with everything that has already started taken out, and
+ * any day left empty dropped entirely.
+ *
+ * This is what a calendar pane shows when no day is selected: the window on
+ * screen, all of it, minus the part that is over. Deselecting a day is a request
+ * for the overview, and an overview that opened on Monday's finished tables
+ * would bury the thing you can still act on.
+ *
+ * It asks `isPastEvent` rather than comparing timestamps itself, so "past" means
+ * the same here as it does on the card, on the detail page and in the RSVP
+ * button — four surfaces, one rule.
+ */
+export function upcomingGroups<T extends { startsAt: string }>(
+  groups: readonly DayGroup<T>[],
+  now: Date = new Date(),
+): DayGroup<T>[] {
+  return groups
+    .map((group) => ({ ...group, events: group.events.filter((event) => !isPastEvent(event.startsAt, now)) }))
+    .filter((group) => group.events.length > 0);
 }
 
 /** Machine-readable value for `<time dateTime>`; empty when unparseable. */
