@@ -330,6 +330,13 @@ half-second spinner.
   offers the button past zero, since a control that exists only to say no is worse than no control. Both
   confirm inline rather than through `window.confirm`, which cannot be styled, cannot name the count, and
   on a phone arrives looking like a system error.
+- **The sheet is a sheet, not a 1400px panel.** Below 900px it is full-bleed, as a bottom sheet should be.
+  Past it, it takes the reading column's width and centres — centred with `margin-inline`, never
+  `translateX(-50%)`, because the drag writes `transform: translateY(...)` inline and would throw a centring
+  transform to the left edge mid-gesture. It also gains a **close button**, top right: a drag is a thumb
+  gesture and the grip that advertises it means nothing to a mouse, which otherwise leaves only Escape and
+  clicking the dim. The phone keeps the grip and no button. Maps cap at **640px**, the size they are actually
+  fetched at; past that they were being upscaled.
 - Validation runs twice on purpose — the shared zod schema in the browser to skip a round-trip, and the same
   schema on the server, which is the one that counts.
 

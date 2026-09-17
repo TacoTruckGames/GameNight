@@ -1330,6 +1330,31 @@ textarea.input {
   cursor: grabbing;
 }
 
+/* Hidden on a phone, where the grip and the gesture it advertises are the
+   idiom. `display: none` and not `visibility`, so it is out of the tab order
+   too — a focusable control nobody can see is worse than no control. */
+.sheet__close {
+  display: none;
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  z-index: 1;
+  width: var(--tap-target);
+  height: var(--tap-target);
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.sheet__close:hover {
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sheet {
     transition: none;
@@ -1772,9 +1797,14 @@ textarea.input {
 
 /* The <a> is the box: fixed aspect, so the space is reserved before the image
    arrives and the RSVP button below it never jumps. */
+/* The static map is fetched at 640×320 (at scale 2, so 1280×640 of pixels).
+   Past 640 CSS px it is being upscaled, which is both blurrier and — on a wide
+   screen where the container is happy to give it 1300px — absurd. The cap is
+   the size we actually asked Google for. */
 .minimap {
   display: block;
   width: 100%;
+  max-width: 640px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   overflow: hidden;
@@ -1792,6 +1822,7 @@ textarea.input {
 .place-preview {
   display: block;
   width: 100%;
+  max-width: 640px;
 }
 
 /* One line, not a second image: Google has no dark tile set on the free Static
@@ -1885,6 +1916,28 @@ textarea.input {
    `100vw` appears nowhere: it counts the scrollbar and would overflow. */
 
 @media (min-width: 900px) {
+  /* A bottom sheet is a phone shape. Left at `left: 0; right: 0` on a desktop it
+     is a 1400px-wide panel: the map stretches to fill it, and the description
+     runs to a measure nobody can read a second line of. So past 900px it keeps
+     its identity — still anchored to the bottom, still draggable by the grip —
+     and takes the reading column's width, centred.
+
+     Centred with `margin-inline: auto` and *not* `translateX(-50%)`: the drag
+     writes `transform: translateY(...)` as an inline style, which would replace
+     a transform used for centring and throw the sheet to the left edge the
+     moment a finger or cursor moved it. */
+  .sheet__close {
+    display: inline-flex;
+  }
+
+  .sheet {
+    width: min(var(--page-max), calc(100vw - 2 * var(--space-5)));
+    margin-inline: auto;
+    bottom: var(--space-5);
+    max-height: calc(100dvh - 2 * var(--space-5));
+    border-radius: var(--radius);
+  }
+
   /* Room for brand | nav | identity. Only the header widens; `.shell__main`
      keeps `--page-max`. */
   .shell__header-inner {

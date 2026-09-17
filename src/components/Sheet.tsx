@@ -4,8 +4,13 @@
  * Dismissal is the same set the identity switcher uses, so "put this back"
  * means one thing across the app: Escape, a tap outside, and — on a phone,
  * where those two are a keyboard and a small target — **a drag downward**.
- * There is still no Close button; a fourth way to say it would be a control
- * spending the sheet's first row.
+ * On a desktop there is also a close button, top right. A drag is a thumb
+ * gesture and the grip that advertises it means nothing to a mouse, which
+ * leaves Escape — a keyboard shortcut nobody is told about — and clicking the
+ * dimmed page, which reads as "nothing here" rather than as a control. So the
+ * button appears exactly where the pointer expects it, and only at the width
+ * where the pointer is the likely input. The phone keeps the grip and no
+ * button, because there it would be a fourth way to say the same thing.
  *
  * ## Why this is a native listener and not an `onTouchMove` prop
  *
@@ -239,6 +244,14 @@ export function Sheet({
         }}
       >
         <span className="sheet__grip" aria-hidden="true" />
+        {/* In the DOM at every width, drawn only past the desktop breakpoint —
+            one markup shape, and the decision lives in the stylesheet with the
+            rest of the responsive behaviour. */}
+        <button type="button" className="sheet__close" onClick={onClose} aria-label="Close">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true" focusable="false">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
         <div className="sheet__body stack stack--loose" ref={bodyRef}>
           {children}
         </div>
