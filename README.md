@@ -262,7 +262,12 @@ half-second spinner.
   shared link or a refresh carries no such state and gets the full page, unchanged. One element, one query,
   two frames. The URL is the event's either way, so a sheet is still a link you can send. Escape, a tap
   outside and Back all close it — the same three, and the same absence of a Close button, as the identity
-  switcher. The long date also stopped sharing a line with the attendance count, which is what made
+  switcher — and on a phone you can also **drag it away**, which is the gesture the other two are a keyboard
+  and a small target standing in for. A drag may only *begin* at the top of the scroll, or anywhere on the
+  grip, so a swipe taken mid-read is a scroll and not an exit; the grip lives outside the scrolling body for
+  exactly that reason, since the one control that has to work however far down you are should not be the
+  first thing to scroll off. It engages after 6px so a tap is still a tap, and releases on distance *or*
+  speed, because refusing a short flick is what makes a sheet feel stuck. The long date also stopped sharing a line with the attendance count, which is what made
   "Thursday, September 17, 2026 at 7:30 PM · 9 going" wrap to two lines on every phone.
 - **An organizer edits their own event** from its page — the same `EventForm` that posts one, prefilled, and
   sending **only the fields that changed**. `PATCH /api/events/:id` is the admin's patch route with a

@@ -1189,20 +1189,46 @@ textarea.input {
   right: 0;
   bottom: 0;
   max-height: 88dvh;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: var(--space-3) var(--space-4) calc(var(--space-5) + env(safe-area-inset-bottom));
+  /* The panel itself does not scroll — its body does. That keeps the grip on
+     screen however far into the event you have read, which is the whole point
+     of having a grip. */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-top: var(--space-3);
   background: var(--color-bg);
   color: var(--color-text);
   border-top-left-radius: var(--radius);
   border-top-right-radius: var(--radius);
   box-shadow: var(--shadow-lift);
+  /* The snap back when a drag does not clear the threshold. Removed while the
+     finger is down, or the sheet would lag behind it. */
+  transition: transform 180ms ease-out;
+  will-change: transform;
+}
+
+.sheet__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-3) var(--space-4) calc(var(--space-5) + env(safe-area-inset-bottom));
+}
+
+.sheet--dragging {
+  transition: none;
+  /* A drag is a drag, not a text selection. */
+  user-select: none;
 }
 
 .sheet:focus-visible {
   outline: none;
 }
 
+/* The handle. It is the one place a drag may start no matter how far the sheet
+   is scrolled, which is why it opts out of the browser's own panning — without
+   `touch-action: none` the gesture that grabs it is a scroll before it is ever
+   a drag. The bar is 4px; the hit area around it is not. */
 .sheet__grip {
   align-self: center;
   width: 38px;
@@ -1210,6 +1236,20 @@ textarea.input {
   flex: none;
   border-radius: 2px;
   background: var(--color-border-strong);
+  touch-action: none;
+  cursor: grab;
+  /* `box-shadow` rather than padding, so the target grows without the bar. */
+  box-shadow: 0 0 0 10px transparent;
+}
+
+.sheet--dragging .sheet__grip {
+  cursor: grabbing;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet {
+    transition: none;
+  }
 }
 
 /* The long date, on its own line and nothing else's. */

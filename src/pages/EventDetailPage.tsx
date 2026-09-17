@@ -21,7 +21,7 @@
  * both, so there is exactly one copy of the layout and one copy of the query.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { gameTypeLabel } from "../../shared/game-types";
 import { attendanceLabel } from "../lib/attendance";
@@ -33,6 +33,7 @@ import { EventForm } from "../components/EventForm";
 import { EventMiniMap } from "../components/EventMiniMap";
 import { MapLink } from "../components/MapLink";
 import { RsvpButton } from "../components/RsvpButton";
+import { Sheet } from "../components/Sheet";
 import { SeatChip } from "../components/SeatChip";
 import { Skeleton } from "../components/Skeleton";
 import { useIdentity } from "../identity/IdentityContext";
@@ -49,27 +50,10 @@ export function EventDetailPage({ asSheet = false }: { asSheet?: boolean }) {
   const maps = useMapsConfig({ enabled: true });
   const [editing, setEditing] = useState(false);
 
-  // A callback ref, not `useRef` + an effect: the sheet does not exist on the
-  // first render — the query is still pending and the component returns a
-  // skeleton — so an effect that runs on mount focuses nothing and never fires
-  // again. This fires when the node actually arrives, whenever that is.
-  const focusSheet = useCallback((node: HTMLDivElement | null) => {
-    node?.focus();
-  }, []);
-
   // Closing is `navigate(-1)`, not a state flag: the sheet *is* a history entry,
-  // so Back and the scrim have to mean the same thing or the two would disagree
-  // about where you end up.
+  // so Back, the scrim and a downward drag have to mean the same thing or they
+  // would disagree about where you end up.
   const close = () => navigate(-1);
-
-  useEffect(() => {
-    if (!asSheet) return;
-    const onKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") navigate(-1);
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [asSheet, navigate]);
 
   if (event.isPending) {
     return (
@@ -194,23 +178,8 @@ export function EventDetailPage({ asSheet = false }: { asSheet?: boolean }) {
   if (!asSheet) return <div className="stack stack--loose">{body}</div>;
 
   return (
-    <>
-      <div className="sheet__scrim" onClick={close} />
-      <div
-        className="sheet stack stack--loose"
-        role="dialog"
-        aria-modal="true"
-        aria-label={detail.title}
-        ref={focusSheet}
-        tabIndex={-1}
-      >
-        {/* No Close button, for the same reason the identity switcher has none:
-            Escape, a tap outside and Back all already mean "put this away", and
-            a fourth way to say it is a control spending the sheet's first row.
-            The handle says the sheet is dismissible without claiming a tap. */}
-        <span className="sheet__grip" aria-hidden="true" />
-        {body}
-      </div>
-    </>
+    <Sheet label={detail.title} onClose={close}>
+      {body}
+    </Sheet>
   );
 }
