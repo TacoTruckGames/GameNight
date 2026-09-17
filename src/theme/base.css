@@ -17,6 +17,12 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  /* Reserve the scrollbar's column whether or not the page is currently
+     scrollable. A modal pins `<body>`, which stops the document scrolling; with
+     a classic scrollbar that column would disappear and every fixed bar on
+     screen would jump sideways the instant a sheet opened. Costs nothing where
+     scrollbars are overlays. */
+  scrollbar-gutter: stable;
 }
 
 body {

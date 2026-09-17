@@ -21,7 +21,7 @@ migrations and re-seeds the demo board every time it starts (seed dates are rela
 and "one seat left" events are always there).
 
 ```sh
-pnpm test                        # 399 tests, incl. the concurrency proofs (~3 s)
+pnpm test                        # 422 tests, incl. the concurrency proofs (~3 s)
 pnpm stress [url] [--players 40] [--capacity 5]   # real-HTTP race against a running server
 pnpm typecheck
 ```
@@ -330,6 +330,14 @@ half-second spinner.
   offers the button past zero, since a control that exists only to say no is worse than no control. Both
   confirm inline rather than through `window.confirm`, which cannot be styled, cannot name the count, and
   on a phone arrives looking like a system error.
+- **`aria-modal` is a claim; three things make it true.** A scrim is paint — it dims the board and catches
+  clicks, and does nothing about a finger dragged across it, a wheel turned over it, or Page Down, all of
+  which scrolled the page underneath while a dialog sat on top calling itself modal. So the pointer goes to
+  the scrim, `useScrollLock` pins `<body>` at `top: -<scrollY>px` (not `overflow: hidden`, which iOS Safari
+  ignores) and scrolls back to the same offset on release, and Tab cycles inside the panel instead of walking
+  into a background nobody can see. `html { scrollbar-gutter: stable }` is the other half of the pin: a
+  pinned body is not a scrolling document, so a classic scrollbar would vanish and every fixed bar would jump
+  sideways by its width the moment a sheet opened.
 - **The sheet is a sheet, not a 1400px panel.** Below 900px it is full-bleed, as a bottom sheet should be.
   Past it, it takes a column and centres — centred with `margin-inline`, never `translateX(-50%)`, because
   the drag writes `transform: translateY(...)` inline and would throw a centring transform to the left edge

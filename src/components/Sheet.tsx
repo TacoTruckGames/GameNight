@@ -50,9 +50,19 @@
  * inside the sheet then stops working, silently, because their clicks are being
  * delivered to the panel instead. Capture happens the moment a drag *engages*,
  * so a press that never became a drag is left entirely alone.
+ *
+ * ## Modal means modal
+ *
+ * `aria-modal="true"` is a claim, and on its own it is only a claim — a scrim
+ * is paint. Three things make it true, one per input the page has: the scrim
+ * takes the pointer, `useScrollLock` pins the document so a drag or a wheel
+ * over that scrim cannot move the board underneath, and Tab cycles inside the
+ * panel instead of walking off into a background nobody can see. Until the
+ * sheet closes, every input lands on the sheet.
  */
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useScrollLock } from "../lib/scroll-lock";
 
 /** A deliberate throw, in px. */
 const DISMISS_DISTANCE = 110;
@@ -63,6 +73,9 @@ const FLICK_VELOCITY = 0.5;
 const ENGAGE = 6;
 /** Enough movement to tell a drag's direction from a wobble. */
 const DIRECTION = 3;
+/** Everything Tab would stop on, so the trap below can wrap around it. */
+const FOCUSABLE =
+  'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
 type Gesture = {
   from: number;
@@ -104,9 +117,47 @@ export function Sheet({
     node?.focus();
   }, []);
 
+  // The board behind stops being scrollable for as long as this is mounted.
+  useScrollLock();
+
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") closeRef.current();
+      if (event.key === "Escape") {
+        closeRef.current();
+        return;
+      }
+      if (event.key !== "Tab") return;
+
+      // Keyboard focus is the one input a scrim cannot catch: without this, Tab
+      // walks straight out of the dialog and into a dimmed board the reader
+      // cannot see, and the focus ring goes with it.
+      const panel = panelRef.current;
+      if (!panel) return;
+      const stops = [...panel.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
+        (node) => !node.hasAttribute("disabled") && node.getClientRects().length > 0,
+      );
+      // Nothing to land on — the sheet is still loading, or it is pure text.
+      // The panel itself is focusable, so the focus stays in the dialog.
+      if (stops.length === 0) {
+        event.preventDefault();
+        panel.focus();
+        return;
+      }
+      const first = stops[0]!;
+      const last = stops[stops.length - 1]!;
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || active === panel)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      } else if (active instanceof Node && !panel.contains(active)) {
+        // Focus escaped some other way — a click on the scrim, a programmatic
+        // move — and Tab is the moment to bring it back.
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      }
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
