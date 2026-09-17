@@ -12,7 +12,7 @@ Requires Node ≥ 22 and pnpm (`corepack enable`). No accounts, no Docker, no en
 
 ```sh
 pnpm install && pnpm dev        # → http://localhost:5173
-pnpm test                        # 432 tests inside the Workers runtime, incl. the concurrency proofs (~4 s)
+pnpm test                        # 433 tests inside the Workers runtime, incl. the concurrency proofs (~4 s)
 pnpm typecheck && pnpm lint      # tsc on all three projects; ESLint (type-aware) + Prettier --check
 pnpm stress [url]                # real-HTTP race for the last seat against a running server
 ```
@@ -255,7 +255,7 @@ then observability.
 
 ## Testing
 
-`pnpm test` runs 432 tests _inside_ the Workers runtime against real local D1 and Durable Objects — the same
+`pnpm test` runs 433 tests _inside_ the Workers runtime against real local D1 and Durable Objects — the same
 code paths as production, not mocks.
 
 | Suite                              | What it proves                                                                                           |
@@ -267,7 +267,10 @@ code paths as production, not mocks.
 | `test/concurrency/rsvp-idempotent` | **S2:** 10 identical RSVPs → one 201, nine 200s, one row; a mixed RSVP/cancel storm ends consistent      |
 | `test/concurrency/hydration`       | a full event seeded straight into SQL → the first RSVP is correctly refused                              |
 
-The race tests were checked for vacuity (all 25 requests observed queued in the room at once). `pnpm stress`
+The race tests prove they were races: the room counts how many calls are inside its mutex at once, and the
+suite asserts the peak was ≥ 2 — sequential delivery would pass every tally and prove nothing. The brief's
+literal case, two players and one seat, holds the mutex shut until both requests are queued behind it, then
+releases. `pnpm stress`
 is the real-HTTP proof; removing the capacity guards makes it fail. To see the race by hand, open two browser
 profiles and press RSVP on the D&D One-Shot in both.
 

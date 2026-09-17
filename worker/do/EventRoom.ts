@@ -91,10 +91,27 @@ export class EventRoom extends DurableObject<Env> {
 
   // --------------------------------------------------------------- mutex --
 
+  /**
+   * How many calls are inside `serialize` right now — running or waiting —
+   * and the most there have ever been at once. Read by the concurrency suite
+   * through `runInDurableObject`, and by nothing else: it is how a race test
+   * proves it was a race. Twenty-five `Promise.all`ed fetches that the runtime
+   * happened to deliver one at a time would pass every tally and prove
+   * nothing; a peak of two or more means the mutex actually held something
+   * back.
+   */
+  contention = { current: 0, peak: 0 };
+
   private serialize<T>(fn: () => Promise<T>): Promise<T> {
+    this.contention.current += 1;
+    this.contention.peak = Math.max(this.contention.peak, this.contention.current);
+    const release = () => {
+      this.contention.current -= 1;
+    };
     // `.then(fn, fn)` so a rejected predecessor still lets the next call run:
     // one failed RSVP must not wedge the room.
     const run = this.chain.then(fn, fn);
+    run.then(release, release);
     // Park the rejection here; the caller still gets `run` (and its rejection).
     this.chain = run.catch(() => {});
     return run;

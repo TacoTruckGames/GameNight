@@ -25,6 +25,11 @@ async function memberCount(event: { id: string; roomKey: string }): Promise<numb
   });
 }
 
+/** The most calls the room ever had inside its mutex at once. */
+async function peakContention(event: { id: string; roomKey: string }): Promise<number> {
+  return runInDurableObject(roomStub(event), (instance) => instance.contention.peak);
+}
+
 function tally(statuses: number[]): Record<number, number> {
   const counts: Record<number, number> = {};
   for (const status of statuses) counts[status] = (counts[status] ?? 0) + 1;
@@ -32,6 +37,41 @@ function tally(statuses: number[]): Record<number, number> {
 }
 
 describe("concurrent RSVPs from distinct players", () => {
+  // The brief's own sentence: two users RSVP to the same event at the same
+  // instant, and there is one seat. The 25-player cases below generalise it;
+  // this one states it — and *makes* it simultaneous. Two fetches fired
+  // together are not reliably inside the room together: the first can finish
+  // its D1 round trip before the second is routed, and a tally that passes on
+  // sequential delivery proves nothing about the mutex. So the room's mutex is
+  // held shut until both requests are queued behind it, then released.
+  it("two players, one seat, at the same instant: one 201, one 409, one row", async () => {
+    const [ann, ben] = await seedUsers(2);
+    const event = await seedEvent({ capacity: 1 });
+
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    await runInDurableObject(roomStub(event), (instance) => {
+      const room = instance as unknown as { chain: Promise<unknown> };
+      room.chain = room.chain.then(() => gate);
+    });
+
+    const pending = Promise.all([putRsvp(event.id, ann!.id), putRsvp(event.id, ben!.id)]);
+    // Both requests must reach the room and queue before the gate opens.
+    for (let i = 0; i < 200 && (await peakContention(event)) < 2; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+    expect(await peakContention(event)).toBe(2);
+    release();
+
+    const [first, second] = await pending;
+    expect(tally([first.status, second.status])).toEqual({ 201: 1, 409: 1 });
+    const loser = first.status === 409 ? first : second;
+    expect((loser.body as { error: { code: string } }).error.code).toBe("EVENT_FULL");
+    expect(await rsvpCount(event.id)).toBe(1);
+    expect(await projectedCount(event.id)).toBe(1);
+    expect(await memberCount(event)).toBe(1);
+  });
+
   it.each([
     { capacity: 1, players: 25 },
     { capacity: 5, players: 25 },
@@ -57,6 +97,10 @@ describe("concurrent RSVPs from distinct players", () => {
     expect(await rsvpCount(event.id)).toBe(capacity);
     expect(await projectedCount(event.id)).toBe(capacity);
     expect(await memberCount(event)).toBe(capacity);
+
+    // Not vacuous: the room saw the requests overlap. Sequential delivery
+    // would pass every tally above and prove nothing about the mutex.
+    expect(await peakContention(event)).toBeGreaterThanOrEqual(2);
 
     // Every winner sees a consistent body.
     const winners = responses.filter((response) => response.status === 201);
