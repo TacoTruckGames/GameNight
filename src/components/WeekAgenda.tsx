@@ -9,10 +9,11 @@
  * Deliberately not "Today": the board's pane and this one should never disagree
  * about what a day is called.
  *
- * A day can also be *un*picked, by pressing the one already open. That is not a
- * dead end: with nothing selected the pane opens out to the whole week, minus
- * whatever has already started. So the strip filters rather than gates, and
- * `aria-pressed` on a cell means what it says in both directions.
+ * Nothing is picked to begin with, and the pane shows the whole week — minus
+ * whatever has already started. A day cell is a filter you apply, and pressing
+ * the open one takes it off again, so `aria-pressed` means what it says in both
+ * directions and the overview is always one press away. The strip never decides
+ * for you which day you came to look at.
  *
  * The container is a plain `.stack.stack--loose` plus a `week-agenda` hook a
  * wide page can use to set the strip beside the day's cards, not the board's
@@ -81,10 +82,11 @@ export function WeekAgenda<T extends { id: string; startsAt: string }>({
   // change therefore retires it automatically, with no effect and no wrapper
   // around `onWeekChange`: the board needs `showMonth` to clear its selection by
   // hand, and this is that guarantee expressed as data instead.
-  // `day: null` is a *deliberate* deselect and outranks the fallbacks below;
-  // `tap: null` is "the user hasn't chosen yet", which is what lets today win on
-  // arrival. Two different nulls, so the chain can tell "cleared" from "unset".
-  const [tap, setTap] = useState<{ week: DayKey; day: DayKey | null } | null>(null);
+  // The only state is the tap, and it carries the week it was made in. Any week
+  // change therefore retires it automatically, with no effect and no wrapper
+  // around `onWeekChange`: the board needs `showMonth` to clear its selection by
+  // hand, and this is that guarantee expressed as data instead.
+  const [tap, setTap] = useState<{ week: DayKey; day: DayKey } | null>(null);
 
   const todayKey = dayKey(new Date())!; // `new Date()` is always valid; per render is fine
   // The end is `start + 7`, never `weekDays(start)[6]`: the exclusive bound is
@@ -95,19 +97,18 @@ export function WeekAgenda<T extends { id: string; startsAt: string }>({
   const groups = useMemo(() => groupByDay(events), [events]);
   const counts = useMemo(() => new Map(groups.map((group) => [group.key, group.events.length])), [groups]);
 
-  // Selection is derived with a fallback chain, never synced into state by an
-  // effect: this week's choice if there is one → today → the week's first day
-  // with events → nothing.
+  // Derived, never synced into state by an effect: this week's tap if that day
+  // still has events, and otherwise nothing at all. No today fallback and no
+  // first-day-with-events fallback — opening on a day nobody asked for hides the
+  // rest of the week behind a choice the reader did not make, and on any week
+  // behind today it opened on something already finished.
   const pick = (key: DayKey | null) => (key !== null && counts.has(key) && inWeek(key) ? key : null);
-  const chosen = tap?.week === weekStart ? tap : null;
-  const effectiveDay = chosen
-    ? pick(chosen.day)
-    : (pick(todayKey) ?? groups.find((group) => inWeek(group.key))?.key ?? null);
+  const effectiveDay = pick(tap?.week === weekStart ? tap.day : null);
   const selectedGroup = groups.find((group) => group.key === effectiveDay) ?? null;
 
-  // With no day open the pane shows the week itself, upcoming only. `inWeek`
-  // matters because a placeholder render is still holding the *previous* week's
-  // rows, and none of them belong here.
+  // With no day open — the state you arrive in — the pane shows the week itself,
+  // upcoming only. `inWeek` matters because a placeholder render is still
+  // holding the *previous* week's rows, and none of them belong here.
   const thisWeeksGroups = useMemo(
     () => groups.filter((group) => group.key >= weekStart && group.key < shiftDays(weekStart, 7)),
     [groups, weekStart],
@@ -121,7 +122,7 @@ export function WeekAgenda<T extends { id: string; startsAt: string }>({
         todayKey={todayKey}
         counts={counts}
         selectedDay={effectiveDay}
-        onSelectDay={(key) => setTap({ week: weekStart, day: key === effectiveDay ? null : key })}
+        onSelectDay={(key) => setTap(key === effectiveDay ? null : { week: weekStart, day: key })}
         onWeekChange={onWeekChange}
       />
       {selectedGroup ? (
@@ -135,9 +136,10 @@ export function WeekAgenda<T extends { id: string; startsAt: string }>({
           {children}
         </DayGroupedList>
       ) : thisWeeksGroups.length > 0 ? (
-        // The week is not empty, it is *over* — page back far enough, or deselect
+        // The week is not empty, it is *over* — page back far enough, or arrive
         // late on a Sunday, and every row here has already started. Saying "no
-        // events" would be a lie the strip immediately contradicts.
+        // events" would be a lie the counts on the strip immediately contradict,
+        // so say what is true and point at the cells that still open.
         <EmptyState title="Nothing upcoming" hint="Pick a day above to see what happened." />
       ) : (
         emptyWeek

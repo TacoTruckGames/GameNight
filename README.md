@@ -199,13 +199,15 @@ half-second spinner.
   two ends are computed in *local* time and sent as UTC, because the cells bucket by local day. Monday-first
   so the weekend sits together, a count per day, tap a day to get the ordinary cards beneath — the card
   stays the RSVP surface because a title does not fit a phone-width cell. Past days list normally, greyed,
-  with the RSVP button reading "Started" for a table you never had a seat at. **Pressing the open day closes
-  it**, and with nothing selected the pane opens out to the whole span on screen, upcoming only — the strip
-  filters rather than gates, so `aria-pressed` means what it says in both directions and there is a way back
-  to the overview that is not "reload". Past events are left out of that overview deliberately: deselecting
-  is a request for what you can still act on. When a span holds events but every one has started — any week
-  behind today — the pane says "Nothing upcoming" rather than "no events", which the numbered cells directly
-  above it would contradict. Day cells are plain labelled
+  with the RSVP button reading "Started" for a table you never had a seat at. **Nothing is selected on
+  arrival**: the pane shows the whole span on screen, upcoming only, and a day cell is a filter you apply to
+  it. Pressing the open cell takes the filter off again, so `aria-pressed` means what it says in both
+  directions and the overview is always one press away. An opinionated default — today, or the first day
+  with anything on it — was worse in both directions: it hid the rest of the week behind a choice the reader
+  never made, and on any span behind today it opened on something already finished. Past events stay out of
+  the overview for the same reason the list is upcoming-only: it is the view of what you can still act on.
+  When a span holds events but every one has started, the pane says "Nothing upcoming" and points at the
+  cells rather than claiming "no events", which the counts directly above it would contradict. Day cells are plain labelled
   buttons (empty days disabled), not an ARIA grid, because a list of buttons is correct with zero
   focus-management code. At ≥1120px the whole page widens and each view spends the width its own way: the
   month grid and the week strip become navigators, with the open day's cards beside them instead of beneath;
