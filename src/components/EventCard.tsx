@@ -1,15 +1,38 @@
 /**
  * The unit of the whole app: everything a player needs to decide, plus the
- * decision itself.
+ * decision itself — in three lines and 88px.
+ *
+ * It was 222px, and 66px of that was padding and gaps. What went, and why:
+ *
+ * - **The date.** Every list that renders this card renders it under a
+ *   `DayGroupedList` heading that already says "Thu, Sep 17 · 2 events". The
+ *   card was repeating the day it is filed under; only the *time* was new, and
+ *   the time now has the rail to itself.
+ * - **The host.** Real, but not a decision input at the moment of scanning a
+ *   board. It is on the detail sheet, one tap away.
+ * - **"9 going".** `7 of 16 left` and `9 going` are the same fact said twice —
+ *   the attendee count is `capacity - seatsLeft`. The board keeps the one that
+ *   answers "can I get in?"; the sheet keeps both.
+ * - **The venue's tap target.** `MapLink` is a link, so it claimed a full 44px
+ *   row for muted secondary text. It was a link here only because the card is
+ *   also a link and `<a>` cannot nest in `<a>`; the deep link belongs on the
+ *   sheet, where there is room. Here the venue is plain text.
+ *
+ * The layout is a 3×3 grid, and one placement does the real work: the **title
+ * spans to the card's right edge**, and the action sits below it rather than
+ * beside it. A button next to a title truncates the title; a button under it
+ * cannot. The action then costs no row of its own either — it is 44px against
+ * two 13px lines, so it sets that band's height and the card stays at three
+ * lines plus padding.
  */
 
 import { Link } from "react-router";
 import type { EventSummary } from "../../shared/api-types";
 import { gameTypeLabel } from "../../shared/game-types";
-import { attendanceLabel } from "../lib/attendance";
-import { formatEventDateTime, isPastEvent, toDateTimeAttr } from "../lib/datetime";
+import { isPastEvent } from "../lib/datetime";
+import { formatEventTime, toDateTimeAttr } from "../lib/datetime";
 import { MapLink } from "./MapLink";
-import { SeatChip } from "./SeatChip";
+import { seatLabel, seatState } from "./SeatChip";
 import { RsvpButton } from "./RsvpButton";
 
 export function EventCard({
@@ -25,47 +48,44 @@ export function EventCard({
   // Past events reach a card through the calendar's day pane, where a finished
   // night otherwise looks exactly like one you can still join.
   const past = isPastEvent(event.startsAt);
+  const state = seatState({ ...event, joined, past });
+  const { hour, suffix } = formatEventTime(event.startsAt);
 
   return (
-    <article className={past ? "card card--past" : "card"}>
-      <Link className="card__link" to={`/events/${event.id}`}>
-        <span className="card__title">{event.title}</span>
-        {/* The head count rides on the date line, not in the action row: that
-            row has 43px of slack on a joined card at 390px, so a tag there
-            wraps exactly where the RSVP button needs to stay put. */}
-        <span className="card__meta">
-          <time dateTime={toDateTimeAttr(event.startsAt)}>{formatEventDateTime(event.startsAt)}</time>
-          {" · "}
-          {attendanceLabel(event.attendeeCount, past)}
-        </span>
-        <span className="card__meta">
-          <span className="badge">{gameTypeLabel(event.gameType)}</span> Hosted by {event.organizerName}
-        </span>
+    <article className={`ecard${past ? " ecard--past" : ""}`}>
+      {/* The rail is `aria-hidden` and the time is repeated in the link's own
+          accessible name: read aloud, "7:30 PM Midweek Modern Night" is a
+          sentence, while a bare "7:30 / PM" before it is two stray numbers. */}
+      <span className="ecard__rail" aria-hidden="true">
+        <span className="ecard__hour tnum">{hour}</span>
+        <span className="ecard__suffix">{suffix}</span>
+      </span>
+
+      <Link className="ecard__title" to={`/events/${event.id}`}>
+        <time className="visually-hidden" dateTime={toDateTimeAttr(event.startsAt)}>
+          {hour} {suffix}
+        </time>{" "}
+        {event.title}
       </Link>
-      {/* A sibling of the card link, never a child: an `<a>` cannot nest in an
-          `<a>`, and the stretched-link trick that hides the nesting from the
-          browser still breaks text selection on the address you want to read. */}
-      <MapLink event={event} />
-      <div className="card__row">
-        <SeatChip
-          seatsLeft={event.seatsLeft}
-          capacity={event.capacity}
+
+      <span className={`ecard__meta ecard__meta--${state}`}>
+        {seatLabel(state, event.seatsLeft, event.capacity)} · {gameTypeLabel(event.gameType)}
+      </span>
+
+      {/* A sibling of the title link, never a child — and no longer a link
+          itself, so it costs one line instead of a tap target. */}
+      <MapLink event={event} compact />
+
+      {showRsvp ? (
+        <RsvpButton
+          eventId={event.id}
+          title={event.title}
           isFull={event.isFull}
           joined={joined}
+          startsAt={event.startsAt}
           status={event.status}
-          past={past}
         />
-        {showRsvp ? (
-          <RsvpButton
-            eventId={event.id}
-            title={event.title}
-            isFull={event.isFull}
-            joined={joined}
-            startsAt={event.startsAt}
-            status={event.status}
-          />
-        ) : null}
-      </div>
+      ) : null}
     </article>
   );
 }

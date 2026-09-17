@@ -1,48 +1,58 @@
 /**
- * The organizer's row — links to the door list and counts attendees instead of
- * offering RSVP, because on `/organize` the decision has already been made.
+ * The organizer's row — the same 88px rail card as `EventCard`, with the door
+ * list in the action slot instead of RSVP, because on `/organize` the decision
+ * has already been made.
  *
- * It shares the past treatment with `EventCard` (greyed card, "Past" badge,
- * "Ended" seat chip) because a finished night looks finished whoever is looking
- * at it — and the week agenda pages back through finished nights on purpose.
+ * It shares the anatomy and the past treatment deliberately: a finished night
+ * looks finished whoever is looking at it, the week agenda pages back through
+ * finished nights on purpose, and two cards that drifted apart once already
+ * (see `DayGroupedList`) should not be given a second chance to.
+ *
+ * The one difference that is not cosmetic: the meta line says who is coming,
+ * not whether you can get in. An organizer's question about their own table is
+ * "how many turned up", and `seatLabel`'s "7 of 16 left" answers a question
+ * they are not asking.
  */
 
 import { Link } from "react-router";
 import type { EventSummary } from "../../shared/api-types";
 import { gameTypeLabel } from "../../shared/game-types";
-import { formatEventDateTime, isPastEvent, toDateTimeAttr } from "../lib/datetime";
+import { attendanceLabel } from "../lib/attendance";
+import { formatEventTime, isPastEvent, toDateTimeAttr } from "../lib/datetime";
 import { MapLink } from "./MapLink";
-import { SeatChip } from "./SeatChip";
+import { seatState } from "./SeatChip";
 
 export function HostedEventCard({ event }: { event: EventSummary }) {
   const past = isPastEvent(event.startsAt);
+  const state = seatState({ ...event, past });
+  const { hour, suffix } = formatEventTime(event.startsAt);
+  const door = `/organize/events/${event.id}`;
 
   return (
-    <article className={past ? "card card--past" : "card"}>
-      <Link className="card__link" to={`/organize/events/${event.id}`}>
-        <span className="card__title">{event.title}</span>
-        <span className="card__meta">
-          <time dateTime={toDateTimeAttr(event.startsAt)}>{formatEventDateTime(event.startsAt)}</time>
-        </span>
-        <span className="card__meta">
-          <span className="badge">{gameTypeLabel(event.gameType)}</span>
-        </span>
+    <article className={`ecard${past ? " ecard--past" : ""}`}>
+      <span className="ecard__rail" aria-hidden="true">
+        <span className="ecard__hour tnum">{hour}</span>
+        <span className="ecard__suffix">{suffix}</span>
+      </span>
+
+      <Link className="ecard__title" to={door}>
+        <time className="visually-hidden" dateTime={toDateTimeAttr(event.startsAt)}>
+          {hour} {suffix}
+        </time>{" "}
+        {event.title}
       </Link>
-      {/* Outside the card link — `<a>` cannot nest in `<a>`. */}
-      <MapLink event={event} />
-      <div className="card__row">
-        <SeatChip
-          seatsLeft={event.seatsLeft}
-          capacity={event.capacity}
-          isFull={event.isFull}
-          status={event.status}
-          past={past}
-        />
-        {/* Tense-neutral on purpose: this is the door list, before and after. */}
-        <Link className="btn btn--sm btn--secondary" to={`/organize/events/${event.id}`}>
-          {event.attendeeCount === 1 ? "1 attendee" : `${event.attendeeCount} attendees`}
-        </Link>
-      </div>
+
+      <span className={`ecard__meta ecard__meta--${state === "joined" ? "open" : state}`}>
+        {state === "cancelled" ? "Cancelled" : attendanceLabel(event.attendeeCount, past)} ·{" "}
+        {gameTypeLabel(event.gameType)}
+      </span>
+
+      <MapLink event={event} compact />
+
+      {/* Tense-neutral on purpose: this is the door list, before and after. */}
+      <Link className="btn btn--sm btn--secondary" to={door}>
+        {event.attendeeCount === 1 ? "1 seat" : `${event.attendeeCount} seats`}
+      </Link>
     </article>
   );
 }

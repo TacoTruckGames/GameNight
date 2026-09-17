@@ -20,7 +20,7 @@
  * onto the wrong side of the boundary.
  *
  * `GET /api/events` is deliberately user-independent (so it stays cacheable),
- * so "You're in" comes from `GET /api/me/rsvps` and is joined here on the
+ * so the joined state comes from `GET /api/me/rsvps` and is joined here on the
  * client.
  */
 

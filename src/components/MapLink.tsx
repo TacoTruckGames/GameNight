@@ -14,7 +14,31 @@
 
 import { mapsSearchUrl, type MappableEvent } from "../../shared/maps-links";
 
-export function MapLink({ event, className = "card__address" }: { event: MappableEvent; className?: string }) {
+export function MapLink({
+  event,
+  className = "card__address",
+  compact = false,
+}: {
+  event: MappableEvent;
+  className?: string;
+  /**
+   * Draw the venue, don't link it.
+   *
+   * On a card this is one muted line among three, and a link there has to carry
+   * a 44px tap target for a label nobody came to tap — the address is the one
+   * thing the detail sheet is guaranteed to have room for. So the card gets the
+   * pin and the words, and the sheet keeps the link.
+   */
+  compact?: boolean;
+}) {
+  if (compact) {
+    return (
+      <span className="ecard__venue">
+        <MapPin />
+        <span className="ecard__venue-text">{event.location}</span>
+      </span>
+    );
+  }
   return (
     <a className={className} href={mapsSearchUrl(event)} target="_blank" rel="noopener noreferrer">
       <MapPin />

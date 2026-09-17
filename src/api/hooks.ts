@@ -188,7 +188,7 @@ export function useAttendees(id: string): UseQueryResult<AttendeesResponse, unkn
 
 /**
  * The player's own RSVPs. Without a window: upcoming only, which is what the
- * list view and "You're in" want. With one: that week, past included.
+ * list view and the joined state want. With one: that week, past included.
  *
  * `placeholderData` keeps the previous week's cards up while the next week
  * loads, so paging the strip doesn't flash a skeleton — but only when the key's
@@ -220,7 +220,7 @@ export function useHostedEvents(window?: DateWindow): UseQueryResult<EventSummar
 /**
  * Event ids the current player has a seat at.
  *
- * Deliberately zero-arg and unwindowed: this is what the board's "You're in"
+ * Deliberately zero-arg and unwindowed: this is what the board's joined state
  * chips read, and the board shows every upcoming event, not one week of them. A
  * window here would un-chip a card the moment the reader paged the agenda.
  */

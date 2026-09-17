@@ -4,18 +4,31 @@ export function Skeleton({ width = "100%", height = 16 }: { width?: string; heig
   return <div className="skeleton" style={{ width, height }} aria-hidden="true" />;
 }
 
+/**
+ * Shaped like `EventCard`, down to the grid.
+ *
+ * Not "three grey bars in a box": the placeholder has to be the same height as
+ * the thing that replaces it, or every list shifts under the reader's thumb the
+ * moment it loads. Same class, same rows, same rail.
+ */
 export function EventCardSkeleton() {
   return (
-    <div className="card" aria-hidden="true">
-      <div className="card__link">
-        <Skeleton width="70%" height={20} />
-        <Skeleton width="45%" height={14} />
-        <Skeleton width="55%" height={14} />
-      </div>
-      <div className="card__row">
-        <Skeleton width="38%" height={28} />
-        <Skeleton width="30%" height={44} />
-      </div>
+    <div className="ecard" aria-hidden="true">
+      <span className="ecard__rail">
+        <Skeleton width="30px" height={18} />
+      </span>
+      <span className="ecard__title">
+        <Skeleton width="72%" height={19} />
+      </span>
+      <span className="ecard__meta">
+        <Skeleton width="55%" height={15} />
+      </span>
+      <span className="ecard__venue">
+        <Skeleton width="68%" height={15} />
+      </span>
+      <span className="btn" style={{ background: "transparent", border: 0, padding: 0 }}>
+        <Skeleton width="64px" height={44} />
+      </span>
     </div>
   );
 }

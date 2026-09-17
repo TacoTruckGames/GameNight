@@ -63,9 +63,12 @@ export function RsvpButton({
         onClick={() => cancel.mutate()}
         disabled={pending}
         aria-busy={pending}
+        // One word on screen — it is the only two-word label in the card's action
+        // slot, and the slot is 44px in a 50px-rail grid. The accessible name is
+        // the whole sentence, so nothing is lost where it matters.
         aria-label={`Cancel your RSVP for ${title}`}
       >
-        {cancel.isPending ? "Cancelling…" : "Cancel RSVP"}
+        {cancel.isPending ? "Cancelling…" : "Cancel"}
       </button>
     );
   }

@@ -38,7 +38,7 @@ export function MyRsvpPage() {
   const events = myRsvps.data;
   const groups = useMemo(() => groupByDay(events ?? []), [events]);
   // Every event on this page is one the player holds a seat on — that is what
-  // the endpoint returns — so the card's "You're in" state is not a lookup.
+  // the endpoint returns — so the card's "Going" state is not a lookup.
   const joinedIds = useMemo(() => new Set((events ?? []).map((event) => event.id)), [events]);
 
   const thisWeek = startOfWeek(dayKey(new Date())!);

@@ -242,6 +242,16 @@ half-second spinner.
 - **No pagination** (`LIMIT 200`); ~50 live events fit on one screen.
 - **RSVP lives on the card**, not behind the detail page: the primary user is on a phone on a commute, so the
   decision happens where the information is.
+- **The card is 88px, and was 223px.** Measured at 390×844: 66px of the old card was padding and gaps, and
+  only one card fitted the week view. The new one is a 3×3 grid — a 50px time rail, then title, seat state
+  and venue — and one placement does the work: the **title spans to the right edge** with the action *below*
+  it, because a button beside a title truncates the title and a button under it cannot. The action then
+  costs no row of its own either, being 44px against two 13px lines. Three things left the card: the date
+  (every list already writes "Thu, Sep 17 · 2 events" directly above it), the host, and "9 going" — which
+  is `capacity - seatsLeft` said a second way. All three are on the sheet. The venue stopped being a link,
+  which is what freed a whole 44px tap target for a line of muted text; it is a link where there is room
+  for one. Fully visible per screen, before → after: **week 1 → 3, list 2 → 5**. RSVP, Full and Cancel share
+  one width, so a column of cards has a straight right edge whatever state each row is in.
 - **An organizer edits their own event** from its page — the same `EventForm` that posts one, prefilled, and
   sending **only the fields that changed**. `PATCH /api/events/:id` is the admin's patch route with a
   different gate: same `eventPatchSchema`, same write, same capacity guard and same room-key rotation, but

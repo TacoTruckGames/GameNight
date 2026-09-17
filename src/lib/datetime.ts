@@ -33,6 +33,29 @@ export function formatEventDateTime(iso: string): string {
   return at ? dayTime.format(at) : iso;
 }
 
+/**
+ * "7:30" and "PM", split — the card's time rail.
+ *
+ * Two parts because the rail stacks them: a 16px hour over a 10px suffix, so
+ * every card's hour sits on the same baseline and the column can be read down
+ * without the eye re-finding where each time starts. `formatToParts` rather
+ * than splitting the formatted string, because the separator and the order are
+ * the locale's business — a 24-hour locale yields no `dayPeriod` at all, and
+ * the rail then correctly shows just "19:30".
+ */
+export function formatEventTime(iso: string): { hour: string; suffix: string } {
+  const at = parse(iso);
+  if (!at) return { hour: iso, suffix: "" };
+  const parts = timeOnly.formatToParts(at);
+  const suffix = parts.find((part) => part.type === "dayPeriod")?.value ?? "";
+  const hour = parts
+    .filter((part) => part.type !== "dayPeriod" && !(part.type === "literal" && /\s/.test(part.value)))
+    .map((part) => part.value)
+    .join("")
+    .trim();
+  return { hour, suffix };
+}
+
 /** "Friday, September 18, 2026 at 7:00 PM" — the detail page line. */
 export function formatEventDateTimeLong(iso: string): string {
   const at = parse(iso);

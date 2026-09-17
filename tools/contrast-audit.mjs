@@ -30,6 +30,11 @@ const PAIRS = [
   ["--color-accent-strong", "--color-accent-soft"],
   ["--color-danger", "--color-danger-soft"],
   ["--color-success", "--color-success-soft"],
+  // The event card says the seat state as coloured text in its meta line, so
+  // those two now have to clear 4.5:1 on the card itself, not only on the soft
+  // tint the chip gives them.
+  ["--color-danger", "--color-surface"],
+  ["--color-success", "--color-surface"],
   ["--brand-text", "--brand-bg"],
   ["--brand-muted", "--brand-bg"],
   // The operator bar is one fixed orange in both themes; audit it in both anyway,

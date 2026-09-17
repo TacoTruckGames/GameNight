@@ -347,6 +347,141 @@ a {
   font-weight: 650;
 }
 
+/* ------------------------------------------------------- the event card --
+   Not `.card`: that class is worn by the whole admin dashboard, `EventForm`
+   and `AttendeesPage`, and re-padding it would re-pad all of them.
+
+   A 3×3 grid, and one placement does the work. The **title spans to the right
+   edge** and the action sits below it, never beside it — a button next to a
+   title truncates the title, a button under it cannot. The action then costs no
+   row of its own either: it is 44px against two 13px lines, so it sets the
+   height of rows 2–3 and the card lands on three lines plus 10px of padding.
+   88px, against the 222px this replaced. */
+.ecard {
+  display: grid;
+  grid-template-columns: 50px minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto;
+  column-gap: var(--space-3);
+  padding: 10px var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+/* A finished event still earns a card — checking what you went to is a real
+   reason to scroll back — but it stops being a raised surface, the same way
+   `.card--past` does it, and the rail goes quiet with it. */
+.ecard--past {
+  background: var(--color-bg);
+  box-shadow: none;
+}
+
+.ecard--past .ecard__title,
+.ecard--past .ecard__hour {
+  color: var(--color-muted);
+  font-weight: 650;
+}
+
+.ecard__rail {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 2px;
+}
+
+.ecard__hour {
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.ecard__suffix {
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  color: var(--color-muted);
+}
+
+/* Row 1, both content columns: the title is never the thing that gives way. */
+.ecard__title {
+  grid-column: 2 / -1;
+  grid-row: 1;
+  color: inherit;
+  text-decoration: none;
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Seat state and game type. The state's colour is the only thing this class
+   carries — the words say it too ("Full", "You're in"), so the colour is never
+   doing the work alone. */
+.ecard__meta {
+  grid-column: 2;
+  grid-row: 2;
+  font-size: var(--font-size-sm);
+  color: var(--color-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ecard__meta--open {
+  color: var(--color-text);
+}
+
+.ecard__meta--joined {
+  color: var(--color-success);
+  font-weight: 650;
+}
+
+.ecard__meta--full,
+.ecard__meta--cancelled {
+  color: var(--color-danger);
+  font-weight: 650;
+}
+
+.ecard__venue {
+  grid-column: 2;
+  grid-row: 3;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-muted);
+}
+
+.ecard__venue-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Bottom-right, spanning the two short lines it sits beside. Matches both the
+   player's `<button>` and the organizer's door-list `<a>`.
+
+   One width for all of them — measured at 70px, which is what the longest label
+   ("Cancel") needs. Without it the slot is as wide as whatever word is in it,
+   so a column of cards steps in and out by 20px as the states change down the
+   list, and the eye reads the ragged right edge as meaning something. It does
+   not: RSVP, Full and Cancel are the same control in three states. */
+.ecard > .btn,
+.ecard > a.btn {
+  grid-column: 3;
+  grid-row: 2 / 4;
+  align-self: end;
+  min-width: 70px;
+  margin-left: var(--space-3);
+}
+
 .card__link {
   color: inherit;
   text-decoration: none;
