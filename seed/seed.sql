@@ -99,11 +99,12 @@ INSERT INTO users (id, name, role) VALUES
 -- at seed time — `pnpm db:reset:local` still works offline, with no API key,
 -- and costs nothing.
 --
--- Three events keep NULL place columns on purpose. That is not laziness, it is
--- the other half of the feature: a house game and a shop that is not in
--- anyone's index have to stay postable and readable, and a reviewer should see
--- both modes on one screen. The house game is also the case that must never
--- change — a private home does not get a pin, however good the autocomplete is.
+-- Every event carries a place. Three used to keep NULL place columns on
+-- purpose — a house game and a fictional shop, to keep the free-text path
+-- visible — but a venue with no place id can show no map and cannot be
+-- navigated to, and three such rows read as broken rather than as an edge
+-- case. The path itself is still the form's own: the picker's "use what I
+-- typed" row posts a venue Google never confirmed, and the client renders it.
 --
 -- ------------------------------------------------------------ about times --
 -- **Every start time is written as a US Pacific evening, and is deliberately
@@ -156,7 +157,7 @@ INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, cap
   -- id cannot show a map and cannot be navigated to, and three rows that could
   -- do neither read as broken rather than as a deliberate edge case. The path
   -- itself is still reachable — the picker's "use what I typed" row posts a
-  -- free-text venue, and `venues.mjs` covers what that renders.
+  -- free-text venue, and the client renders it (checked by a Playwright pass, ad hoc — not in the repo).
   ('evt_friday_draft', 'org_cardboard', 'Friday Night Draft', 'card',
    strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 hours','start of day','+2 days','+20 hours','+7 hours'),
    'Lake City Library, meeting room', 8, 0, lower(hex(randomblob(8))),
@@ -231,9 +232,8 @@ INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, cap
 -- Capacities run from 4 to 40 so the seat bar has something to say. Fill levels
 -- are assigned in the RSVP generator at the foot of this file, not here.
 --
--- Place columns are NULL on all but two of these. The keyless venue is the
--- normal case and should dominate the board; two events reuse a seeded real
--- place id so a reviewer scrolling the list still meets a map without hunting.
+-- Every row below carries a real place — ids Google issued, resolved once at
+-- authoring time — so every card on the board has a map and a route to it.
 INSERT INTO events (id, organizer_id, title, game_type, starts_at, location, capacity, rsvp_count, room_key,
                     place_id, place_address, place_lat, place_lng, place_resolved_at) VALUES
   -- +1 day (2)

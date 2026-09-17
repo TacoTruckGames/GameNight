@@ -153,22 +153,6 @@ events.get("/events/:id", async (c) => {
 });
 
 /**
- * The organizer's own edit. Same schema and same write as the admin's patch —
- * see `eventPatchSchema` — differing only in who may call it: the admin may fix
- * anybody's event, an organizer may fix the ones that are theirs.
- *
- * Ownership is checked against the row, never against anything the client sent.
- * A cancelled event is refused: only an admin can restore one, so editing it
- * would be filing changes into something nobody can see, with nothing on screen
- * to say why. 409 rather than 403 — the caller is allowed, the event is not in
- * a state to take it.
- *
- * Deliberately **not** audited. `audit()` writes the operator trail the admin
- * dashboard reads as "recent admin actions", and an organizer editing their own
- * table is not one. Giving those rows an actor role to distinguish them is the
- * right fix and a bigger one than this route.
- */
-/**
  * The gate every owner-only write goes through: signed in as an organizer, the
  * event exists, and it is theirs. Ownership is read off the row, never off
  * anything the client sent. Auth is checked before the lookup so an outsider
@@ -184,6 +168,22 @@ async function requireOwnedEvent(c: Parameters<typeof requireOrganizer>[0], id: 
   return row;
 }
 
+/**
+ * The organizer's own edit. Same schema and same write as the admin's patch —
+ * see `eventPatchSchema` — differing only in who may call it: the admin may fix
+ * anybody's event, an organizer may fix the ones that are theirs.
+ *
+ * Ownership is checked against the row, never against anything the client sent.
+ * A cancelled event is refused: only an admin can restore one, so editing it
+ * would be filing changes into something nobody can see, with nothing on screen
+ * to say why. 409 rather than 403 — the caller is allowed, the event is not in
+ * a state to take it.
+ *
+ * Deliberately **not** audited. `audit()` writes the operator trail the admin
+ * dashboard reads as "recent admin actions", and an organizer editing their own
+ * table is not one. Giving those rows an actor role to distinguish them is the
+ * right fix and a bigger one than this route.
+ */
 events.patch("/events/:id", async (c) => {
   const id = c.req.param("id");
   const row = await requireOwnedEvent(c, id);

@@ -90,10 +90,6 @@ export function WeekAgenda<T extends { id: string; startsAt: string }>({
   // change therefore retires it automatically, with no effect and no wrapper
   // around `onWeekChange`: the board needs `showMonth` to clear its selection by
   // hand, and this is that guarantee expressed as data instead.
-  // The only state is the tap, and it carries the week it was made in. Any week
-  // change therefore retires it automatically, with no effect and no wrapper
-  // around `onWeekChange`: the board needs `showMonth` to clear its selection by
-  // hand, and this is that guarantee expressed as data instead.
   const [tap, setTap] = useState<{ week: DayKey; day: DayKey } | null>(null);
 
   const todayKey = dayKey(new Date())!; // `new Date()` is always valid; per render is fine

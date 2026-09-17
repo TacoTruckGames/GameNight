@@ -6,9 +6,9 @@
  * column update: a new `room_key` names a Durable Object that has never existed,
  * so it hydrates itself from D1 on first use (see `EventRoom.ensureHydrated`).
  *
- * Two callers need it — the RSVP route and the admin route, which rotates the
- * key whenever capacity changes so a hydrated room cannot keep answering "full"
- * from a stale cached capacity.
+ * Three callers need it — the RSVP route, and the two edit routes (the admin's
+ * and the organizer's), which rotate the key whenever capacity changes so a
+ * hydrated room cannot keep answering "full" from a stale cached capacity.
  */
 
 import type { EventRoom } from "../do/EventRoom";

@@ -8,8 +8,9 @@
 -- Nullable, and that is not a compromise: D1 cannot add a NOT NULL column
 -- without a constant default to a table that already has rows, but even on an
 -- empty table this column would be nullable. "No description" is an ordinary
--- state — the 64 seeded events and every event posted so far have none, and a
--- terse "Commander night, bring a deck" is a complete listing. NULL says
+-- state — when this migration landed no seeded event had one (the seed now
+-- writes 55 and leaves nine empty on purpose), and a terse "Commander night,
+-- bring a deck" is a complete listing. NULL says
 -- nothing was written; `''` would say something was written and then erased.
 -- Only the first is ever stored (see `createEventSchema` in shared/schemas.ts).
 --

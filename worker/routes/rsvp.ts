@@ -70,8 +70,9 @@ rsvp.put("/events/:id/rsvp", async (c) => {
     throw new ApiError(409, "EVENT_STARTED", "This event has already started.");
   }
 
-  // An admin called this one off. Cancelling an existing RSVP still works (see
-  // the DELETE below) — only taking a new seat is refused.
+  // Someone called this one off — its organizer, or an admin. Cancelling an
+  // existing RSVP still works (see the DELETE below); only taking a new seat is
+  // refused.
   if (event.status === "cancelled") {
     throw new ApiError(409, "EVENT_CANCELLED", "This event was cancelled.");
   }

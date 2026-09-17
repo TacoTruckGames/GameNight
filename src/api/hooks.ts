@@ -1,5 +1,6 @@
 /**
- * Every server interaction in the app, as TanStack Query hooks.
+ * Every server interaction in the public app, as TanStack Query hooks. The
+ * operator site has its own in `src/admin/hooks.ts`.
  *
  * Freshness policy (S3), in one place:
  *   - lists are fresh for 10 s and refetch on mount and on window focus, so
@@ -20,13 +21,7 @@
 
 import { QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { UseQueryResult } from "@tanstack/react-query";
-import type {
-  AttendeesResponse,
-  EventDetail,
-  EventSummary,
-  RsvpResponse,
-  User,
- Role } from "../../shared/api-types";
+import type { AttendeesResponse, EventDetail, EventSummary, Role, RsvpResponse, User } from "../../shared/api-types";
 import type { CreateEventInput, CreateUserInput, EventPatch } from "../../shared/schemas";
 import { ApiError, NetworkError, apiFetch } from "./client";
 import { SUSPENDED_MESSAGE, useIdentity } from "../identity/IdentityContext";

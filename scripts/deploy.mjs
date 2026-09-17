@@ -61,7 +61,12 @@ function run(label, bin, args, opts = {}) {
   }
 }
 
-run("Typecheck", fileURLToPath(new URL("../node_modules/typescript/bin/tsc", import.meta.url)), ["-p", "tsconfig.worker.json", "--noEmit"]);
+// All three configs — the README says "typecheck → build", and a deploy that
+// checked only the Worker would let a client type error ship.
+const tsc = fileURLToPath(new URL("../node_modules/typescript/bin/tsc", import.meta.url));
+for (const config of ["tsconfig.json", "tsconfig.worker.json", "test/tsconfig.json"]) {
+  run(`Typecheck (${config})`, tsc, ["-p", config, "--noEmit"]);
+}
 run("Building client + worker", viteBin, ["build"]);
 run(`Applying migrations to remote D1 "${DB}"`, wranglerBin, ["d1", "migrations", "apply", DB, "--remote"], {
   input: "y\n",
