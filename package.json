@@ -14,6 +14,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.worker.json --noEmit && tsc -p test/tsconfig.json --noEmit",
     "test": "vitest run",
     "stress": "node scripts/stress.ts",
+    "populate": "node scripts/populate.ts",
+    "loadtest": "node scripts/loadtest.ts",
     "cf-typegen": "wrangler types --env-file ./scripts/empty.env",
     "db:reset:local": "node scripts/db-reset-local.mjs",
     "db:migrate:remote": "wrangler d1 migrations apply gamenight --remote",
