@@ -593,6 +593,29 @@ a {
   color: var(--color-accent-strong);
 }
 
+/* A day that has already happened, treated exactly as a past card is: it drops
+   off the raised surface onto the page's own background instead of being dimmed
+   with `opacity`, which would drag the number and the count under their
+   contrast floor. Still a button — paging back to see what you went to is a
+   real reason to open one — just visibly not a thing to plan around.
+
+   Placed here on purpose. It is one class, so it beats plain `.cal__day` by
+   order alone, while `:disabled` (an empty past day, already transparent) and
+   `[aria-pressed="true"]` (the selected day, which must still look selected)
+   are both a specificity step above and keep winning. `--today` follows below
+   and never collides: today is not past. */
+.cal__day--past {
+  background: var(--color-bg);
+  color: var(--color-muted);
+}
+
+/* The count is the "something is here" signal, and accent is the colour of
+   things you can still act on. A finished day keeps the number — it is the
+   reason to open the day — but says it in the muted voice. */
+.cal__day--past .cal__count {
+  color: var(--color-muted);
+}
+
 /* `:disabled` above is class + pseudo-class, so a bare `.cal__day--today` would
    lose to it and an empty today would go ringless; matching the specificity
    keeps the ring whether or not today has a table. */

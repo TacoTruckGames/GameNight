@@ -154,6 +154,33 @@ describe("buildMonthGrid", () => {
     expect(flat.filter((cell) => cell.isToday)).toHaveLength(0);
   });
 
+  it("marks every day before today as past, and never today itself", () => {
+    const grid = buildMonthGrid({ year: 2026, month: 9 }, "2026-09-15", 1).flat();
+    const byKey = (key: string) => grid.find((cell) => cell.key === key);
+
+    expect(byKey("2026-09-14")?.isPast).toBe(true);
+    // The boundary: a game tonight has not happened yet.
+    expect(byKey("2026-09-15")?.isPast).toBe(false);
+    expect(byKey("2026-09-16")?.isPast).toBe(false);
+
+    // Leading cells belong to August and are all behind us; trailing ones are not.
+    expect(grid.filter((cell) => !cell.inMonth && cell.key < "2026-09-15").every((c) => c.isPast)).toBe(true);
+    expect(grid.every((cell) => cell.isPast === cell.key < "2026-09-15")).toBe(true);
+  });
+
+  it("treats the whole month as past or future when today is elsewhere", () => {
+    const allPast = buildMonthGrid({ year: 2026, month: 9 }, "2026-12-01", 1).flat();
+    expect(allPast.every((cell) => cell.isPast)).toBe(true);
+
+    const allFuture = buildMonthGrid({ year: 2026, month: 9 }, "2026-01-01", 1).flat();
+    expect(allFuture.some((cell) => cell.isPast)).toBe(false);
+  });
+
+  it("has no past days at all when there is no today", () => {
+    // `null` means "no now to be before" — greying the whole grid would be wrong.
+    expect(flat.some((cell) => cell.isPast)).toBe(false);
+  });
+
   it("emits keys that round-trip through parseDayKey and increase strictly", () => {
     for (const cell of flat) {
       const { year, month, day } = parseDayKey(cell.key);

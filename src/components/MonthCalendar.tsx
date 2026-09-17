@@ -77,11 +77,17 @@ export function MonthCalendar({
           .map((cell) => {
             if (!cell.inMonth) return <li className="cal__pad" aria-hidden="true" key={cell.key} />;
             const count = counts.get(cell.key) ?? 0;
+            // A finished day is still worth opening — checking what you went to
+            // is a real reason to page back — but it is not something you can
+            // act on, so it reads the same way a past card does.
+            const classes = ["cal__day"];
+            if (cell.isToday) classes.push("cal__day--today");
+            if (cell.isPast) classes.push("cal__day--past");
             return (
               <li key={cell.key}>
                 <button
                   type="button"
-                  className={cell.isToday ? "cal__day cal__day--today" : "cal__day"}
+                  className={classes.join(" ")}
                   aria-label={`${formatDayLong(cell.key)}, ${eventCountLabel(count)}`}
                   aria-pressed={cell.key === selectedDay}
                   disabled={count === 0}

@@ -37,6 +37,11 @@ export interface MonthCell {
   day: number;
   inMonth: boolean;
   isToday: boolean;
+  /**
+   * Strictly before today. Today is never past — a game tonight has not happened
+   * yet, and greying the day you are standing on would be a lie.
+   */
+  isPast: boolean;
 }
 
 export type WeekStart = 0 | 1; // 0 = Sunday, 1 = Monday
@@ -156,6 +161,10 @@ export function buildMonthGrid(
         day: at.getUTCDate(),
         inMonth: at.getUTCFullYear() === year && at.getUTCMonth() === month - 1,
         isToday: key === todayKey,
+        // `DayKey` is zero-padded `YYYY-MM-DD`, so lexicographic order is date
+        // order — no parsing, no zone, no off-by-one. With no `todayKey` there
+        // is no "now" to be before, so nothing is past.
+        isPast: todayKey !== null && key < todayKey,
       };
     }),
   );
