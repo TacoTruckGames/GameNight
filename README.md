@@ -252,6 +252,13 @@ half-second spinner.
   which is what freed a whole 44px tap target for a line of muted text; it is a link where there is room
   for one. Fully visible per screen, before → after: **week 1 → 3, list 2 → 5**. RSVP, Full and Cancel share
   one width, so a column of cards has a straight right edge whatever state each row is in.
+- **The detail is a sheet over the board**, not a page you navigate to. Tapping a card passes
+  `state.backgroundLocation`, so `routes.tsx` renders the board *and* the event on top of it; a typed URL, a
+  shared link or a refresh carries no such state and gets the full page, unchanged. One element, one query,
+  two frames. The URL is the event's either way, so a sheet is still a link you can send. Escape, a tap
+  outside and Back all close it — the same three, and the same absence of a Close button, as the identity
+  switcher. The long date also stopped sharing a line with the attendance count, which is what made
+  "Thursday, September 17, 2026 at 7:30 PM · 9 going" wrap to two lines on every phone.
 - **An organizer edits their own event** from its page — the same `EventForm` that posts one, prefilled, and
   sending **only the fields that changed**. `PATCH /api/events/:id` is the admin's patch route with a
   different gate: same `eventPatchSchema`, same write, same capacity guard and same room-key rotation, but

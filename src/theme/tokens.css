@@ -26,6 +26,10 @@
   --color-danger-soft: #fbe6e5;
   --color-success: #1f7a4d;
   --color-success-soft: #e2f3ea;
+  /* Behind the event sheet. Nothing reads on it — it only dims the board — so it
+     has no contrast pair to audit; it is here rather than inline because the
+     dark theme needs a heavier one to separate two dark surfaces. */
+  --color-overlay: rgb(15 5 28 / 55%);
   --color-border: #dcd9ea;
   /* A second border, for controls that are nothing but an outline (secondary
      buttons, unpressed chips). In light mode it is barely a shade past the
@@ -112,6 +116,7 @@
     --color-danger-soft: #3a1f1e;
     --color-success: #7fd8a8;
     --color-success-soft: #17301f;
+    --color-overlay: rgb(0 0 0 / 65%);
     --color-border: #332c4d;
     --color-border-strong: #6c6494;
     --color-focus: #a49fda;

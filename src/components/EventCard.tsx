@@ -26,7 +26,7 @@
  * lines plus padding.
  */
 
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import type { EventSummary } from "../../shared/api-types";
 import { gameTypeLabel } from "../../shared/game-types";
 import { isPastEvent } from "../lib/datetime";
@@ -50,6 +50,11 @@ export function EventCard({
   const past = isPastEvent(event.startsAt);
   const state = seatState({ ...event, joined, past });
   const { hour, suffix } = formatEventTime(event.startsAt);
+  // Handing the current location to the link is what tells `routes.tsx` to open
+  // the event *over* this list instead of replacing it — so the board keeps its
+  // scroll position and closing is Back. The URL is the same either way, so the
+  // link is still one you can copy and send.
+  const location = useLocation();
 
   return (
     <article className={`ecard${past ? " ecard--past" : ""}`}>
@@ -61,7 +66,7 @@ export function EventCard({
         <span className="ecard__suffix">{suffix}</span>
       </span>
 
-      <Link className="ecard__title" to={`/events/${event.id}`}>
+      <Link className="ecard__title" to={`/events/${event.id}`} state={{ backgroundLocation: location }}>
         <time className="visually-hidden" dateTime={toDateTimeAttr(event.startsAt)}>
           {hour} {suffix}
         </time>{" "}

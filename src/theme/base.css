@@ -1156,6 +1156,63 @@ textarea.input {
   flex: none;
 }
 
+/* ------------------------------------------------------------- the sheet --
+   The event detail, over the board it was opened from. A real dim, unlike the
+   switcher's transparent scrim below: that one hangs off a button and has not
+   taken the screen, this one has. Dismissal is the same in both — Escape, a tap
+   outside, and no Close button. */
+.sheet__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: var(--color-overlay);
+}
+
+/* A bottom sheet on a phone: the thumb is at the bottom, and so is the sheet.
+   `dvh` rather than `vh` so the browser's own collapsing toolbar cannot push
+   the last 60px of an event under the fold. */
+.sheet {
+  position: fixed;
+  z-index: 31;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 88dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-3) var(--space-4) calc(var(--space-5) + env(safe-area-inset-bottom));
+  background: var(--color-bg);
+  color: var(--color-text);
+  border-top-left-radius: var(--radius);
+  border-top-right-radius: var(--radius);
+  box-shadow: var(--shadow-lift);
+}
+
+.sheet:focus-visible {
+  outline: none;
+}
+
+.sheet__grip {
+  align-self: center;
+  width: 38px;
+  height: 4px;
+  flex: none;
+  border-radius: 2px;
+  background: var(--color-border-strong);
+}
+
+/* The long date, on its own line and nothing else's. */
+.detail__when {
+  margin: 0;
+}
+
+.detail__facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 /* "Anywhere outside". Transparent on purpose — the switcher hangs off a button
    rather than taking the screen, and dimming the page would claim otherwise.
    It also covers the header, which is what makes a second tap on the name close
@@ -1502,7 +1559,7 @@ textarea.input {
 .venue {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-1);
   align-items: flex-start;
 }
 

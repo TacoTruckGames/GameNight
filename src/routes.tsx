@@ -8,10 +8,18 @@
  *
  * Within the main site, role is a redirect rather than a hidden link: a player
  * who deep-links `/organize` lands somewhere useful instead of on a 403.
+ *
+ * **`/events/:id` has two renderings**, and which one you get depends on how you
+ * arrived. Tapping a card passes `state.backgroundLocation`, so the board keeps
+ * rendering underneath and the event opens as a sheet over it — the list does
+ * not lose its scroll position, and closing is Back. A typed URL, a shared link
+ * or a refresh carries no such state, so the same route renders as a full page.
+ * One element, one data hook, two frames; no duplicated state and nothing about
+ * the URL changes, so a sheet is still a link you can send someone.
  */
 
 import type { ReactNode } from "react";
-import { Navigate, Route, Routes } from "react-router";
+import { Navigate, Route, Routes, useLocation } from "react-router";
 import { AdminShell } from "./admin/AdminShell";
 import { AdminErrorsPage } from "./admin/ErrorsPage";
 import { AdminEventDetailPage } from "./admin/EventDetailPage";
@@ -38,8 +46,14 @@ function OrganizerOnly({ children }: { children: ReactNode }) {
 }
 
 export function AppRoutes() {
+  const location = useLocation();
+  // Set only by a `<Link>` that meant "open this over what I am looking at".
+  const state = location.state as { backgroundLocation?: Location } | null;
+  const background = state?.backgroundLocation;
+
   return (
-    <Routes>
+    <>
+      <Routes location={background ?? location}>
       <Route element={<AppShell />}>
         <Route index element={<EventsPage />} />
         <Route path="events/:id" element={<EventDetailPage />} />
@@ -81,6 +95,16 @@ export function AppRoutes() {
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+      </Routes>
+
+      {/* The sheet, rendered *in addition to* the board above it. Only when the
+          navigation asked for it — otherwise the route above already drew the
+          full page and a second copy would mount the same query twice. */}
+      {background ? (
+        <Routes>
+          <Route path="events/:id" element={<EventDetailPage asSheet />} />
+        </Routes>
+      ) : null}
+    </>
   );
 }

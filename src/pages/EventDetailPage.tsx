@@ -13,10 +13,16 @@
  * solves better: the switcher hangs off the name button on every page, so a
  * second copy of it here was a button spending the page's primary slot on
  * something the reader did not come for.
+ *
+ * **Two frames, one page.** Tapped from a card it renders as a sheet over the
+ * dimmed board (`asSheet`); reached by a typed URL, a shared link or a refresh
+ * it renders as the full page it has always been. `routes.tsx` decides which,
+ * from the navigation's own state — everything below this line is identical in
+ * both, so there is exactly one copy of the layout and one copy of the query.
  */
 
-import { useState } from "react";
-import { Link, useParams } from "react-router";
+import { useCallback, useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router";
 import { gameTypeLabel } from "../../shared/game-types";
 import { attendanceLabel } from "../lib/attendance";
 import { isPastEvent } from "../lib/datetime";
@@ -32,8 +38,9 @@ import { Skeleton } from "../components/Skeleton";
 import { useIdentity } from "../identity/IdentityContext";
 import { formatEventDateTimeLong, toDateTimeAttr } from "../lib/datetime";
 
-export function EventDetailPage() {
+export function EventDetailPage({ asSheet = false }: { asSheet?: boolean }) {
   const { id = "" } = useParams();
+  const navigate = useNavigate();
   const { isPlayer, user } = useIdentity();
   const event = useEvent(id);
   const myRsvpIds = useMyRsvpIds();
@@ -41,6 +48,28 @@ export function EventDetailPage() {
   // change nothing there, so a request per list would buy nothing.
   const maps = useMapsConfig({ enabled: true });
   const [editing, setEditing] = useState(false);
+
+  // A callback ref, not `useRef` + an effect: the sheet does not exist on the
+  // first render — the query is still pending and the component returns a
+  // skeleton — so an effect that runs on mount focuses nothing and never fires
+  // again. This fires when the node actually arrives, whenever that is.
+  const focusSheet = useCallback((node: HTMLDivElement | null) => {
+    node?.focus();
+  }, []);
+
+  // Closing is `navigate(-1)`, not a state flag: the sheet *is* a history entry,
+  // so Back and the scrim have to mean the same thing or the two would disagree
+  // about where you end up.
+  const close = () => navigate(-1);
+
+  useEffect(() => {
+    if (!asSheet) return;
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") navigate(-1);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [asSheet, navigate]);
 
   if (event.isPending) {
     return (
@@ -70,11 +99,13 @@ export function EventDetailPage() {
   // draw.
   const mine = user?.role === "organizer" && user.id === detail.organizerId;
 
-  return (
-    <div className="stack stack--loose">
-      <Link to="/" className="text-sm">
-        ← All events
-      </Link>
+  const body = (
+    <>
+      {asSheet ? null : (
+        <Link to="/" className="text-sm">
+          ← All events
+        </Link>
+      )}
 
       <div className="stack">
         <h1 className="page-title">{detail.title}</h1>
@@ -85,10 +116,14 @@ export function EventDetailPage() {
 
       <div className="card">
         <div className="stack">
-          <p>
+          {/* Two elements, not one sentence. "Thursday, September 17, 2026 at
+              7:30 PM · 9 going" is 49 characters and wrapped to two lines on
+              every phone, breaking after the time so "· 9 going" sat alone on a
+              row of its own. The date is long because it is spelled out in
+              full; the count is a fact about the table, so it joins the chips
+              that say the other facts about the table. */}
+          <p className="detail__when">
             <time dateTime={toDateTimeAttr(detail.startsAt)}>{formatEventDateTimeLong(detail.startsAt)}</time>
-            {" · "}
-            {attendanceLabel(detail.attendeeCount, past)}
           </p>
           {/* The venue block: the label you can tap, the address Google
               confirmed (only when it adds something the label does not already
@@ -115,7 +150,7 @@ export function EventDetailPage() {
               bigger card. Absent is the ordinary case, and an absent paragraph
               renders as nothing at all — no heading left standing over it. */}
           {detail.description !== null ? <p className="text-lines">{detail.description}</p> : null}
-          <div>
+          <div className="detail__facts">
             <SeatChip
               seatsLeft={detail.seatsLeft}
               capacity={detail.capacity}
@@ -124,6 +159,7 @@ export function EventDetailPage() {
               status={detail.status}
               past={past}
             />
+            <span className="badge">{attendanceLabel(detail.attendeeCount, past)}</span>
           </div>
           {cancelled ? (
             <p className="text-sm muted">
@@ -152,6 +188,29 @@ export function EventDetailPage() {
           something they can still see, and the times and seat count above are
           what they are editing against. */}
       {mine && editing ? <EventForm event={detail} onDone={() => setEditing(false)} /> : null}
-    </div>
+    </>
+  );
+
+  if (!asSheet) return <div className="stack stack--loose">{body}</div>;
+
+  return (
+    <>
+      <div className="sheet__scrim" onClick={close} />
+      <div
+        className="sheet stack stack--loose"
+        role="dialog"
+        aria-modal="true"
+        aria-label={detail.title}
+        ref={focusSheet}
+        tabIndex={-1}
+      >
+        {/* No Close button, for the same reason the identity switcher has none:
+            Escape, a tap outside and Back all already mean "put this away", and
+            a fourth way to say it is a control spending the sheet's first row.
+            The handle says the sheet is dismissible without claiming a tap. */}
+        <span className="sheet__grip" aria-hidden="true" />
+        {body}
+      </div>
+    </>
   );
 }
