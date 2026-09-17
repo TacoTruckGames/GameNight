@@ -484,7 +484,9 @@ cares about — S1–S4 are the same code and the same tests they were at hour f
   answering "what is on this Saturday", and the calendar reuses the same endpoint with a date window — and
   a week agenda on My RSVP / Organize.
 - **Venues** — because an address a phone can navigate to is the difference between a listing and an
-  event you attend; it is keyless-safe and its whole cost surface is capped in D1.
+  event you attend; it is keyless-safe and its whole cost surface is capped in D1. The mini map is itself the
+  link to turn-by-turn, so there is no Directions button under it — that was the same tap twice. A venue with
+  no map keeps the button, because then it is the only route to navigation.
 - **The review pass and desktop breakpoint** — because "a stranger could open it and use it" is a claim
   worth testing with fresh eyes, and the findings were real.
 - **Descriptions, head count, role badge** — small, each closing a gap the audit or the review found.

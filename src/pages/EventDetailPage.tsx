@@ -117,18 +117,26 @@ export function EventDetailPage({ asSheet = false }: { asSheet?: boolean }) {
             {detail.place && detail.place.address !== detail.location ? (
               <p className="text-sm muted venue__address">{detail.place.address}</p>
             ) : null}
-            {detail.place && maps.map ? (
+            {/* The map is itself a link to the same directions URL, so where
+                there is a map the button underneath was a second copy of it.
+                Where there is none — a free-text venue, or a deployment with no
+                maps key — it is the only way to navigation, so it stays. The
+                venue label above links to a Maps *search*, which is close but
+                not the same thing, and not what someone standing outside with a
+                phone wants. */}
+            {detail.place !== null && maps.map ? (
               <EventMiniMap eventId={detail.id} place={detail.place} location={detail.location} />
-            ) : null}
-            <a
-              className="btn btn--secondary venue__directions"
-              href={mapsDirectionsUrl(detail)}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Directions
-              <span className="visually-hidden"> — opens in Google Maps</span>
-            </a>
+            ) : (
+              <a
+                className="btn btn--secondary venue__directions"
+                href={mapsDirectionsUrl(detail)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Directions
+                <span className="visually-hidden"> — opens in Google Maps</span>
+              </a>
+            )}
           </div>
           {/* The organizer's own words, and the reason this page is not just a
               bigger card. Absent is the ordinary case, and an absent paragraph
