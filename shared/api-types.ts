@@ -50,6 +50,31 @@ export type EventStatus = "scheduled" | "cancelled";
  * and `location` already carries the name the organizer chose. Every field here
  * is resolved server-side — a client may only ever send a `placeId`.
  */
+/**
+ * `GET /api/places/config`: what this deployment can do. Two flags, not one,
+ * because the two halves have separate quotas and either can be off on its own.
+ */
+export interface PlacesConfig {
+  /** Venue autocomplete in the organizer and admin forms. */
+  suggest: boolean;
+  /** The static mini map on an event page and under the posting form. */
+  map: boolean;
+}
+
+/** One autocomplete suggestion, already flattened by the Worker. */
+export interface PlaceSuggestion {
+  placeId: string;
+  /** Usually the venue name — "Cardboard Castle". */
+  primaryText: string;
+  /** Usually the street and city — "412 Pine St, Seattle, WA". */
+  secondaryText: string;
+}
+
+/** `GET /api/places/suggest`. */
+export interface SuggestResponse {
+  suggestions: PlaceSuggestion[];
+}
+
 export interface EventPlace {
   /** Google's id as *returned* by Place Details; it can differ from the one asked for if a place moved. */
   id: string;

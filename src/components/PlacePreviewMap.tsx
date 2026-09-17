@@ -26,12 +26,12 @@
  */
 
 import { useEffect, useState } from "react";
+import { MAP_SIZE } from "../../shared/maps";
 import { mapsSearchFor } from "../../shared/maps-links";
 import { useIdentity } from "../identity/IdentityContext";
 
-/** Must be one of `MAP_PRESETS` in `worker/routes/places.ts`; anything else is a 400. */
-const WIDTH = 640;
-const HEIGHT = 320;
+// The size is the Worker's rule, imported: `shared/maps.ts`.
+const { width: WIDTH, height: HEIGHT } = MAP_SIZE;
 
 export function PlacePreviewMap({ query, placeId }: { query: string; placeId: string | null }) {
   const { userId } = useIdentity();

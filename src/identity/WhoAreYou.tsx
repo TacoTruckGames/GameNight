@@ -24,6 +24,7 @@
  */
 
 import { useEffect, useId, useRef, useState } from "react";
+import { USERS_LIMIT_DEFAULT } from "../../shared/schemas";
 import type { FormEvent, KeyboardEvent } from "react";
 import type { Role } from "../../shared/api-types";
 import { createUserSchema, NAME_MAX } from "../../shared/schemas";
@@ -61,8 +62,8 @@ const TABS = [
   join: string;
 }[];
 
-/** How many of a role the picker lists. The API's default; stated here so the note under the select agrees with it. */
-const PICKER_LIMIT = 50;
+/** How many of a role the picker lists — the API's own default, so the note under the select cannot disagree with the page it describes. */
+const PICKER_LIMIT = USERS_LIMIT_DEFAULT;
 
 /** The roles this picker offers. An admin signing in lands on the player tab. */
 type PickerRole = (typeof TABS)[number]["role"];

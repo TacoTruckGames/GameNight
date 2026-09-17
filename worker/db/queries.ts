@@ -275,7 +275,12 @@ export interface NewEvent {
 }
 
 /** A place plus the moment we resolved it. Mirrors `worker/lib/places.ts`. */
+/**
+ * A place stamped with the moment we believed it. The one definition —
+ * `lib/places.ts` used to keep a mirror with a comment pointing here.
+ */
 export interface ResolvedPlace extends EventPlace {
+  /** ISO-8601 UTC, second precision. Place ids and addresses drift; this says how stale ours is. */
   resolvedAt: string;
 }
 

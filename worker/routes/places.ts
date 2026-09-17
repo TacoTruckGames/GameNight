@@ -15,6 +15,8 @@
  */
 
 import { Hono } from "hono";
+import type { PlacesConfig, SuggestResponse } from "../../shared/api-types";
+import { MAP_PRESETS, SUGGEST_MIN } from "../../shared/maps";
 import { z } from "zod";
 
 import { getEventPlace } from "../db/queries";
@@ -25,7 +27,6 @@ import {
   placesFromEnv,
   redact,
   type LocationBias,
-  type PlaceSuggestion,
   type PlacesFailure,
 } from "../lib/places";
 import { reportError } from "../lib/report";
@@ -42,30 +43,12 @@ export const places = new Hono<AppEnv>();
  * bigger than the session token, which only starts paying at ~4.24 requests per
  * session.
  */
-const SUGGEST_MIN = 3;
 const SUGGEST_MAX = 120;
-
-/**
- * The two sizes the client may ask for, and the reason the map route is not an
- * open image proxy. An unbounded `?w=&h=` lets anyone mint unlimited distinct
- * cache keys, and every miss is a billed render.
- */
-export const MAP_PRESETS = [
-  { width: 640, height: 320 }, // detail page, full width
-  { width: 320, height: 180 }, // narrow column / compact card
-] as const;
 
 const MAP_MAX_AGE = 86_400; // one day in the browser
 const MAP_S_MAX_AGE = 2_592_000; // thirty days at the edge — a pin does not move
 
 // ------------------------------------------------------------ the flag --
-
-export interface PlacesConfig {
-  /** Whether `/api/places/suggest` can return anything. */
-  suggest: boolean;
-  /** Whether `/api/events/:id/map` can return an image. */
-  map: boolean;
-}
 
 /**
  * Two booleans rather than one, although today they are always equal: the map
@@ -90,10 +73,6 @@ const suggestQuerySchema = z.object({
   /** Google's autocomplete session token. Never validated strictly — see `shared/schemas.ts`. */
   session: z.string().max(64).optional(),
 });
-
-export interface SuggestResponse {
-  suggestions: PlaceSuggestion[];
-}
 
 /**
  * Read the organizer's coarse edge location, if the runtime offers one, and

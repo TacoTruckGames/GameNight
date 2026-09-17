@@ -24,6 +24,8 @@
  */
 
 import type { Context } from "hono";
+import type { EventPlace, PlaceSuggestion } from "../../shared/api-types";
+import type { ResolvedPlace } from "../db/queries";
 
 import type { PlaceUpdate } from "../db/queries";
 import type { AppEnv } from "./context";
@@ -86,26 +88,9 @@ export type PlacesFailure = "timeout" | "network" | "unauthorized" | "quota" | "
 export type PlacesResult<T> = { ok: true; value: T } | { ok: false; reason: PlacesFailure };
 
 /** One row in the combobox. `secondaryText` is `""` when Google omits it. */
-export interface PlaceSuggestion {
-  placeId: string;
-  primaryText: string;
-  secondaryText: string;
-}
-
-/** What Place Details gives us, already narrowed to the four columns we store. */
-export interface PlaceDetails {
-  /** Google's id **as returned** — it can differ from the one asked for when a place is merged or moved. */
-  id: string;
-  address: string;
-  lat: number;
-  lng: number;
-}
-
-/** A `PlaceDetails` stamped with the moment we believed it. */
-export interface ResolvedPlace extends PlaceDetails {
-  /** ISO-8601 UTC, second precision. Place ids and addresses drift; this says how stale ours is. */
-  resolvedAt: string;
-}
+/** What Place Details gives us, already narrowed to the four columns we store — the wire shape, exactly. */
+export type PlaceDetails = EventPlace;
+export type { PlaceSuggestion, ResolvedPlace };
 
 /** A circle to prefer results near — the organizer's coarse edge location. */
 export interface LocationBias {

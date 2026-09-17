@@ -21,7 +21,18 @@
 
 import { QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { UseQueryResult } from "@tanstack/react-query";
-import type { AttendeesResponse, EventDetail, EventSummary, Role, RsvpResponse, User } from "../../shared/api-types";
+import type {
+  AttendeesResponse,
+  EventDetail,
+  EventSummary,
+  PlaceSuggestion,
+  PlacesConfig,
+  Role,
+  RsvpResponse,
+  SuggestResponse,
+  User,
+} from "../../shared/api-types";
+import { SUGGEST_MIN } from "../../shared/maps";
 import type { CreateEventInput, CreateUserInput, EventPatch } from "../../shared/schemas";
 import { ApiError, NetworkError, apiFetch } from "./client";
 import { SUSPENDED_MESSAGE, useIdentity } from "../identity/IdentityContext";
@@ -251,30 +262,9 @@ export function useMyRsvpIds(): Set<string> {
 // Maps is an enhancement bolted onto a product that works without it, so every
 // hook here fails to "off" rather than to an error state.
 
-/**
- * What the deployment can actually do, from `GET /api/places/config`. Two flags
- * and not one, because the two halves have separate quotas and either can be
- * switched off on its own.
- */
-export interface MapsConfig {
-  /** Venue autocomplete in the organizer and admin forms. */
-  suggest: boolean;
-  /** The static mini map on an event page. */
-  map: boolean;
-}
-
-/** One place suggestion, already flattened by the Worker. */
-export interface PlaceSuggestion {
-  placeId: string;
-  /** Usually the venue name — "Cardboard Castle". */
-  primaryText: string;
-  /** Usually the street and city — "412 Pine St, Seattle, WA". */
-  secondaryText: string;
-}
-
-interface PlaceSuggestionsResponse {
-  suggestions: PlaceSuggestion[];
-}
+/** The wire shapes live in `shared/api-types.ts`; the client's name for the config is kept. */
+export type MapsConfig = PlacesConfig;
+export type { PlaceSuggestion };
 
 /**
  * Degraded is the default, and a module constant so the identity is stable
@@ -284,8 +274,8 @@ interface PlaceSuggestionsResponse {
  */
 const MAPS_OFF: MapsConfig = { suggest: false, map: false };
 
-/** Shorter than this, `GET /api/places/suggest` answers `[]` without calling out. */
-export const PLACE_QUERY_MIN = 3;
+/** The Worker's own floor for a suggestion query, so the client never sends what the server would ignore. */
+export const PLACE_QUERY_MIN = SUGGEST_MIN;
 
 const PLACE_SUGGEST_STALE_MS = 5 * 60_000;
 
@@ -326,7 +316,7 @@ export function usePlaceSuggestions(
     queryKey: queryKeys.placeSuggestions(q, session),
     queryFn: ({ signal }) => {
       const params = new URLSearchParams({ q, session });
-      return apiFetch<PlaceSuggestionsResponse>(`/api/places/suggest?${params.toString()}`, {
+      return apiFetch<SuggestResponse>(`/api/places/suggest?${params.toString()}`, {
         userId,
         signal,
       }).then((response) => response.suggestions);

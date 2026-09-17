@@ -14,12 +14,12 @@
  */
 
 import { useEffect, useState } from "react";
+import { MAP_SIZE } from "../../shared/maps";
 import type { EventPlace } from "../../shared/api-types";
 import { mapsDirectionsUrl } from "../../shared/maps-links";
 
-/** Must be one of `MAP_PRESETS` in `worker/routes/places.ts`; anything else is a 400. */
-const WIDTH = 640;
-const HEIGHT = 320;
+// The size is the Worker's rule, imported: `shared/maps.ts`.
+const { width: WIDTH, height: HEIGHT } = MAP_SIZE;
 
 export function EventMiniMap({
   eventId,
