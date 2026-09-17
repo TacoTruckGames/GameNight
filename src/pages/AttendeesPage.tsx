@@ -88,6 +88,18 @@ export function AttendeesPage({ asSheet = false }: { asSheet?: boolean }) {
         </Link>
       )}
 
+      {/* Two columns on a desktop, one on a phone. The event and the people
+          coming to it are two things you read against each other — "twelve
+          going, four seats left, do I open more" — and stacking them puts a map
+          and a description between the question and its answer.
+
+          It also gives back something edit mode had to take: on a phone the
+          form replaces the read view, guest list included, because there is
+          nowhere else for it. Beside, there is — so on a desktop the list stays
+          up while you edit, which is exactly when you want to see it. */}
+      <div className={`doorlist${editing ? " doorlist--editing" : ""}`}>
+        <div className="doorlist__main stack stack--loose">
+
       {/* The same header on both sheets, because it is the same event and the
           organizer reviewing their own listing is checking exactly what a player
           would read. Kind, name, when — in that order, because that is the order
@@ -147,6 +159,11 @@ export function AttendeesPage({ asSheet = false }: { asSheet?: boolean }) {
         <p className="detail__host">Hosted by {event.organizerName}</p>
       </div>
 
+        </>
+      )}
+        </div>
+
+        <div className="doorlist__guests stack">
       <h2 className="card__title">Who's coming</h2>
 
       {list.length === 0 ? (
@@ -165,8 +182,8 @@ export function AttendeesPage({ asSheet = false }: { asSheet?: boolean }) {
           ))}
         </ul>
       )}
-        </>
-      )}
+        </div>
+      </div>
     </>
   );
 

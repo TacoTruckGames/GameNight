@@ -641,6 +641,19 @@ a {
 
 /* --------------------------------------------------------------- filters -- */
 
+/* The door list: the event on one side, the people on the other. One column on
+   a phone, where the guest list is hidden while editing because the form has
+   taken the screen; two on a desktop, where it can simply sit beside it. */
+.doorlist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.doorlist--editing .doorlist__guests {
+  display: none;
+}
+
 /* The two non-edits, under the edit form. A hairline above, so the row reads as
    a different kind of thing from the Save/Discard pair it follows, and the
    confirmation gets the danger tint so its own two buttons cannot be mistaken
@@ -1928,6 +1941,27 @@ textarea.input {
      moment a finger or cursor moved it. */
   .sheet__close {
     display: inline-flex;
+  }
+
+  /* Wider only when there is a second column to put in it — the player's sheet
+     has no guest list and stays at the reading column's width. */
+  .sheet:has(.doorlist) {
+    width: min(960px, calc(100vw - 2 * var(--space-5)));
+  }
+
+  /* Scoped to the sheet: the same page reached by a typed URL renders inside
+     `.shell__main`, which is 640px, and two columns there would be two narrow
+     ones. */
+  .sheet .doorlist {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 320px);
+    gap: var(--space-5);
+    align-items: start;
+  }
+
+  /* Beside the form, not below it — so it comes back while editing. */
+  .sheet .doorlist--editing .doorlist__guests {
+    display: flex;
   }
 
   .sheet {
