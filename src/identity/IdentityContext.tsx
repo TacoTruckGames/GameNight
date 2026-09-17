@@ -12,32 +12,57 @@
  * but an admin took it away (403 `ACCOUNT_SUSPENDED`). Dropping it silently
  * would look like a bug, so that one branch also says why, out loud.
  *
+ * ## Two identities, never one
+ *
+ * The board and `/admin` are different sites that happen to share a bundle, and
+ * they remember different people. An operator opening the tools does not stop
+ * being Alice on the board, and coming back from "Exit to site" lands on Alice's
+ * RSVPs again rather than on an operator account holding a seat at a table.
+ *
+ * So the stored id is keyed by *surface*, decided by the path, and an admin is
+ * not a role the board can be in: a site identity that resolves to `admin` is
+ * moved over to the operator key and the board falls back to the picker. That
+ * case is real — before the split, entering the tools overwrote the one stored
+ * id, so browsers that used the old door are carrying an operator as their
+ * board identity right now.
+ *
  * Every `localStorage` access is wrapped: Safari private mode throws.
  */
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "react-router";
 import type { User } from "../../shared/api-types";
 import { ApiError, apiFetch } from "../api/client";
 import { useToast } from "../components/Toast";
 
 export const SUSPENDED_MESSAGE = "This account has been suspended.";
 
-const STORAGE_KEY = "gn.userId";
+/** Which site you are on. `/admin` is its own, with its own memory. */
+export type Surface = "site" | "admin";
 
-function readStoredId(): string | null {
+const STORAGE_KEYS: Record<Surface, string> = {
+  site: "gn.userId",
+  admin: "gn.adminId",
+};
+
+export function surfaceFor(pathname: string): Surface {
+  return pathname === "/admin" || pathname.startsWith("/admin/") ? "admin" : "site";
+}
+
+function readStoredId(surface: Surface): string | null {
   try {
-    return window.localStorage.getItem(STORAGE_KEY);
+    return window.localStorage.getItem(STORAGE_KEYS[surface]);
   } catch {
     return null;
   }
 }
 
-function writeStoredId(id: string | null): void {
+function writeStoredId(surface: Surface, id: string | null): void {
   try {
-    if (id === null) window.localStorage.removeItem(STORAGE_KEY);
-    else window.localStorage.setItem(STORAGE_KEY, id);
+    if (id === null) window.localStorage.removeItem(STORAGE_KEYS[surface]);
+    else window.localStorage.setItem(STORAGE_KEYS[surface], id);
   } catch {
     // Private browsing: identity is then session-only, which still works.
   }
@@ -47,6 +72,8 @@ export type IdentityStatus = "loading" | "anonymous" | "ready" | "error";
 
 interface IdentityValue {
   status: IdentityStatus;
+  /** Which site's identity this is — the board's, or the operator tools'. */
+  surface: Surface;
   user: User | null;
   userId: string | null;
   isPlayer: boolean;
@@ -63,12 +90,34 @@ const IdentityContext = createContext<IdentityValue | null>(null);
 export function IdentityProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const toast = useToast();
+  const surface = surfaceFor(useLocation().pathname);
   const [status, setStatus] = useState<IdentityStatus>("loading");
   const [user, setUser] = useState<User | null>(null);
   const [attempt, setAttempt] = useState(0);
 
+  // Crossing between the board and the tools swaps *who you are*, and waiting
+  // for an effect to notice would render one surface holding the other's user:
+  // a frame of the operator bar over "you aren't an operator", or of the board
+  // wearing an admin. Resetting during render is React's own answer to derived
+  // state, and the boot effect below picks it up in the same commit.
+  const [shownSurface, setShownSurface] = useState<Surface>(surface);
+  if (shownSurface !== surface) {
+    setShownSurface(surface);
+    setUser(null);
+    setStatus("loading");
+  }
+
+  // Skips the first run: clearing an empty cache would only cancel the queries
+  // mounting alongside it.
+  const lastCleared = useRef(surface);
+
   useEffect(() => {
-    const storedId = readStoredId();
+    if (lastCleared.current !== surface) {
+      lastCleared.current = surface;
+      queryClient.removeQueries();
+    }
+
+    const storedId = readStoredId(surface);
     if (!storedId) {
       setUser(null);
       setStatus("anonymous");
@@ -82,6 +131,20 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
       try {
         const me = await apiFetch<User>("/api/me", { userId: storedId });
         if (cancelled) return;
+
+        // An operator is not a person on the board. This is the one-way door
+        // out of the state the old single-key storage left behind: hand the id
+        // to the operator surface, which is where it belongs, and send the
+        // board back to the picker rather than rendering a board for someone
+        // who cannot RSVP to anything on it.
+        if (surface === "site" && me.role === "admin") {
+          writeStoredId("site", null);
+          if (!readStoredId("admin")) writeStoredId("admin", me.id);
+          setUser(null);
+          setStatus("anonymous");
+          return;
+        }
+
         setUser(me);
         setStatus("ready");
       } catch (error) {
@@ -91,7 +154,7 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
           // AUTH_REQUIRED / UNKNOWN_USER — the stored id is worthless now.
           // ACCOUNT_SUSPENDED — the id is real but unusable; say so, because a
           // picker appearing out of nowhere reads as a crash.
-          writeStoredId(null);
+          writeStoredId(surface, null);
           setUser(null);
           setStatus("anonymous");
           if (suspended) toast.show(SUSPENDED_MESSAGE, "error");
@@ -104,11 +167,11 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [attempt, toast]);
+  }, [attempt, toast, surface, queryClient]);
 
   const signIn = useCallback(
     (next: User) => {
-      writeStoredId(next.id);
+      writeStoredId(surface, next.id);
       setUser(next);
       setStatus("ready");
       // Nothing cached belongs to the new person — `myRsvp` on an event detail
@@ -116,21 +179,22 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
       // to cancel.
       queryClient.removeQueries();
     },
-    [queryClient],
+    [queryClient, surface],
   );
 
   const signOut = useCallback(() => {
-    writeStoredId(null);
+    writeStoredId(surface, null);
     setUser(null);
     setStatus("anonymous");
     queryClient.removeQueries();
-  }, [queryClient]);
+  }, [queryClient, surface]);
 
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
 
   const value = useMemo<IdentityValue>(
     () => ({
       status,
+      surface,
       user,
       userId: user?.id ?? null,
       isPlayer: user?.role === "player",
@@ -140,7 +204,7 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
       signOut,
       retry,
     }),
-    [status, user, signIn, signOut, retry],
+    [status, surface, user, signIn, signOut, retry],
   );
 
   return <IdentityContext.Provider value={value}>{children}</IdentityContext.Provider>;

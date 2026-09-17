@@ -44,7 +44,7 @@ export function App() {
     );
   }
 
-  // `/admin` owns its own door (`AdminGate`), so a stranger who types that URL
+  // `/admin` signs itself in (`AdminGate`), so a stranger who types that URL
   // must not be handed the player picker instead — it would be the one place
   // the main site "leaked" into the operator route, just in the other
   // direction. Every other path without an identity gets the picker.

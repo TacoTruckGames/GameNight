@@ -3,8 +3,13 @@
  *
  * Two shells, on purpose. Everything the public uses hangs off `AppShell`;
  * `/admin` hangs off `AdminShell`, which carries the orange operator bar. The
- * main site never links or redirects into `/admin` — an operator types the URL
- * — so a player who lands there deliberately gets a door, not a bounce.
+ * main site never links or redirects into `/admin` — an operator types the URL,
+ * and typing it is the whole entry mechanism: the tools sign themselves in as
+ * the provisioned operator account.
+ *
+ * The two shells also remember two different people. `/admin` keeps its own
+ * stored identity, so the tools can be open in one tab as the operator while
+ * the board is open in another as Alice, and neither one moves the other.
  *
  * Within the main site, role is a redirect rather than a hidden link: a player
  * who deep-links `/organize` lands somewhere useful instead of on a 403.
@@ -34,7 +39,9 @@ import { EventsPage } from "./pages/EventsPage";
 import { MyRsvpPage } from "./pages/MyRsvpPage";
 import { OrganizerPage } from "./pages/OrganizerPage";
 
-/** An admin on the main site is just a reader: send them to the board, not to `/admin`. */
+/** Role guards for the board's two personal pages. An operator is not a role
+    the board can be in at all — see `IdentityContext` — so these are only ever
+    deciding between a player and an organizer. */
 function PlayerOnly({ children }: { children: ReactNode }) {
   const { isPlayer } = useIdentity();
   return isPlayer ? <>{children}</> : <Navigate to="/" replace />;
@@ -83,9 +90,9 @@ export function AppRoutes() {
         />
       </Route>
 
-      {/* `AdminShell` shows the operator door itself when the visitor is not an
-          admin, so these paths never redirect away — typing the URL is the
-          whole entry mechanism. The API is the real gate (403 `FORBIDDEN`). */}
+      {/* `AdminShell` signs itself in when the tools have no stored operator
+          yet, so these paths never redirect away — typing the URL is the whole
+          entry mechanism. The API is the real gate (403 `FORBIDDEN`). */}
       <Route path="admin" element={<AdminShell />}>
         <Route index element={<AdminOverviewPage />} />
         <Route path="users" element={<AdminUsersPage />} />

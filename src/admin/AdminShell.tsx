@@ -6,6 +6,11 @@
  * to type `/admin`. Everything below the orange bar should therefore announce
  * that you have arrived somewhere else.
  *
+ * It is also a different session: the operator identity is stored under its own
+ * key, so signing in here leaves the board's identity alone and "Exit to site"
+ * puts you back as whoever you were. `AdminGate` below is not a door but the
+ * sign-in itself, rendered only while it is happening.
+ *
  * The bar is the same orange in both themes and is never dismissible: "am I
  * about to change live data?" must not depend on which theme you are in or on
  * noticing a subtle tint.
