@@ -381,7 +381,7 @@ export function EventForm({ event, onDone }: { event?: EditableEvent; onDone?: (
         {/* Only once a suggestion has been picked. Free text is not a place —
             there is nothing to show, and geocoding a half-typed line would
             render a confident map of somewhere the organizer did not mean. */}
-        {placeId !== null ? <PlacePreviewMap query={location} /> : null}
+        {placeId !== null ? <PlacePreviewMap query={location} placeId={placeId} /> : null}
       </div>
 
       <div className="field">

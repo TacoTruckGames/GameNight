@@ -26,13 +26,14 @@
  */
 
 import { useEffect, useState } from "react";
+import { mapsSearchFor } from "../../shared/maps-links";
 import { useIdentity } from "../identity/IdentityContext";
 
 /** Must be one of `MAP_PRESETS` in `worker/routes/places.ts`; anything else is a 400. */
 const WIDTH = 640;
 const HEIGHT = 320;
 
-export function PlacePreviewMap({ query }: { query: string }) {
+export function PlacePreviewMap({ query, placeId }: { query: string; placeId: string | null }) {
   const { userId } = useIdentity();
   const [url, setUrl] = useState<string | null>(null);
 
@@ -63,14 +64,26 @@ export function PlacePreviewMap({ query }: { query: string }) {
 
   if (url === null) return null;
 
+  // Tappable, like every other map in the app: a picture of a place you cannot
+  // open is a picture. Search rather than directions, because at this point the
+  // organizer is checking they picked the right building, not driving to it —
+  // and the place id makes that check exact rather than a "did you mean".
   return (
-    <img
-      className="minimap__img place-preview"
-      src={url}
-      width={WIDTH}
-      height={HEIGHT}
-      decoding="async"
-      alt={`Map showing ${query}`}
-    />
+    <a
+      className="minimap place-preview"
+      href={mapsSearchFor(query, placeId)}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <img
+        className="minimap__img"
+        src={url}
+        width={WIDTH}
+        height={HEIGHT}
+        decoding="async"
+        alt={`Map showing ${query}`}
+      />
+      <span className="visually-hidden"> — opens in Google Maps</span>
+    </a>
   );
 }

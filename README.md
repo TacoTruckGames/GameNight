@@ -516,7 +516,9 @@ cares about — S1–S4 are the same code and the same tests they were at hour f
   preview costs one map and no Place Details, and returns the byte-identical image the coordinates would.
   The event route is bounded by an id and a matching `place_id`; this one has no id to bind to, so it is
   gated to organizers, which is also why the component fetches it by hand: an `<img src>` cannot send
-  `X-User-Id`, and pointing a plain `<img>` at it answers 401 forever.
+  `X-User-Id`, and pointing a plain `<img>` at it answers 401 forever. It opens Maps when tapped, like every
+  other map here — a *search* rather than directions, because at that point the organizer is checking they
+  picked the right building, not driving to it, and the place id makes that check exact.
 - **The review pass and desktop breakpoint** — because "a stranger could open it and use it" is a claim
   worth testing with fresh eyes, and the findings were real.
 - **Descriptions, head count, role badge** — small, each closing a gap the audit or the review found.

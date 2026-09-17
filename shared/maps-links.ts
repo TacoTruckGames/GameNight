@@ -52,10 +52,22 @@ function disambiguator(event: MappableEvent): string | null {
 
 /** Opens the venue in Maps. */
 export function mapsSearchUrl(event: MappableEvent): string {
-  const params = new URLSearchParams({ api: "1", query: query(event) });
+  return mapsSearchFor(query(event), disambiguator(event));
+}
+
+/**
+ * The same search, for a venue that is not an event yet.
+ *
+ * The posting form has a label and a place id and no stored row to build a
+ * `MappableEvent` from — so this takes the two parts directly and
+ * `mapsSearchUrl` above delegates to it, rather than the form inventing an
+ * event-shaped object with a placeholder address and zeroed coordinates to get
+ * past a type.
+ */
+export function mapsSearchFor(query: string, placeId: string | null): string {
+  const params = new URLSearchParams({ api: "1", query });
   // A place id makes the destination exact: no "did you mean", and the right
   // branch of a chain with six locations in one city.
-  const placeId = disambiguator(event);
   if (placeId) params.set("query_place_id", placeId);
   return `${SEARCH}?${params.toString()}`;
 }
