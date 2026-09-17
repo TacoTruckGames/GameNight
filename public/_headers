@@ -5,8 +5,14 @@
 # (React's `style={{…}}` on the sheet drag, the scrim and the skeletons),
 # images from this origin plus the `blob:` URL the preview map is drawn from,
 # fetches to this origin only. Maps open in a new tab, which CSP does not govern.
+#
+# The one third party: Cloudflare Web Analytics, which the zone injects into
+# every HTML response as `<script defer src="https://static.cloudflareinsights.com/beacon.min.js">`
+# and which reports to `cloudflareinsights.com`. Named explicitly rather than
+# widened to a wildcard — the first deploy of this file blocked it and the
+# console said so on every page.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self' https://cloudflareinsights.com; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
