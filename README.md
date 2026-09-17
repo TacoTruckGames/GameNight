@@ -239,6 +239,11 @@ half-second spinner.
   audited in both themes like every other pair.
 - **Search and the type filter share one line**, and every view is chronological, so the board's chrome is
   two rows before the first event instead of four.
+- **The chrome gave 27px back.** The header was 68px around a 44px control, and the tab bar 68px around two
+  words; the icon sits beside its label now rather than above it, and both are padded to what their tap
+  target actually needs. Every target is still exactly **44px** — the compression came out of the wrappers,
+  not the things you press. Header 68 → 56, tabs 68 → 53, the View pill 54 → 50. On the week view that is
+  1 card fully visible → 4.
 - **No pagination** (`LIMIT 200`); ~50 live events fit on one screen.
 - **RSVP lives on the card**, not behind the detail page: the primary user is on a phone on a commute, so the
   decision happens where the information is.

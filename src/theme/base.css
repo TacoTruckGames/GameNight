@@ -74,10 +74,14 @@ a {
   padding-top: env(safe-area-inset-top);
 }
 
+/* The identity button is 44px because it is a tap target, so it — not the
+   padding — is the header's floor. 12px of padding put the band at 68px for a
+   control that needed 44; 6px puts it at 56 and hands the 12px back to the
+   board, which is the only thing on screen anyone came for. */
 .shell__header-inner {
   max-width: var(--page-max);
   margin: 0 auto;
-  padding: var(--space-3) var(--space-4);
+  padding: 6px var(--space-4);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -188,8 +192,9 @@ a {
   max-width: var(--page-max);
   margin: 0 auto;
   /* Deep enough that the last card's action row scrolls clear of both the tab
-     bar and a toast sitting above it. */
-  padding: var(--space-4) var(--space-4) calc(var(--tap-target) + var(--space-5) * 3);
+     bar and a toast sitting above it. Keyed to the bar's own height — 44px of
+     tab plus its 4px of padding — so compressing one moves the other. */
+  padding: var(--space-4) var(--space-4) calc(var(--tap-target) + var(--space-2) + var(--space-5) * 2);
 }
 
 .shell__tabs {
@@ -211,15 +216,19 @@ a {
   padding: var(--space-1);
 }
 
+/* One line: the icon sits beside the label rather than above it. Stacked, a tab
+   was 44px of tap target with a 20px icon and a 17px label inside it, and the
+   bar came to 68px for two words. Side by side the same 44px target holds both,
+   and the bar is 52 — 16px of board, on every screen of the app. */
 .tab {
   flex: 1;
   min-height: var(--tap-target);
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: var(--space-1);
-  padding: var(--space-2);
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
   color: var(--color-muted);
   text-decoration: none;
   font-size: var(--font-size-sm);
@@ -603,8 +612,8 @@ a {
 .filters {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 
 /* Search and the type picker narrow the same list, so they share a line and
@@ -1092,7 +1101,9 @@ textarea.input {
 .segmented {
   display: flex;
   gap: var(--space-1);
-  padding: var(--space-1);
+  /* 2px, not 4: the options inside are already 44px tall, so every pixel here
+     is pill-around-a-pill and comes straight off the board below. */
+  padding: 2px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-pill);
   background: var(--color-surface);
@@ -1714,12 +1725,10 @@ textarea.input {
 
   /* On the brand band the tab labels sit on the dark gradient, not on a light
      surface, so both states come from the `--brand-*` ramp: muted 10:1 for
-     inactive, white on a `--brand-line` pill for current. Icon beside the
-     label, not above it — a header row is wide and short. */
+     inactive, white on a `--brand-line` pill for current. The icon already sits
+     beside the label everywhere — this block used to be the only place it did. */
   .tab {
     flex: none;
-    flex-direction: row;
-    gap: var(--space-2);
     padding-inline: var(--space-3);
     border: 1px solid transparent;
     border-radius: var(--radius-pill);
