@@ -86,10 +86,7 @@ export function AttendeesPage({ asSheet = false }: { asSheet?: boolean }) {
       <div className="card">
         <div className="stack">
           <div className="venue">
-            <MapLink event={event} className="card__address venue__link" />
-            {event.place && event.place.address !== event.location ? (
-              <p className="text-sm muted venue__address">{event.place.address}</p>
-            ) : null}
+            <MapLink event={event} className="card__address venue__link" withAddress />
             {event.place && maps.map ? (
               <EventMiniMap eventId={event.id} place={event.place} location={event.location} />
             ) : null}

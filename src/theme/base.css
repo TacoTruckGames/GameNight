@@ -1700,10 +1700,24 @@ textarea.input {
   color: var(--color-text);
 }
 
+/* The label and the address, as two lines of one link. `align-items: start` on
+   the anchor so the pin sits with the first line rather than centring itself
+   against both. */
+.venue__lines {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
 .venue__address {
-  /* Google's canonical string, shown only when it says something the label
-     does not. Indented under the pin it belongs to. */
-  padding-left: calc(18px + var(--space-2));
+  color: var(--color-muted);
+  font-size: var(--font-size-sm);
+}
+
+.venue__link:has(.venue__lines) {
+  align-items: flex-start;
+  padding-block: var(--space-2);
 }
 
 .venue__directions {

@@ -115,10 +115,7 @@ export function EventDetailPage({ asSheet = false }: { asSheet?: boolean }) {
               confirmed (only when it adds something the label does not already
               say), the map, and the one button the phone user came for. */}
           <div className="venue">
-            <MapLink event={detail} className="card__address venue__link" />
-            {detail.place && detail.place.address !== detail.location ? (
-              <p className="text-sm muted venue__address">{detail.place.address}</p>
-            ) : null}
+            <MapLink event={detail} className="card__address venue__link" withAddress />
             {/* The map is itself a link to the same directions URL, so where
                 there is a map the button underneath was a second copy of it.
                 Where there is none — a free-text venue, or a deployment with no

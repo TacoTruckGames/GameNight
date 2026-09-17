@@ -18,9 +18,21 @@ export function MapLink({
   event,
   className = "card__address",
   compact = false,
+  withAddress = false,
 }: {
   event: MappableEvent;
   className?: string;
+  /**
+   * Put Google's canonical address inside the link, under the label.
+   *
+   * It used to sit outside as its own paragraph, and looked wrong for a reason
+   * worth writing down: the label is a 44px tap target with its text centred,
+   * so there was ~15px of empty box between the words and the address — a gap
+   * nothing had put there on purpose. Inside, the two are lines of one control:
+   * the gap is ordinary line spacing, and the address becomes part of what you
+   * can tap rather than a caption sitting under it.
+   */
+  withAddress?: boolean;
   /**
    * Draw the venue, don't link it.
    *
@@ -39,10 +51,21 @@ export function MapLink({
       </span>
     );
   }
+  // Only when it says something the label does not already say.
+  const address =
+    withAddress && event.place && event.place.address !== event.location ? event.place.address : null;
+
   return (
     <a className={className} href={mapsSearchUrl(event)} target="_blank" rel="noopener noreferrer">
       <MapPin />
-      <span className="card__address-text">{event.location}</span>
+      {address === null ? (
+        <span className="card__address-text">{event.location}</span>
+      ) : (
+        <span className="venue__lines">
+          <span className="card__address-text">{event.location}</span>
+          <span className="venue__address">{address}</span>
+        </span>
+      )}
       <span className="visually-hidden"> — opens in Google Maps</span>
     </a>
   );
