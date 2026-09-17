@@ -790,7 +790,6 @@ a {
 
 /* ------------------------------------------------------- agenda + calendar -- */
 
-
 .agenda__head {
   display: flex;
   align-items: baseline;
@@ -2065,7 +2064,6 @@ textarea.input {
     justify-content: flex-start;
     gap: var(--space-4);
   }
-
 }
 
 /* The month grid is the one element that genuinely wants more than 640px, so

@@ -114,7 +114,13 @@ describe("createEventSchema", () => {
   });
 
   it("reports every bad field at once, so the form can highlight all of them", () => {
-    const result = schema.safeParse({ title: "", gameType: "chess", startsAt: "2020-01-01T00:00:00Z", location: "", capacity: 0 });
+    const result = schema.safeParse({
+      title: "",
+      gameType: "chess",
+      startsAt: "2020-01-01T00:00:00Z",
+      location: "",
+      capacity: 0,
+    });
     expect(result.success).toBe(false);
     if (!result.success) {
       const paths = new Set(result.error.issues.map((issue) => issue.path.join(".")));
@@ -129,12 +135,13 @@ describe("createUserSchema", () => {
     expect(result.success && result.data.name).toBe("Alice");
   });
 
-  it.each([["blank", "   "], ["missing", undefined], ["too long", "x".repeat(41)]])(
-    "rejects a %s name",
-    (_label, name) => {
-      expect(createUserSchema.safeParse({ name }).success).toBe(false);
-    },
-  );
+  it.each([
+    ["blank", "   "],
+    ["missing", undefined],
+    ["too long", "x".repeat(41)],
+  ])("rejects a %s name", (_label, name) => {
+    expect(createUserSchema.safeParse({ name }).success).toBe(false);
+  });
 
   it("accepts exactly 40 characters", () => {
     expect(createUserSchema.safeParse({ name: "x".repeat(40) }).success).toBe(true);
@@ -146,18 +153,23 @@ describe("createUserSchema", () => {
     expect(createUserSchema.safeParse({ name: "Alice", role: "organizer" }).success).toBe(true);
   });
 
-  it.each([["unknown", "admin"], ["blank", ""], ["wrong case", "Player"]])(
-    "rejects a %s role",
-    (_label, role) => {
-      expect(createUserSchema.safeParse({ name: "Alice", role }).success).toBe(false);
-    },
-  );
+  it.each([
+    ["unknown", "admin"],
+    ["blank", ""],
+    ["wrong case", "Player"],
+  ])("rejects a %s role", (_label, role) => {
+    expect(createUserSchema.safeParse({ name: "Alice", role }).success).toBe(false);
+  });
 });
 
 describe("eventsQuerySchema", () => {
   it("normalises absent, blank and whitespace filters to undefined", () => {
     expect(eventsQuerySchema.parse({})).toEqual({ q: undefined, gameType: undefined, sort: "date" });
-    expect(eventsQuerySchema.parse({ q: "", gameType: "" })).toEqual({ q: undefined, gameType: undefined, sort: "date" });
+    expect(eventsQuerySchema.parse({ q: "", gameType: "" })).toEqual({
+      q: undefined,
+      gameType: undefined,
+      sort: "date",
+    });
     expect(eventsQuerySchema.parse({ q: "   " })).toEqual({ q: undefined, gameType: undefined, sort: "date" });
   });
 

@@ -41,10 +41,13 @@ export const eventSortSchema = z.enum(EVENT_SORTS);
  */
 export function createEventSchema(now: Date) {
   return z.object({
-    title: z.string().trim().min(1, "Title is required").max(TITLE_MAX, `Title must be ${TITLE_MAX} characters or fewer`),
+    title: z
+      .string()
+      .trim()
+      .min(1, "Title is required")
+      .max(TITLE_MAX, `Title must be ${TITLE_MAX} characters or fewer`),
     gameType: gameTypeSchema,
-    startsAt: z
-      .iso
+    startsAt: z.iso
       .datetime({ offset: true, message: "Start time must be an ISO-8601 date-time" })
       // Unparseable values short-circuit to `true` so a malformed date reports
       // one issue (the format one) instead of two.
@@ -266,7 +269,11 @@ export const intFromQuery = (value: unknown) => (typeof value === "string" && va
 const pageSchema = z.preprocess(intFromQuery, z.int().min(1).max(PAGE_MAX).optional());
 
 export const suspendSchema = z.object({
-  reason: z.string().trim().max(SUSPEND_REASON_MAX, `Reason must be ${SUSPEND_REASON_MAX} characters or fewer`).optional(),
+  reason: z
+    .string()
+    .trim()
+    .max(SUSPEND_REASON_MAX, `Reason must be ${SUSPEND_REASON_MAX} characters or fewer`)
+    .optional(),
 });
 export type SuspendInput = z.infer<typeof suspendSchema>;
 

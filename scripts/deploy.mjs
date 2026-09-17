@@ -67,6 +67,8 @@ const tsc = fileURLToPath(new URL("../node_modules/typescript/bin/tsc", import.m
 for (const config of ["tsconfig.json", "tsconfig.worker.json", "test/tsconfig.json"]) {
   run(`Typecheck (${config})`, tsc, ["-p", config, "--noEmit"]);
 }
+run("Lint", fileURLToPath(new URL("../node_modules/.bin/eslint", import.meta.url)), ["."]);
+run("Format check", fileURLToPath(new URL("../node_modules/.bin/prettier", import.meta.url)), ["--check", "."]);
 run("Building client + worker", viteBin, ["build"]);
 run(`Applying migrations to remote D1 "${DB}"`, wranglerBin, ["d1", "migrations", "apply", DB, "--remote"], {
   input: "y\n",

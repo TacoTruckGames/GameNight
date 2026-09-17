@@ -54,8 +54,12 @@ export function HostedEventCard({ event }: { event: EventSummary }) {
           it, and a finished night is not a seating question at all. */}
       <span className={`ecard__meta ecard__meta--${state === "joined" ? "open" : state}`}>
         {state === "cancelled" ? "Cancelled" : attendanceLabel(event.attendeeCount, past)}
-        {state === "full" ? " · Full" : state === "open" ? ` · ${seatsLeftLabel(event.seatsLeft, event.capacity)}` : ""} ·{" "}
-        {gameTypeLabel(event.gameType)}
+        {state === "full"
+          ? " · Full"
+          : state === "open"
+            ? ` · ${seatsLeftLabel(event.seatsLeft, event.capacity)}`
+            : ""}{" "}
+        · {gameTypeLabel(event.gameType)}
       </span>
 
       {/* Covered by the title's stretched link, same as the player's card, so

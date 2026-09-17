@@ -50,8 +50,8 @@ function ErrorCard({ entry }: { entry: ErrorEntry }) {
 
       {entry.resolvedAt ? (
         <p className="text-sm muted">
-          Resolved <time dateTime={toDateTimeAttr(entry.resolvedAt)}>{formatEventDateTime(entry.resolvedAt)}</time> —
-          it will reopen if it happens again.
+          Resolved <time dateTime={toDateTimeAttr(entry.resolvedAt)}>{formatEventDateTime(entry.resolvedAt)}</time> — it
+          will reopen if it happens again.
         </p>
       ) : null}
 

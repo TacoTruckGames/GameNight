@@ -27,7 +27,9 @@ import type {
   EventSummary,
   Page,
   Role,
-  User, EventDetail } from "../../shared/api-types";
+  User,
+  EventDetail,
+} from "../../shared/api-types";
 import type { GameType } from "../../shared/game-types";
 import { ADMIN_PAGE_SIZE, type EventPatch, type AdminEventsQuery, type AdminUsersQuery } from "../../shared/schemas";
 
@@ -366,11 +368,7 @@ export async function hasRsvp(db: D1Database, eventId: string, playerId: string)
  * the client renders it as cancelled. That holds in both modes — paging back a
  * week should not quietly rewrite what happened to a night you had booked.
  */
-export async function listPlayerRsvps(
-  db: D1Database,
-  playerId: string,
-  filters: TimeFilters,
-): Promise<EventSummary[]> {
+export async function listPlayerRsvps(db: D1Database, playerId: string, filters: TimeFilters): Promise<EventSummary[]> {
   const { start, end } = timeBounds(filters);
   const { results } = await db
     .prepare(
@@ -707,12 +705,7 @@ export async function updateEvent(
 }
 
 /** Cancel or restore. `cancelled_at` is cleared on restore so it never lies. */
-export async function setEventStatus(
-  db: D1Database,
-  id: string,
-  status: EventStatus,
-  now: string,
-): Promise<void> {
+export async function setEventStatus(db: D1Database, id: string, status: EventStatus, now: string): Promise<void> {
   await db
     .prepare("UPDATE events SET status = ?2, cancelled_at = ?3 WHERE id = ?1")
     .bind(id, status, status === "cancelled" ? now : null)

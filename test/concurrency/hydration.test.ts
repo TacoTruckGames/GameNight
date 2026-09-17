@@ -117,8 +117,8 @@ describe("an event seeded straight into D1", () => {
     ]);
 
     // The seeded player must get 200 already_confirmed, never a 201 or a 409.
-    expect(responses[0]!.status).toBe(200);
-    expect((responses[0]!.body as RsvpResponse).status).toBe("already_confirmed");
+    expect(responses[0].status).toBe(200);
+    expect((responses[0].body as RsvpResponse).status).toBe("already_confirmed");
 
     const newcomerStatuses = responses.slice(1).map((response) => response.status);
     expect(newcomerStatuses.filter((status) => status === 201)).toHaveLength(2);

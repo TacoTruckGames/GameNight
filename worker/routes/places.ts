@@ -22,13 +22,7 @@ import { z } from "zod";
 import { getEventPlace } from "../db/queries";
 import type { AppEnv } from "../lib/context";
 import { ApiError } from "../lib/errors";
-import {
-  chargeBudget,
-  placesFromEnv,
-  redact,
-  type LocationBias,
-  type PlacesFailure,
-} from "../lib/places";
+import { chargeBudget, placesFromEnv, redact, type LocationBias, type PlacesFailure } from "../lib/places";
 import { reportError } from "../lib/report";
 import { parseQuery } from "../lib/validate";
 import { requireOrganizerOrAdmin } from "../middleware/auth";

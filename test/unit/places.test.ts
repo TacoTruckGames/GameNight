@@ -51,11 +51,11 @@ interface Call {
 function queued(...makers: Array<() => Response>): { fetcher: Fetcher; calls: Call[] } {
   const calls: Call[] = [];
   let index = 0;
-  const fetcher: Fetcher = async (url, init) => {
+  const fetcher: Fetcher = (url, init) => {
     calls.push({ url, init: init ?? {} });
     const make = makers[Math.min(index, makers.length - 1)]!;
     index += 1;
-    return make();
+    return Promise.resolve(make());
   };
   return { fetcher, calls };
 }
@@ -274,9 +274,7 @@ describe("places.details", () => {
     ["string coordinates", { id: "p", formattedAddress: "a", location: { latitude: "1", longitude: "2" } }],
     ["not json at all", null],
   ])("calls a response with %s malformed", async (_label, body) => {
-    const { fetcher } = queued(() =>
-      body === null ? new Response("<html>502</html>", { status: 200 }) : json(body),
-    );
+    const { fetcher } = queued(() => (body === null ? new Response("<html>502</html>", { status: 200 }) : json(body)));
     expect(await client(fetcher).details("p")).toEqual({ ok: false, reason: "malformed" });
   });
 });

@@ -17,11 +17,21 @@ export interface MapSize {
 }
 
 export function eventMapKey(origin: string, eventId: string, size: MapSize, version: string): string {
-  const params = new URLSearchParams({ w: String(size.width), h: String(size.height), scale: String(size.scale), v: version });
+  const params = new URLSearchParams({
+    w: String(size.width),
+    h: String(size.height),
+    scale: String(size.scale),
+    v: version,
+  });
   return `${origin}/api/events/${encodeURIComponent(eventId)}/map?${params.toString()}`;
 }
 
 export function previewMapKey(origin: string, query: string, size: MapSize): string {
-  const params = new URLSearchParams({ q: query.trim(), w: String(size.width), h: String(size.height), scale: String(size.scale) });
+  const params = new URLSearchParams({
+    q: query.trim(),
+    w: String(size.width),
+    h: String(size.height),
+    scale: String(size.scale),
+  });
   return `${origin}/api/places/map?${params.toString()}`;
 }

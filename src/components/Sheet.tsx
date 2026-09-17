@@ -74,8 +74,7 @@ const ENGAGE = 6;
 /** Enough movement to tell a drag's direction from a wobble. */
 const DIRECTION = 3;
 /** Everything Tab would stop on, so the trap below can wrap around it. */
-const FOCUSABLE =
-  'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])';
+const FOCUSABLE = 'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
 type Gesture = {
   from: number;
@@ -108,7 +107,9 @@ export function Sheet({
   // `onClose` is a fresh closure every render, and the native listeners below
   // must not be torn down and re-attached for that. One ref, read at call time.
   const closeRef = useRef(onClose);
-  closeRef.current = onClose;
+  useEffect(() => {
+    closeRef.current = onClose;
+  });
 
   // A callback ref, not `useRef` + an effect: the caller may still be loading
   // when this mounts, so an effect that ran once would focus nothing.
@@ -169,7 +170,14 @@ export function Sheet({
     // Mid-read, the body is a scroll container first and a sheet second — the
     // grip is the deliberate exception, which is what a grip is for.
     if (!onGrip && (bodyRef.current?.scrollTop ?? 0) > 0) return false;
-    gesture.current = { from: y, last: y, at: timeStamp, velocity: 0, mode: onGrip ? "dismiss" : null, captured: false };
+    gesture.current = {
+      from: y,
+      last: y,
+      at: timeStamp,
+      velocity: 0,
+      mode: onGrip ? "dismiss" : null,
+      captured: false,
+    };
     return true;
   };
 
@@ -299,7 +307,17 @@ export function Sheet({
             one markup shape, and the decision lives in the stylesheet with the
             rest of the responsive behaviour. */}
         <button type="button" className="sheet__close" onClick={onClose} aria-label="Close">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true" focusable="false">
+          <svg
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            aria-hidden="true"
+            focusable="false"
+          >
             <path d="M6 6l12 12M18 6L6 18" />
           </svg>
         </button>

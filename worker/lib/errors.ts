@@ -92,5 +92,4 @@ export const onError: ErrorHandler<AppEnv> = async (err, c) => {
 };
 
 /** Unknown `/api/*` path: still JSON, still the same shape. */
-export const apiNotFound = (c: Context<AppEnv>) =>
-  c.json(errorBody("NOT_FOUND", "That endpoint does not exist."), 404);
+export const apiNotFound = (c: Context<AppEnv>) => c.json(errorBody("NOT_FOUND", "That endpoint does not exist."), 404);

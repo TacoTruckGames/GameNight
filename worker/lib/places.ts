@@ -25,9 +25,7 @@
 
 import type { Context } from "hono";
 import type { EventPlace, PlaceSuggestion } from "../../shared/api-types";
-import type { ResolvedPlace } from "../db/queries";
-
-import type { PlaceUpdate } from "../db/queries";
+import type { PlaceUpdate, ResolvedPlace } from "../db/queries";
 import type { AppEnv } from "./context";
 import { ApiError, fieldError } from "./errors";
 import { reportError } from "./report";
@@ -311,9 +309,11 @@ function toSuggestions(payload: unknown): PlaceSuggestion[] | null {
 }
 
 function toDetails(payload: unknown): PlaceDetails | null {
-  const body = payload as
-    | { id?: unknown; formattedAddress?: unknown; location?: { latitude?: unknown; longitude?: unknown } }
-    | null;
+  const body = payload as {
+    id?: unknown;
+    formattedAddress?: unknown;
+    location?: { latitude?: unknown; longitude?: unknown };
+  } | null;
   const id = body?.id;
   const address = body?.formattedAddress;
   const lat = body?.location?.latitude;
@@ -325,7 +325,7 @@ function toDetails(payload: unknown): PlaceDetails | null {
   return { id, address, lat, lng };
 }
 
-async function readJson(response: Response): Promise<unknown | undefined> {
+async function readJson(response: Response): Promise<unknown> {
   try {
     return JSON.parse(await response.text()) as unknown;
   } catch {
@@ -521,8 +521,7 @@ export function placesFromEnv(env: Env, fetcher?: Fetcher): PlacesClient | null 
  * operator to ignore it, which is the only way an error log can actually fail.
  */
 export type PlaceResolution =
-  | { ok: true; place: ResolvedPlace }
-  | { ok: false; reason: PlacesFailure | "unconfigured" };
+  { ok: true; place: ResolvedPlace } | { ok: false; reason: PlacesFailure | "unconfigured" };
 
 /**
  * Resolve a client-supplied place id into the four columns we store, charging
@@ -536,7 +535,7 @@ export async function resolvePlaceId(
   env: Env,
   db: D1Database,
   placeId: string,
-  sessionToken?: string | undefined,
+  sessionToken?: string,
 ): Promise<PlaceResolution> {
   const client = placesFromEnv(env);
   if (!client) return { ok: false, reason: "unconfigured" };

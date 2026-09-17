@@ -23,11 +23,7 @@ import { addRsvpsDirectly, projectedCount, roomStub, rsvpCount, seedEvent, seedU
  * stub returns a pipelining proxy, and letting `expect().rejects` poke at that
  * proxy spawns extra promises that reject with nobody listening.
  */
-async function callRsvp(
-  stub: ReturnType<typeof roomStub>,
-  eventId: string,
-  playerId: string,
-): Promise<unknown> {
+async function callRsvp(stub: ReturnType<typeof roomStub>, eventId: string, playerId: string): Promise<unknown> {
   return stub.rsvp(eventId, playerId);
 }
 
@@ -61,7 +57,7 @@ describe("lazy hydration", () => {
     expect(outcome).toEqual({ kind: "created", attendeeCount: 3, capacity: 5 });
 
     const room = await readRoom(event);
-    expect(room.meta).toEqual([{ event_id: event.id, capacity: 5, hydrated_at: expect.any(String) }]);
+    expect(room.meta).toEqual([{ event_id: event.id, capacity: 5, hydrated_at: expect.any(String) as string }]);
     expect(room.members.sort()).toEqual([...seated.map((player) => player.id), newcomer.id].sort());
   });
 

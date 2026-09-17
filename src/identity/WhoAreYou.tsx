@@ -24,10 +24,9 @@
  */
 
 import { useEffect, useId, useRef, useState } from "react";
-import { USERS_LIMIT_DEFAULT } from "../../shared/schemas";
 import type { FormEvent, KeyboardEvent } from "react";
 import type { Role } from "../../shared/api-types";
-import { createUserSchema, NAME_MAX } from "../../shared/schemas";
+import { NAME_MAX, USERS_LIMIT_DEFAULT, createUserSchema } from "../../shared/schemas";
 import { useCreateUser, useUsers } from "../api/hooks";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBanner } from "../components/ErrorBanner";
@@ -79,9 +78,7 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
   // Open on the tab you are already signed in under, with yourself preselected.
   // An admin has no tab here, so they land on the player one with nothing picked.
   const [role, setRole] = useState<PickerRole>(pickerRoleFor(user?.role));
-  const [selectedId, setSelectedId] = useState<string | null>(
-    user && user.role !== "admin" ? user.id : null,
-  );
+  const [selectedId, setSelectedId] = useState<string | null>(user && user.role !== "admin" ? user.id : null);
   const [name, setName] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -175,8 +172,7 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
 
     // `user` covers the case where the list has not loaded yet but the signed-in
     // identity is the preselected one.
-    const picked =
-      people.find((person) => person.id === selectedId) ?? (user?.id === selectedId ? user : undefined);
+    const picked = people.find((person) => person.id === selectedId) ?? (user?.id === selectedId ? user : undefined);
     if (!picked) {
       setFormError(`Pick ${tab.article} ${tab.noun} above, or type a name to join as someone new.`);
       return;
@@ -214,7 +210,6 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
       </div>
 
       <div className="stack stack--loose" role="tabpanel" id={panelId} aria-labelledby={tabId(role)}>
-
         {users.isPending ? (
           <div className="stack" role="status" aria-busy="true" aria-label="Loading people">
             <Skeleton height={44} />
@@ -222,10 +217,7 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
         ) : users.isError ? (
           <ErrorBanner error={users.error} onRetry={() => void users.refetch()} />
         ) : people.length === 0 ? (
-          <EmptyState
-            title={`No ${tab.noun}s yet`}
-            hint="Type a name below to be the first."
-          />
+          <EmptyState title={`No ${tab.noun}s yet`} hint="Type a name below to be the first." />
         ) : (
           // A select, not a row of buttons: the demo board seeds 28 players, and
           // 28 tappable rows pushed the join button several screens down a phone.
@@ -240,7 +232,9 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
               value={selectedId ?? ""}
               onChange={(event) => pick(event.target.value)}
             >
-              <option value="">Choose {tab.article} {tab.noun}…</option>
+              <option value="">
+                Choose {tab.article} {tab.noun}…
+              </option>
               {people.map((person) => (
                 <option key={person.id} value={person.id}>
                   {person.name}
@@ -285,11 +279,7 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
             ) : null}
           </div>
           {createUser.error ? <ErrorBanner error={createUser.error} /> : null}
-          <button
-            type="submit"
-            className="btn btn--block who__join"
-            disabled={createUser.isPending || !canJoin}
-          >
+          <button type="submit" className="btn btn--block who__join" disabled={createUser.isPending || !canJoin}>
             {createUser.isPending ? "Joining…" : tab.join}
           </button>
         </form>
@@ -326,14 +316,7 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
   return (
     <>
       <div className="popover__scrim" onClick={() => onClose?.()} />
-      <div
-        className="popover"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={headingId}
-        ref={panelRef}
-        tabIndex={-1}
-      >
+      <div className="popover" role="dialog" aria-modal="true" aria-labelledby={headingId} ref={panelRef} tabIndex={-1}>
         <h2 className="page-title popover__title" id={headingId}>
           Switch User
         </h2>

@@ -101,12 +101,12 @@ describe("concurrent RSVPs from distinct players", () => {
     const [a, b] = await Promise.all([seedEvent({ capacity: 2 }), seedEvent({ capacity: 3 })]);
 
     const responses = await Promise.all([
-      ...people.map((person) => putRsvp(a!.id, person.id)),
-      ...people.map((person) => putRsvp(b!.id, person.id)),
+      ...people.map((person) => putRsvp(a.id, person.id)),
+      ...people.map((person) => putRsvp(b.id, person.id)),
     ]);
 
     expect(tally(responses.map((response) => response.status))).toEqual({ 201: 5, 409: 11 });
-    expect(await rsvpCount(a!.id)).toBe(2);
-    expect(await rsvpCount(b!.id)).toBe(3);
+    expect(await rsvpCount(a.id)).toBe(2);
+    expect(await rsvpCount(b.id)).toBe(3);
   });
 });

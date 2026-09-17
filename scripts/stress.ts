@@ -82,7 +82,10 @@ interface Reply<T> {
 
 let baseUrl = "";
 
-async function request<T>(path: string, init: { method?: string; as?: string; body?: unknown } = {}): Promise<Reply<T>> {
+async function request<T>(
+  path: string,
+  init: { method?: string; as?: string; body?: unknown } = {},
+): Promise<Reply<T>> {
   const headers: Record<string, string> = {};
   if (init.as !== undefined) headers["X-User-Id"] = init.as;
   if (init.body !== undefined) headers["Content-Type"] = "application/json";
@@ -231,7 +234,13 @@ async function main(): Promise<void> {
   const rows: string[][] = [["", "check", "actual", "expected"]];
   rows.push(check("confirmed (201)", confirmed.length, expectedSeats));
   rows.push(check("full (409)", rejected.length, players - expectedSeats));
-  rows.push(check("no other status", [...raceTally.keys()].filter((s) => s !== 201 && s !== 409), []));
+  rows.push(
+    check(
+      "no other status",
+      [...raceTally.keys()].filter((s) => s !== 201 && s !== 409),
+      [],
+    ),
+  );
   rows.push(check("attendeeCount", afterRace.attendeeCount, expectedSeats));
   rows.push(check("seatsLeft", afterRace.seatsLeft, capacity - expectedSeats));
   rows.push(check("isFull", afterRace.isFull, expectedSeats >= capacity));

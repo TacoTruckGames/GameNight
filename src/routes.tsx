@@ -61,47 +61,47 @@ export function AppRoutes() {
   return (
     <>
       <Routes location={background ?? location}>
-      <Route element={<AppShell />}>
-        <Route index element={<EventsPage />} />
-        <Route path="events/:id" element={<EventDetailPage />} />
-        <Route
-          path="me"
-          element={
-            <PlayerOnly>
-              <MyRsvpPage />
-            </PlayerOnly>
-          }
-        />
-        <Route
-          path="organize"
-          element={
-            <OrganizerOnly>
-              <OrganizerPage />
-            </OrganizerOnly>
-          }
-        />
-        <Route
-          path="organize/events/:id"
-          element={
-            <OrganizerOnly>
-              <AttendeesPage />
-            </OrganizerOnly>
-          }
-        />
-      </Route>
+        <Route element={<AppShell />}>
+          <Route index element={<EventsPage />} />
+          <Route path="events/:id" element={<EventDetailPage />} />
+          <Route
+            path="me"
+            element={
+              <PlayerOnly>
+                <MyRsvpPage />
+              </PlayerOnly>
+            }
+          />
+          <Route
+            path="organize"
+            element={
+              <OrganizerOnly>
+                <OrganizerPage />
+              </OrganizerOnly>
+            }
+          />
+          <Route
+            path="organize/events/:id"
+            element={
+              <OrganizerOnly>
+                <AttendeesPage />
+              </OrganizerOnly>
+            }
+          />
+        </Route>
 
-      {/* `AdminShell` signs itself in when the tools have no stored operator
+        {/* `AdminShell` signs itself in when the tools have no stored operator
           yet, so these paths never redirect away — typing the URL is the whole
           entry mechanism. The API is the real gate (403 `FORBIDDEN`). */}
-      <Route path="admin" element={<AdminShell />}>
-        <Route index element={<AdminOverviewPage />} />
-        <Route path="users" element={<AdminUsersPage />} />
-        <Route path="events" element={<AdminEventsPage />} />
-        <Route path="events/:id" element={<AdminEventDetailPage />} />
-        <Route path="errors" element={<AdminErrorsPage />} />
-      </Route>
+        <Route path="admin" element={<AdminShell />}>
+          <Route index element={<AdminOverviewPage />} />
+          <Route path="users" element={<AdminUsersPage />} />
+          <Route path="events" element={<AdminEventsPage />} />
+          <Route path="events/:id" element={<AdminEventDetailPage />} />
+          <Route path="errors" element={<AdminErrorsPage />} />
+        </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 
       {/* The sheet, rendered *in addition to* the board above it. Only when the

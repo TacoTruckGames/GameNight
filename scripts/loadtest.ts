@@ -201,7 +201,11 @@ async function main(): Promise<void> {
       url: `${baseUrl}/api/events?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
     })),
   );
-  results.push(await phase("detail", "/api/events/:id", 10, seconds, shares[2]!, () => ({ url: `${baseUrl}/api/events/${event()}` })));
+  results.push(
+    await phase("detail", "/api/events/:id", 10, seconds, shares[2]!, () => ({
+      url: `${baseUrl}/api/events/${event()}`,
+    })),
+  );
   results.push(
     await phase("mine", "/api/me/rsvps", 10, seconds, shares[3]!, () => ({
       url: `${baseUrl}/api/me/rsvps`,
@@ -209,7 +213,11 @@ async function main(): Promise<void> {
     })),
   );
   // The event-day spike: five times the board's concurrency, for two thirds of a phase.
-  results.push(await phase("spike", "/api/events", 100, Math.ceil(seconds * 0.66), shares[4]!, () => ({ url: `${baseUrl}/api/events` })));
+  results.push(
+    await phase("spike", "/api/events", 100, Math.ceil(seconds * 0.66), shares[4]!, () => ({
+      url: `${baseUrl}/api/events`,
+    })),
+  );
 
   const total = results.reduce((a, r) => a + r.requests, 0);
   const errors = results.reduce((a, r) => a + r.errors, 0);
@@ -217,7 +225,14 @@ async function main(): Promise<void> {
 
   if (json) {
     const { writeFile } = await import("node:fs/promises");
-    await writeFile(json, JSON.stringify({ baseUrl, at: new Date().toISOString(), players: players.length, events: events.length, results }, null, 2));
+    await writeFile(
+      json,
+      JSON.stringify(
+        { baseUrl, at: new Date().toISOString(), players: players.length, events: events.length, results },
+        null,
+        2,
+      ),
+    );
     console.log(`  wrote ${json}\n`);
   }
   if (errors > 0) process.exit(1);

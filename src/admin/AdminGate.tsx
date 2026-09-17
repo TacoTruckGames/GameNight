@@ -63,10 +63,7 @@ export function AdminGate() {
     return (
       <div className="stack stack--loose">
         <h1 className="page-title">Operator tools</h1>
-        <EmptyState
-          title="No operator account"
-          hint="Seed one with role 'admin' — the sign-up API cannot create it."
-        />
+        <EmptyState title="No operator account" hint="Seed one with role 'admin' — the sign-up API cannot create it." />
         <p className="text-sm muted">
           <a href="/">Back to the event board</a>.
         </p>

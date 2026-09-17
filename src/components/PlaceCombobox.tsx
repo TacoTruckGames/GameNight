@@ -133,7 +133,9 @@ function SuggestingCombobox({
   // The token has to survive the render that creates it, before the parent's
   // state update lands, or the first suggest request would go out without one.
   const tokenRef = useRef(sessionToken);
-  tokenRef.current = sessionToken;
+  useEffect(() => {
+    tokenRef.current = sessionToken;
+  });
 
   const trimmed = value.trim();
   const searchable = trimmed.length >= PLACE_QUERY_MIN;
@@ -148,7 +150,10 @@ function SuggestingCombobox({
 
   // The escape hatch is the last option, always — including when Google found
   // nothing, which is exactly when it is needed most.
-  const options: Option[] = [...places.map((suggestion) => ({ kind: "place" as const, suggestion })), { kind: "typed" }];
+  const options: Option[] = [
+    ...places.map((suggestion) => ({ kind: "place" as const, suggestion })),
+    { kind: "typed" },
+  ];
   const listOpen = open && searchable;
   const optionId = (index: number) => `${listId}-option-${index}`;
 

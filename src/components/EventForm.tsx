@@ -61,7 +61,10 @@ export type EditableEvent = EventSummary & { description: string | null };
  */
 export interface EditMutation {
   isPending: boolean;
-  mutate(patch: EventPatch, options?: { onSuccess?: (updated: { title: string }) => void; onError?: (error: unknown) => void }): void;
+  mutate(
+    patch: EventPatch,
+    options?: { onSuccess?: (updated: { title: string }) => void; onError?: (error: unknown) => void },
+  ): void;
 }
 
 type FieldErrors = Partial<
@@ -221,7 +224,9 @@ export function EventForm({
     // is refused here first, on the same field, in the same words.
     const parsed = eventPatchSchema(new Date()).safeParse(patch);
     if (!parsed.success) {
-      setErrors(fieldErrorsFrom(parsed.error.issues.map((i) => ({ path: String(i.path[0] ?? ""), message: i.message }))));
+      setErrors(
+        fieldErrorsFrom(parsed.error.issues.map((i) => ({ path: String(i.path[0] ?? ""), message: i.message }))),
+      );
       return;
     }
 
@@ -254,7 +259,9 @@ export function EventForm({
     });
 
     if (!parsed.success) {
-      setErrors(fieldErrorsFrom(parsed.error.issues.map((i) => ({ path: String(i.path[0] ?? ""), message: i.message }))));
+      setErrors(
+        fieldErrorsFrom(parsed.error.issues.map((i) => ({ path: String(i.path[0] ?? ""), message: i.message }))),
+      );
       return;
     }
 
@@ -266,7 +273,9 @@ export function EventForm({
         // Google down, over budget, or the id gone stale. The post succeeded
         // anyway, on purpose, so say what happened instead of pretending.
         if (placeId !== null && created.place === null) {
-          setPlaceNote("Posted. We couldn't confirm that venue just now, so the address is saved exactly as you typed it.");
+          setPlaceNote(
+            "Posted. We couldn't confirm that venue just now, so the address is saved exactly as you typed it.",
+          );
         }
         setTitle("");
         setLocation("");
@@ -416,8 +425,8 @@ export function EventForm({
           <>
             {event.place ? (
               <p className="text-sm muted">
-                Linked venue: <span className="admin-mono">{event.place.address}</span>. Editing the label unlinks
-                it; pick a suggestion to re-point it.
+                Linked venue: <span className="admin-mono">{event.place.address}</span>. Editing the label unlinks it;
+                pick a suggestion to re-point it.
               </p>
             ) : (
               <p className="text-sm muted">No verified venue — the address is free text.</p>
@@ -500,7 +509,8 @@ export function EventForm({
         {event && event.attendeeCount > 0 ? (
           <p className="text-sm muted">
             {event.attendeeCount === 1 ? "1 person has" : `${event.attendeeCount} people have`} a seat, so capacity
-            can't go below {event.attendeeCount}.{event.isFull ? " The table is full — raise this to open more seats." : ""}
+            can't go below {event.attendeeCount}.
+            {event.isFull ? " The table is full — raise this to open more seats." : ""}
           </p>
         ) : null}
         {errors.capacity ? (

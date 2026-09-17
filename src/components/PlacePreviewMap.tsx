@@ -69,12 +69,7 @@ export function PlacePreviewMap({ query, placeId }: { query: string; placeId: st
   // organizer is checking they picked the right building, not driving to it —
   // and the place id makes that check exact rather than a "did you mean".
   return (
-    <a
-      className="minimap place-preview"
-      href={mapsSearchFor(query, placeId)}
-      target="_blank"
-      rel="noopener noreferrer"
-    >
+    <a className="minimap place-preview" href={mapsSearchFor(query, placeId)} target="_blank" rel="noopener noreferrer">
       <img
         className="minimap__img"
         src={url}

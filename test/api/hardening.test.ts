@@ -74,9 +74,14 @@ describe("one cache key per rendered map", () => {
     // its raw URL it would miss, reach the database and 404; keyed on the
     // parsed values it finds the image the canonical form stored.
     const key = eventMapKey(BASE, "evt_never_in_d1", { width: 640, height: 320, scale: 1 }, "place_1");
-    await caches.default.put(key, new Response("png-bytes", { headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=60" } }));
+    await caches.default.put(
+      key,
+      new Response("png-bytes", { headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=60" } }),
+    );
 
-    const reordered = await SELF.fetch(new Request(`${BASE}/api/events/evt_never_in_d1/map?v=place_1&scale=1&h=320&w=640`));
+    const reordered = await SELF.fetch(
+      new Request(`${BASE}/api/events/evt_never_in_d1/map?v=place_1&scale=1&h=320&w=640`),
+    );
     expect(reordered.status).toBe(200);
     expect(reordered.headers.get("X-Map-Cache")).toBe("HIT");
     expect(await reordered.text()).toBe("png-bytes");

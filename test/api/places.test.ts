@@ -50,9 +50,7 @@ function clearKey(): void {
 
 /** How many error-log rows exist for the places scopes right now. */
 async function placesErrorCount(scope?: string): Promise<number> {
-  const row = await env.DB.prepare(
-    `SELECT COALESCE(SUM(count), 0) AS n FROM error_log WHERE scope LIKE ?1`,
-  )
+  const row = await env.DB.prepare(`SELECT COALESCE(SUM(count), 0) AS n FROM error_log WHERE scope LIKE ?1`)
     .bind(scope ?? "places.%")
     .first<{ n: number }>();
   return row?.n ?? 0;
@@ -141,8 +139,9 @@ describe("places with no key configured", () => {
       const before = await placesErrorCount();
 
       for (const q of ["library", "central library", "green lake community"]) {
-        expect((await api<SuggestBody>(`/api/places/suggest?q=${encodeURIComponent(q)}`, { as: organizer.id })).status)
-          .toBe(200);
+        expect(
+          (await api<SuggestBody>(`/api/places/suggest?q=${encodeURIComponent(q)}`, { as: organizer.id })).status,
+        ).toBe(200);
       }
 
       // The single most important assertion in this file. An Errors page full of
@@ -238,7 +237,9 @@ describe("places with no key configured", () => {
   describe("GET /api/events/:id/map", () => {
     it("404s with no-store when the event has no verified venue", async () => {
       const event = await seedEvent();
-      const response = await SELF.fetch(new Request(`${BASE}/api/events/${event.id}/map?w=640&h=320&scale=1&v=anything`));
+      const response = await SELF.fetch(
+        new Request(`${BASE}/api/events/${event.id}/map?w=640&h=320&scale=1&v=anything`),
+      );
 
       expect(response.status).toBe(404);
       expect(response.headers.get("Cache-Control")).toBe("no-store");
@@ -253,7 +254,9 @@ describe("places with no key configured", () => {
       // This is the cache buster: an admin re-pointing a venue changes the id,
       // which changes the URL, which invalidates a month of edge cache at once.
       const event = await seedEvent({ place: SEATTLE });
-      const stale = await SELF.fetch(new Request(`${BASE}/api/events/${event.id}/map?w=640&h=320&scale=1&v=old-place-id`));
+      const stale = await SELF.fetch(
+        new Request(`${BASE}/api/events/${event.id}/map?w=640&h=320&scale=1&v=old-place-id`),
+      );
       expect(stale.status).toBe(404);
       expect(stale.headers.get("Cache-Control")).toBe("no-store");
     });
@@ -274,11 +277,13 @@ describe("places with no key configured", () => {
       ["the compact preset", "w=320&h=180"],
     ])("accepts %s and 503s with no-store when maps are switched off", async (_label, size) => {
       const event = await seedEvent({ place: SEATTLE });
-      const response = await SELF.fetch(new Request(`${BASE}/api/events/${event.id}/map?${size}&scale=2&v=${SEATTLE.id}`));
+      const response = await SELF.fetch(
+        new Request(`${BASE}/api/events/${event.id}/map?${size}&scale=2&v=${SEATTLE.id}`),
+      );
 
       expect(response.status).toBe(503);
       expect(response.headers.get("Cache-Control")).toBe("no-store");
-      expect(((await response.json()) as ApiErrorBody).error.code).toBe("PLACE_UNAVAILABLE");
+      expect((await response.json<ApiErrorBody>()).error.code).toBe("PLACE_UNAVAILABLE");
     });
 
     it("answers from caches.default before it ever touches D1", async () => {

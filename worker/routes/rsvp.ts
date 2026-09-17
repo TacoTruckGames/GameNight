@@ -51,11 +51,7 @@ function toResponse(status: RsvpResponse["status"], outcome: RsvpOutcome | Cance
  * it records itself — a room that has started failing is precisely what an
  * operator wants on the Errors page.
  */
-async function unavailable(
-  db: D1Database,
-  error: unknown,
-  metadata: Record<string, unknown>,
-): Promise<ApiError> {
+async function unavailable(db: D1Database, error: unknown, metadata: Record<string, unknown>): Promise<ApiError> {
   await reportError(db, "rsvp.room", error, metadata);
   return new ApiError(503, "RSVP_UNAVAILABLE", "Could not save your RSVP, please retry.");
 }

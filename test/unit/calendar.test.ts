@@ -115,12 +115,7 @@ describe("buildMonthGrid", () => {
   it("ends the month on the 30th and pads into October", () => {
     const inMonth = flat.filter((cell) => cell.inMonth);
     expect(inMonth.at(-1)).toMatchObject({ key: "2026-09-30", day: 30 });
-    expect(flat.slice(-4).map((cell) => cell.key)).toEqual([
-      "2026-10-01",
-      "2026-10-02",
-      "2026-10-03",
-      "2026-10-04",
-    ]);
+    expect(flat.slice(-4).map((cell) => cell.key)).toEqual(["2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04"]);
     expect(flat.slice(-4).every((cell) => !cell.inMonth)).toBe(true);
   });
 
@@ -369,7 +364,8 @@ describe("formatWeekLabel", () => {
     for (const start of ["2026-09-14", "2026-09-28", "2026-12-28"]) {
       const label = formatWeekLabel(start);
       expect(label).toContain(" – ");
-      expect(label).not.toMatch(/[   ]/);
+      // No NBSP, thin or narrow no-break space: the label is copied into chats.
+      expect(label).not.toMatch(/[\u00A0\u2009\u202F]/);
     }
   });
 });

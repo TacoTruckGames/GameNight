@@ -124,8 +124,8 @@ export function AdminOverviewPage() {
           <section className="card">
             <h2 className="card__title">Error pipeline</h2>
             <p className="text-sm muted">
-              Throws a deliberate failure in the Worker so you can check that backend errors reach the Errors
-              page. Safe to run in production.
+              Throws a deliberate failure in the Worker so you can check that backend errors reach the Errors page. Safe
+              to run in production.
             </p>
             <button
               type="button"

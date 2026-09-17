@@ -90,9 +90,7 @@ export function AppShell() {
               aria-haspopup="dialog"
               aria-expanded={switching}
               aria-label={
-                user && role
-                  ? `Signed in as ${user.name}, ${ROLE_LABELS[role]} — switch user`
-                  : "Choose who you are"
+                user && role ? `Signed in as ${user.name}, ${ROLE_LABELS[role]} — switch user` : "Choose who you are"
               }
             >
               {role ? <Icon name={ROLE_ICONS[role]} size={16} /> : null}

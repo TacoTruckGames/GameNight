@@ -29,10 +29,26 @@ function EditForm({ event }: { event: AdminEventDetail }) {
   // never on a background refresh that changed nothing. That is the effect the
   // old copy had, expressed without an effect. `place?.id`, not `place`: the
   // object is a fresh reference on every fetch.
-  const stored = [event.title, event.gameType, event.startsAt, event.location, event.place?.id ?? "", event.description ?? "", event.capacity].join("\u0001");
+  const stored = [
+    event.title,
+    event.gameType,
+    event.startsAt,
+    event.location,
+    event.place?.id ?? "",
+    event.description ?? "",
+    event.capacity,
+  ].join("\u0001");
   // "Discard" remounts too, on the same values.
   const [discards, setDiscards] = useState(0);
-  return <EventForm key={`${stored}|${discards}`} event={event} mutation={patchEvent} venueTools onDone={() => setDiscards((n) => n + 1)} />;
+  return (
+    <EventForm
+      key={`${stored}|${discards}`}
+      event={event}
+      mutation={patchEvent}
+      venueTools
+      onDone={() => setDiscards((n) => n + 1)}
+    />
+  );
 }
 
 function Attendees({ event }: { event: AdminEventDetail }) {
@@ -52,8 +68,7 @@ function Attendees({ event }: { event: AdminEventDetail }) {
               <div className="admin-row">
                 <span>{attendee.name}</span>
                 <span className="text-sm muted">
-                  RSVP'd{" "}
-                  <time dateTime={toDateTimeAttr(attendee.rsvpAt)}>{formatEventDateTime(attendee.rsvpAt)}</time>
+                  RSVP'd <time dateTime={toDateTimeAttr(attendee.rsvpAt)}>{formatEventDateTime(attendee.rsvpAt)}</time>
                 </span>
               </div>
               <div className="admin-actions admin-actions--split">
@@ -142,8 +157,8 @@ export function AdminEventDetailPage() {
           {cancelled && detail.cancelledAt ? (
             <p className="text-sm muted">
               Cancelled{" "}
-              <time dateTime={toDateTimeAttr(detail.cancelledAt)}>{formatEventDateTime(detail.cancelledAt)}</time>.
-              It is hidden from the board and refuses new RSVPs; the list below is kept.
+              <time dateTime={toDateTimeAttr(detail.cancelledAt)}>{formatEventDateTime(detail.cancelledAt)}</time>. It
+              is hidden from the board and refuses new RSVPs; the list below is kept.
             </p>
           ) : null}
         </div>

@@ -27,7 +27,9 @@ import {
   eventPatchSchema,
   adminUsersQuerySchema,
   suspendSchema,
-  type SuspendInput, intFromQuery } from "../../shared/schemas";
+  type SuspendInput,
+  intFromQuery,
+} from "../../shared/schemas";
 import {
   adminGetEvent,
   adminGetEventRow,

@@ -200,7 +200,11 @@ export class EventRoom extends DurableObject<Env> {
     const counts = results[2]?.results?.[0];
 
     if (inserted) {
-      this.ctx.storage.sql.exec("INSERT OR REPLACE INTO members (player_id, created_at) VALUES (?, ?)", playerId, nowIso());
+      this.ctx.storage.sql.exec(
+        "INSERT OR REPLACE INTO members (player_id, created_at) VALUES (?, ?)",
+        playerId,
+        nowIso(),
+      );
       return {
         kind: "created",
         attendeeCount: counts?.rsvp_count ?? this.memberCount(),

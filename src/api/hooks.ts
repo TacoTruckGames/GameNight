@@ -112,7 +112,15 @@ export const queryKeys = {
   eventList: (filter: EventsFilter) =>
     // The window is part of the key: navigating the calendar to another month
     // is a different question, so it refetches rather than reusing the answer.
-    ["events", "list", filter.q ?? "", filter.gameType ?? "", filter.sort ?? "", filter.from ?? "", filter.to ?? ""] as const,
+    [
+      "events",
+      "list",
+      filter.q ?? "",
+      filter.gameType ?? "",
+      filter.sort ?? "",
+      filter.from ?? "",
+      filter.to ?? "",
+    ] as const,
   event: (id: string) => ["events", "detail", id] as const,
   attendees: (id: string) => ["events", "attendees", id] as const,
   // The window trails the user id, so `["me"]` still clears every week a reader
@@ -403,8 +411,7 @@ export function useCancelEvent(id: string) {
   const { userId } = useIdentity();
   const afterWrite = useAfterWrite();
   return useMutation({
-    mutationFn: () =>
-      apiFetch<EventDetail>(`/api/events/${encodeURIComponent(id)}/cancel`, { method: "POST", userId }),
+    mutationFn: () => apiFetch<EventDetail>(`/api/events/${encodeURIComponent(id)}/cancel`, { method: "POST", userId }),
     onSuccess: afterWrite,
   });
 }

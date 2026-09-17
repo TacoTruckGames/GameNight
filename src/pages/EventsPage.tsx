@@ -127,9 +127,7 @@ export function EventsPage() {
     return all.filter(
       (event) =>
         (gameType === "" || event.gameType === gameType) &&
-        (needle === "" ||
-          event.title.toLowerCase().includes(needle) ||
-          event.location.toLowerCase().includes(needle)),
+        (needle === "" || event.title.toLowerCase().includes(needle) || event.location.toLowerCase().includes(needle)),
     );
   }, [events.data, isOrganizer, debouncedSearch, gameType]);
 
@@ -244,7 +242,13 @@ export function EventsPage() {
         // through, so those views keep their controls on screen and say so in
         // their own empty states rather than replacing themselves with this one.
         <EmptyState
-          title={filtered ? "No upcoming events match" : isOrganizer ? "You haven't posted anything yet" : "No upcoming events yet"}
+          title={
+            filtered
+              ? "No upcoming events match"
+              : isOrganizer
+                ? "You haven't posted anything yet"
+                : "No upcoming events yet"
+          }
           hint={
             filtered
               ? "Try a different search or clear the filters."

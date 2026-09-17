@@ -31,7 +31,7 @@ export function AttendeesPage({ asSheet = false }: { asSheet?: boolean }) {
   const attendees = useAttendees(id);
   const maps = useMapsConfig({ enabled: true });
   const [editing, setEditing] = useState(false);
-  const close = () => navigate(-1);
+  const close = () => void navigate(-1);
 
   if (attendees.isPending) {
     return (
@@ -79,74 +79,76 @@ export function AttendeesPage({ asSheet = false }: { asSheet?: boolean }) {
           up while you edit, which is exactly when you want to see it. */}
       <div className={`doorlist${editing ? " doorlist--editing" : ""}`}>
         <div className="doorlist__main stack stack--loose">
+          {/* The same header as the player's sheet — `EventSheet.tsx`. */}
+          <EventSheetHeader event={event} />
 
-      {/* The same header as the player's sheet — `EventSheet.tsx`. */}
-      <EventSheetHeader event={event} />
-
-      {editing ? (
-        <>
-          {/* Editing replaces the read view rather than sitting under it. What
+          {editing ? (
+            <>
+              {/* Editing replaces the read view rather than sitting under it. What
               stays is the header above and the two numbers here — head count and
               seats — because they are what every edit is made against: opening
               seats at a full table, moving a night twelve people have planned
               around. */}
-          {facts}
-          <EventForm event={event} onDone={() => setEditing(false)} />
-          <EventDangerZone
-            event={event}
-            onCancelled={() => setEditing(false)}
-            onDeleted={() => (asSheet ? navigate(-1) : navigate("/", { replace: true }))}
-          />
-        </>
-      ) : (
-        <>
-      <div className="card">
-        <div className="stack">
-          <EventVenue event={event} showMap={maps.map} />
-          {/* The organizer's own words, the same way the player's sheet shows
+              {facts}
+              <EventForm event={event} onDone={() => setEditing(false)} />
+              <EventDangerZone
+                event={event}
+                onCancelled={() => setEditing(false)}
+                onDeleted={() => void (asSheet ? navigate(-1) : navigate("/", { replace: true }))}
+              />
+            </>
+          ) : (
+            <>
+              <div className="card">
+                <div className="stack">
+                  <EventVenue event={event} showMap={maps.map} />
+                  {/* The organizer's own words, the same way the player's sheet shows
               them. Absent is ordinary and renders as nothing at all. */}
-          {event.description !== null ? <p className="text-lines">{event.description}</p> : null}
-          {/* Facts and action on one row where there is room, exactly as the
+                  {event.description !== null ? <p className="text-lines">{event.description}</p> : null}
+                  {/* Facts and action on one row where there is room, exactly as the
               player's sheet does it — this is the same event seen from the
               other side of the table, and it should not be a different shape.
               The board's cards open this page now, not the public one, so this
               is where Edit has to be: otherwise an organizer could only reach it
               by typing the player's URL for their own event. */}
-          <div className="detail__act">
-            {facts}
-            {event.status === "cancelled" ? null : (
-              <button type="button" className="btn btn--block" onClick={() => setEditing(true)}>
-                Edit Event
-              </button>
-            )}
-          </div>
-        </div>
-        <p className="detail__host">Hosted by {event.organizerName}</p>
-      </div>
-
-        </>
-      )}
+                  <div className="detail__act">
+                    {facts}
+                    {event.status === "cancelled" ? null : (
+                      <button type="button" className="btn btn--block" onClick={() => setEditing(true)}>
+                        Edit Event
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <p className="detail__host">Hosted by {event.organizerName}</p>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="doorlist__guests stack">
-      <h2 className="card__title">Who's coming</h2>
+          <h2 className="card__title">Who's coming</h2>
 
-      {list.length === 0 ? (
-        <EmptyState title="No RSVPs yet" hint="The event is live on the board with every seat open; names land here as players RSVP." />
-      ) : (
-        <ul className="stack" aria-busy={attendees.isFetching}>
-          {list.map((attendee) => (
-            <li key={attendee.playerId} className="card">
-              <div className="card__row">
-                <span>{attendee.name}</span>
-                <span className="text-sm muted">
-                  RSVP'd <time dateTime={toDateTimeAttr(attendee.rsvpAt)}>{formatEventDateTime(attendee.rsvpAt)}</time>
-                </span>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+          {list.length === 0 ? (
+            <EmptyState
+              title="No RSVPs yet"
+              hint="The event is live on the board with every seat open; names land here as players RSVP."
+            />
+          ) : (
+            <ul className="stack" aria-busy={attendees.isFetching}>
+              {list.map((attendee) => (
+                <li key={attendee.playerId} className="card">
+                  <div className="card__row">
+                    <span>{attendee.name}</span>
+                    <span className="text-sm muted">
+                      RSVP'd{" "}
+                      <time dateTime={toDateTimeAttr(attendee.rsvpAt)}>{formatEventDateTime(attendee.rsvpAt)}</time>
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </>

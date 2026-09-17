@@ -25,12 +25,7 @@ export function GameTypeFilter({ value, onChange }: { value: string; onChange: (
       <label className="field__label" htmlFor={selectId}>
         Game Type
       </label>
-      <select
-        id={selectId}
-        className="select"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      >
+      <select id={selectId} className="select" value={value} onChange={(event) => onChange(event.target.value)}>
         <option value="">All</option>
         {GAME_TYPES.map((gameType) => (
           <option key={gameType} value={gameType}>

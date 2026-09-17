@@ -23,7 +23,6 @@ import { useAdminUsers, useSuspendUser, useUnsuspendUser } from "./hooks";
 
 const DEBOUNCE_MS = 250;
 
-
 const STATUS_FILTERS = [
   { value: "", label: "Any status" },
   { value: "active", label: "Active" },
@@ -55,8 +54,7 @@ function UserRow({ user }: { user: AdminUser }) {
         <div className="stack">
           <span className="admin-pill admin-pill--danger">
             <Icon name="alert" size={16} />
-            Suspended{" "}
-            <time dateTime={toDateTimeAttr(user.suspendedAt)}>{formatEventDateTime(user.suspendedAt)}</time>
+            Suspended <time dateTime={toDateTimeAttr(user.suspendedAt)}>{formatEventDateTime(user.suspendedAt)}</time>
           </span>
           {user.suspendedReason ? <p className="text-sm muted">“{user.suspendedReason}”</p> : null}
           <button

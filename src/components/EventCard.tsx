@@ -29,8 +29,7 @@
 import { Link, useLocation } from "react-router";
 import type { EventSummary } from "../../shared/api-types";
 import { gameTypeLabel } from "../../shared/game-types";
-import { isPastEvent } from "../lib/datetime";
-import { formatEventTime, toDateTimeAttr } from "../lib/datetime";
+import { formatEventTime, isPastEvent, toDateTimeAttr } from "../lib/datetime";
 import { MapLink } from "./MapLink";
 import { seatLabel, seatState } from "./SeatChip";
 import { RsvpButton } from "./RsvpButton";

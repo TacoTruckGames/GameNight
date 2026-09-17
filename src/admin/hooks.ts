@@ -131,8 +131,7 @@ export function useSuspendUser(id: string) {
 
 export function useUnsuspendUser(id: string) {
   return useAdminMutation<void, AdminUser>(
-    (userId) =>
-      apiFetch<AdminUser>(`/api/admin/users/${encodeURIComponent(id)}/unsuspend`, { method: "POST", userId }),
+    (userId) => apiFetch<AdminUser>(`/api/admin/users/${encodeURIComponent(id)}/unsuspend`, { method: "POST", userId }),
     (user) => `${user.name} is active again.`,
   );
 }
@@ -157,10 +156,10 @@ export function useSetEventStatus(id: string) {
 export function useRemoveAttendee(id: string) {
   return useAdminMutation<{ playerId: string; name: string }, RsvpResponse>(
     (userId, { playerId }) =>
-      apiFetch<RsvpResponse>(
-        `/api/admin/events/${encodeURIComponent(id)}/attendees/${encodeURIComponent(playerId)}`,
-        { method: "DELETE", userId },
-      ),
+      apiFetch<RsvpResponse>(`/api/admin/events/${encodeURIComponent(id)}/attendees/${encodeURIComponent(playerId)}`, {
+        method: "DELETE",
+        userId,
+      }),
     (_result, { name }) => `${name} removed — seat released.`,
   );
 }

@@ -59,19 +59,127 @@ function fail(message: string): never {
 // ------------------------------------------------------------------ names --
 
 const FIRST = [
-  "Ada", "Amir", "Anya", "Beck", "Bo", "Cal", "Cass", "Chen", "Dev", "Dimitri", "Eden", "Elif", "Emeka", "Esme",
-  "Farah", "Finn", "Gita", "Hana", "Hugo", "Ines", "Ivo", "Jae", "Juno", "Kai", "Kira", "Lars", "Leila", "Luca",
-  "Mabel", "Malik", "Mara", "Mateo", "Mika", "Nadia", "Nico", "Nia", "Odile", "Omar", "Oren", "Petra", "Pilar",
-  "Quinn", "Rafael", "Ravi", "Remy", "Rosa", "Sable", "Sana", "Sasha", "Sol", "Tamsin", "Teo", "Thea", "Tomas",
-  "Uma", "Vera", "Wes", "Xan", "Yara", "Yusuf", "Zara", "Zev",
+  "Ada",
+  "Amir",
+  "Anya",
+  "Beck",
+  "Bo",
+  "Cal",
+  "Cass",
+  "Chen",
+  "Dev",
+  "Dimitri",
+  "Eden",
+  "Elif",
+  "Emeka",
+  "Esme",
+  "Farah",
+  "Finn",
+  "Gita",
+  "Hana",
+  "Hugo",
+  "Ines",
+  "Ivo",
+  "Jae",
+  "Juno",
+  "Kai",
+  "Kira",
+  "Lars",
+  "Leila",
+  "Luca",
+  "Mabel",
+  "Malik",
+  "Mara",
+  "Mateo",
+  "Mika",
+  "Nadia",
+  "Nico",
+  "Nia",
+  "Odile",
+  "Omar",
+  "Oren",
+  "Petra",
+  "Pilar",
+  "Quinn",
+  "Rafael",
+  "Ravi",
+  "Remy",
+  "Rosa",
+  "Sable",
+  "Sana",
+  "Sasha",
+  "Sol",
+  "Tamsin",
+  "Teo",
+  "Thea",
+  "Tomas",
+  "Uma",
+  "Vera",
+  "Wes",
+  "Xan",
+  "Yara",
+  "Yusuf",
+  "Zara",
+  "Zev",
 ];
 const LAST = [
-  "Abara", "Achebe", "Adler", "Alvarez", "Baptiste", "Bergström", "Bianchi", "Calloway", "Castillo", "Chen",
-  "Dagher", "Delgado", "Dubois", "Eriksen", "Farouk", "Ferreira", "Fischer", "Gallo", "Haddad", "Halvorsen",
-  "Ibarra", "Ishikawa", "Jansen", "Joshi", "Kaur", "Kimura", "Kowalski", "Lindqvist", "Lopes", "Maalouf",
-  "Mendes", "Moreau", "Nakamura", "Novak", "Okafor", "Oyelaran", "Park", "Pereira", "Quiroga", "Rahman",
-  "Reyes", "Rossi", "Saito", "Sandoval", "Schmidt", "Silva", "Tanaka", "Thorne", "Uribe", "Varga", "Vieira",
-  "Walsh", "Weber", "Yamamoto", "Yilmaz", "Zhang", "Zielinski",
+  "Abara",
+  "Achebe",
+  "Adler",
+  "Alvarez",
+  "Baptiste",
+  "Bergström",
+  "Bianchi",
+  "Calloway",
+  "Castillo",
+  "Chen",
+  "Dagher",
+  "Delgado",
+  "Dubois",
+  "Eriksen",
+  "Farouk",
+  "Ferreira",
+  "Fischer",
+  "Gallo",
+  "Haddad",
+  "Halvorsen",
+  "Ibarra",
+  "Ishikawa",
+  "Jansen",
+  "Joshi",
+  "Kaur",
+  "Kimura",
+  "Kowalski",
+  "Lindqvist",
+  "Lopes",
+  "Maalouf",
+  "Mendes",
+  "Moreau",
+  "Nakamura",
+  "Novak",
+  "Okafor",
+  "Oyelaran",
+  "Park",
+  "Pereira",
+  "Quiroga",
+  "Rahman",
+  "Reyes",
+  "Rossi",
+  "Saito",
+  "Sandoval",
+  "Schmidt",
+  "Silva",
+  "Tanaka",
+  "Thorne",
+  "Uribe",
+  "Varga",
+  "Vieira",
+  "Walsh",
+  "Weber",
+  "Yamamoto",
+  "Yilmaz",
+  "Zhang",
+  "Zielinski",
 ];
 
 /** mulberry32 — small, fast, deterministic. */
@@ -97,11 +205,12 @@ function* names(seed: number, taken: Set<string>): Generator<string> {
   }
   for (const name of pairs) if (!taken.has(name)) yield name;
   // 3,500+ pairs is plenty for 2,000; past that, disambiguate with an initial.
-  for (const initial of "ABCDEFGHJKLMNPRSTVW") for (const name of pairs) {
-    const [first, last] = name.split(" ");
-    const candidate = `${first} ${initial}. ${last}`;
-    if (!taken.has(candidate)) yield candidate;
-  }
+  for (const initial of "ABCDEFGHJKLMNPRSTVW")
+    for (const name of pairs) {
+      const [first, last] = name.split(" ");
+      const candidate = `${first} ${initial}. ${last}`;
+      if (!taken.has(candidate)) yield candidate;
+    }
 }
 
 // ------------------------------------------------------------------- http --
@@ -202,8 +311,12 @@ async function main(): Promise<void> {
   const sorted = [...latencies].sort((a, b) => a - b);
   const total = await countPlayers(baseUrl);
 
-  console.log(`\n  registered   ${created} of ${need} in ${seconds.toFixed(1)}s  (${(created / seconds).toFixed(1)} signups/s)`);
-  console.log(`  latency      p50 ${percentile(sorted, 50).toFixed(0)}ms  p95 ${percentile(sorted, 95).toFixed(0)}ms  p99 ${percentile(sorted, 99).toFixed(0)}ms  max ${percentile(sorted, 100).toFixed(0)}ms`);
+  console.log(
+    `\n  registered   ${created} of ${need} in ${seconds.toFixed(1)}s  (${(created / seconds).toFixed(1)} signups/s)`,
+  );
+  console.log(
+    `  latency      p50 ${percentile(sorted, 50).toFixed(0)}ms  p95 ${percentile(sorted, 95).toFixed(0)}ms  p99 ${percentile(sorted, 99).toFixed(0)}ms  max ${percentile(sorted, 100).toFixed(0)}ms`,
+  );
   console.log(`  statuses     ${[...statuses.entries()].map(([code, n]) => `${code || "network"}×${n}`).join("  ")}`);
   console.log(`  players now  ${total}\n`);
   if (total < players) fail(`board holds ${total} players, wanted ${players}`);

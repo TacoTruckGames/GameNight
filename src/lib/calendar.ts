@@ -135,10 +135,7 @@ export function sameMonth(a: YearMonth, b: YearMonth): boolean {
  * groups without a second sort. Events whose `startsAt` won't parse are skipped;
  * the agenda shows what it can rather than blanking out.
  */
-export function groupByDay<T extends { startsAt: string }>(
-  events: readonly T[],
-  timeZone?: string,
-): DayGroup<T>[] {
+export function groupByDay<T extends { startsAt: string }>(events: readonly T[], timeZone?: string): DayGroup<T>[] {
   const buckets = new Map<DayKey, T[]>();
   for (const event of events) {
     const key = dayKey(new Date(event.startsAt), timeZone);

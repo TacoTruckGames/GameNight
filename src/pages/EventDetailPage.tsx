@@ -48,7 +48,7 @@ export function EventDetailPage({ asSheet = false }: { asSheet?: boolean }) {
   // Closing is `navigate(-1)`, not a state flag: the sheet *is* a history entry,
   // so Back, the scrim and a downward drag have to mean the same thing or they
   // would disagree about where you end up.
-  const close = () => navigate(-1);
+  const close = () => void navigate(-1);
 
   if (event.isPending) {
     return (
@@ -118,35 +118,35 @@ export function EventDetailPage({ asSheet = false }: { asSheet?: boolean }) {
           <EventDangerZone
             event={detail}
             onCancelled={() => setEditing(false)}
-            onDeleted={() => (asSheet ? navigate(-1) : navigate("/", { replace: true }))}
+            onDeleted={() => void (asSheet ? navigate(-1) : navigate("/", { replace: true }))}
           />
         </>
       ) : (
-      <div className="card">
-        <div className="stack">
-          <EventVenue event={detail} showMap={maps.map} />
-          {/* The organizer's own words, and the reason this page is not just a
+        <div className="card">
+          <div className="stack">
+            <EventVenue event={detail} showMap={maps.map} />
+            {/* The organizer's own words, and the reason this page is not just a
               bigger card. Absent is the ordinary case, and an absent paragraph
               renders as nothing at all — no heading left standing over it. */}
-          {detail.description !== null ? <p className="text-lines">{detail.description}</p> : null}
-          {/* The facts and the action share a row where there is room for one.
+            {detail.description !== null ? <p className="text-lines">{detail.description}</p> : null}
+            {/* The facts and the action share a row where there is room for one.
               They are the two halves of the same decision — "four seats left,
               twelve going" and the button that acts on it — and on a desktop a
               full-width button on its own line put the width of the panel
               between them. On a phone it is still a column: the button is a
               thumb target and takes the whole line. */}
-          <div className="detail__act">
-            <EventFacts event={detail} attendeeCount={detail.attendeeCount} past={past} joined={joined} />
-            {action}
+            <div className="detail__act">
+              <EventFacts event={detail} attendeeCount={detail.attendeeCount} past={past} joined={joined} />
+              {action}
+            </div>
+            {cancelled ? (
+              <p className="text-sm muted">
+                This event was cancelled. {joined ? "Your seat is gone — you can clear it from your list." : ""}
+              </p>
+            ) : null}
           </div>
-          {cancelled ? (
-            <p className="text-sm muted">
-              This event was cancelled. {joined ? "Your seat is gone — you can clear it from your list." : ""}
-            </p>
-          ) : null}
+          <p className="detail__host">Hosted by {detail.organizerName}</p>
         </div>
-        <p className="detail__host">Hosted by {detail.organizerName}</p>
-      </div>
       )}
     </>
   );

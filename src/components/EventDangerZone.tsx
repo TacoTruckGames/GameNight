@@ -72,7 +72,9 @@ export function EventDangerZone({
         </div>
       ) : arming === "delete" ? (
         <div className="danger__confirm">
-          <p className="danger__text">Delete this event? Nobody has a seat, so there is no one to tell. This cannot be undone.</p>
+          <p className="danger__text">
+            Delete this event? Nobody has a seat, so there is no one to tell. This cannot be undone.
+          </p>
           <div className="form-actions">
             <button
               type="button"

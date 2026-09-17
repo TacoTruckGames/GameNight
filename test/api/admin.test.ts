@@ -12,8 +12,7 @@
  * every fixture id is unique.
  */
 
-import { runInDurableObject } from "cloudflare:test";
-import { env } from "cloudflare:test";
+import { env, runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 
 import type {
@@ -100,6 +99,12 @@ function adminId(): Promise<{ id: string }> {
 }
 
 // ------------------------------------------------------------------ guards --
+
+/** The `changed` list an `event.updated` audit row carries — typed, since `metadata` is stored as text. */
+function changedIn(rows: { metadata: string | null }[]): string[] {
+  const metadata = JSON.parse(rows[0]?.metadata ?? "null") as { changed?: string[] } | null;
+  return metadata?.changed ?? [];
+}
 
 describe("the admin gate", () => {
   it("401s an anonymous caller on a read", async () => {
@@ -197,7 +202,11 @@ describe("suspension", () => {
     const admin = await seedAdmin();
     const player = await seedUser();
 
-    await api(`/api/admin/users/${player.id}/suspend`, { method: "POST", as: admin.id, body: { reason: "cooling off" } });
+    await api(`/api/admin/users/${player.id}/suspend`, {
+      method: "POST",
+      as: admin.id,
+      body: { reason: "cooling off" },
+    });
     expect((await api("/api/me", { as: player.id })).status).toBe(403);
 
     const restored = await api<AdminUser>(`/api/admin/users/${player.id}/unsuspend`, {
@@ -381,9 +390,7 @@ describe("editing an event", () => {
     expect(await roomKeyOf(event.id)).toBe(before);
 
     const rows = await auditFor(event.id);
-    expect(JSON.parse(rows[0]?.metadata ?? "null").changed.sort()).toEqual(
-      ["gameType", "location", "startsAt", "title"].sort(),
-    );
+    expect(changedIn(rows).sort()).toEqual(["gameType", "location", "startsAt", "title"].sort());
   });
 
   it("rejects an empty patch and a past start time", async () => {
@@ -443,7 +450,7 @@ describe("editing an event's description", () => {
     expect(detail.body.description).toBe(prose);
 
     const rows = await auditFor(event.id);
-    expect(JSON.parse(rows[0]?.metadata ?? "null").changed).toEqual(["description"]);
+    expect(changedIn(rows)).toEqual(["description"]);
   });
 
   it("clears one with an explicit null, the same way a venue is unlinked", async () => {
@@ -974,7 +981,7 @@ describe("editing an event's venue", () => {
     expect(body.place).toBeNull();
 
     const rows = await auditFor(event.id);
-    const recorded: string[] = JSON.parse(rows[0]?.metadata ?? "null").changed;
+    const recorded = changedIn(rows);
     expect(recorded.filter((field) => field === "placeId")).toEqual(["placeId"]);
   });
 
@@ -989,7 +996,7 @@ describe("editing an event's venue", () => {
     });
 
     const rows = await auditFor(event.id);
-    const recorded: string[] = JSON.parse(rows[0]?.metadata ?? "null").changed;
+    const recorded = changedIn(rows);
     expect(recorded.sort()).toEqual(["placeId", "title"]);
   });
 
@@ -1008,7 +1015,7 @@ describe("editing an event's venue", () => {
     expect(body.place).toEqual(LIBRARY);
 
     const rows = await auditFor(event.id);
-    expect(JSON.parse(rows[0]?.metadata ?? "null").changed).toEqual(["title"]);
+    expect(changedIn(rows)).toEqual(["title"]);
   });
 
   it("returns the place on the admin event detail too", async () => {

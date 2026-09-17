@@ -75,7 +75,13 @@ export function EventFacts({
   return (
     <div className="detail__facts">
       {joined && !past && event.status !== "cancelled" ? <GoingChip /> : null}
-      <SeatChip seatsLeft={event.seatsLeft} capacity={event.capacity} isFull={event.isFull} status={event.status} past={past} />
+      <SeatChip
+        seatsLeft={event.seatsLeft}
+        capacity={event.capacity}
+        isFull={event.isFull}
+        status={event.status}
+        past={past}
+      />
       <span className="badge badge--count">
         <Icon name="player" size={14} />
         {attendanceLabel(attendeeCount, past)}

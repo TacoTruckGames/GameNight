@@ -13,16 +13,7 @@
 import type { CSSProperties } from "react";
 
 export type IconName =
-  | "events"
-  | "player"
-  | "organize"
-  | "search"
-  | "seat"
-  | "full"
-  | "in"
-  | "empty"
-  | "alert"
-  | "shield";
+  "events" | "player" | "organize" | "search" | "seat" | "full" | "in" | "empty" | "alert" | "shield";
 
 export function Icon({ name, size = 20, label }: { name: IconName; size?: number; label?: string }) {
   return (

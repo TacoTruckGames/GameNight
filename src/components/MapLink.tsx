@@ -52,8 +52,7 @@ export function MapLink({
     );
   }
   // Only when it says something the label does not already say.
-  const address =
-    withAddress && event.place && event.place.address !== event.location ? event.place.address : null;
+  const address = withAddress && event.place && event.place.address !== event.location ? event.place.address : null;
 
   return (
     <a className={className} href={mapsSearchUrl(event)} target="_blank" rel="noopener noreferrer">

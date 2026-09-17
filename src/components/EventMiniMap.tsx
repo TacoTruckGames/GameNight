@@ -21,15 +21,7 @@ import { mapsDirectionsUrl } from "../../shared/maps-links";
 // The size is the Worker's rule, imported: `shared/maps.ts`.
 const { width: WIDTH, height: HEIGHT } = MAP_SIZE;
 
-export function EventMiniMap({
-  eventId,
-  place,
-  location,
-}: {
-  eventId: string;
-  place: EventPlace;
-  location: string;
-}) {
+export function EventMiniMap({ eventId, place, location }: { eventId: string; place: EventPlace; location: string }) {
   const [failed, setFailed] = useState(false);
 
   // `v` is the place id: it busts the cache when an admin re-points a venue,
@@ -42,12 +34,7 @@ export function EventMiniMap({
   if (failed) return null;
 
   return (
-    <a
-      className="minimap"
-      href={mapsDirectionsUrl({ location, place })}
-      target="_blank"
-      rel="noopener noreferrer"
-    >
+    <a className="minimap" href={mapsDirectionsUrl({ location, place })} target="_blank" rel="noopener noreferrer">
       <img
         className="minimap__img"
         src={src}

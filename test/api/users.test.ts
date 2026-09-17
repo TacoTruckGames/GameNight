@@ -36,8 +36,12 @@ describe("GET /api/users", () => {
     // `created_at` is second-precision and sixty inserts land in the same one,
     // so the order under test is pinned with explicit timestamps at both ends.
     await env.DB.batch([
-      env.DB.prepare("INSERT INTO users (id, name, role, created_at) VALUES ('u_first', 'Earliest', 'player', '2000-01-01T00:00:00Z')"),
-      env.DB.prepare("INSERT INTO users (id, name, role, created_at) VALUES ('u_last', 'Latest', 'player', '2099-01-01T00:00:00Z')"),
+      env.DB.prepare(
+        "INSERT INTO users (id, name, role, created_at) VALUES ('u_first', 'Earliest', 'player', '2000-01-01T00:00:00Z')",
+      ),
+      env.DB.prepare(
+        "INSERT INTO users (id, name, role, created_at) VALUES ('u_last', 'Latest', 'player', '2099-01-01T00:00:00Z')",
+      ),
     ]);
 
     const { body: page } = await api<User[]>("/api/users?role=player");

@@ -238,9 +238,19 @@ describe("GET /api/events", () => {
       const token = crypto.randomUUID().slice(0, 8);
       const players = await seedUsers(4);
       const ids = players.map((player) => player.id);
-      const full = await seedEvent({ title: `${token} full`, capacity: 2, rsvpPlayerIds: ids.slice(0, 2), startsAt: inDays(7) });
+      const full = await seedEvent({
+        title: `${token} full`,
+        capacity: 2,
+        rsvpPlayerIds: ids.slice(0, 2),
+        startsAt: inDays(7),
+      });
       const cold = await seedEvent({ title: `${token} cold`, capacity: 8, rsvpPlayerIds: ids, startsAt: inDays(8) });
-      const hot = await seedEvent({ title: `${token} hot`, capacity: 4, rsvpPlayerIds: ids.slice(0, 3), startsAt: inDays(9) });
+      const hot = await seedEvent({
+        title: `${token} hot`,
+        capacity: 4,
+        rsvpPlayerIds: ids.slice(0, 3),
+        startsAt: inDays(9),
+      });
       return { token, full, cold, hot };
     }
 
@@ -268,8 +278,18 @@ describe("GET /api/events", () => {
     it("breaks ties on start time, so equally full tables read soonest-first", async () => {
       const token = crypto.randomUUID().slice(0, 8);
       const players = await seedUsers(2);
-      const later = await seedEvent({ title: `${token} later`, capacity: 4, rsvpPlayerIds: [players[0]!.id], startsAt: inDays(21) });
-      const sooner = await seedEvent({ title: `${token} sooner`, capacity: 4, rsvpPlayerIds: [players[1]!.id], startsAt: inDays(20) });
+      const later = await seedEvent({
+        title: `${token} later`,
+        capacity: 4,
+        rsvpPlayerIds: [players[0]!.id],
+        startsAt: inDays(21),
+      });
+      const sooner = await seedEvent({
+        title: `${token} sooner`,
+        capacity: 4,
+        rsvpPlayerIds: [players[1]!.id],
+        startsAt: inDays(20),
+      });
 
       const { body } = await api<EventSummary[]>(`/api/events?q=${token}&sort=popular`);
 
@@ -859,7 +879,8 @@ describe("PATCH /api/events/:id", () => {
 });
 
 describe("POST /api/events/:id/cancel", () => {
-  const cancel = (id: string, as?: string) => api<EventDetail & ApiErrorBody>(`/api/events/${id}/cancel`, { method: "POST", as });
+  const cancel = (id: string, as?: string) =>
+    api<EventDetail & ApiErrorBody>(`/api/events/${id}/cancel`, { method: "POST", as });
 
   it("lets the owning organizer call it off, and keeps the seats on record", async () => {
     const organizer = await seedUser({ role: "organizer" });
@@ -898,7 +919,11 @@ describe("POST /api/events/:id/cancel", () => {
     const player = await seedUser();
     const event = await seedEvent({ organizer });
     await cancel(event.id, organizer.id);
-    const edit = await api<ApiErrorBody>(`/api/events/${event.id}`, { method: "PATCH", body: { title: "x" }, as: organizer.id });
+    const edit = await api<ApiErrorBody>(`/api/events/${event.id}`, {
+      method: "PATCH",
+      body: { title: "x" },
+      as: organizer.id,
+    });
     expect(edit.status).toBe(409);
     expect(edit.body.error.code).toBe("EVENT_CANCELLED");
     expect((await putRsvp(event.id, player.id)).status).toBe(409);
