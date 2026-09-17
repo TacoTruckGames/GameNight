@@ -37,7 +37,7 @@ import { Sheet } from "../components/Sheet";
 import { SeatChip } from "../components/SeatChip";
 import { Skeleton } from "../components/Skeleton";
 import { useIdentity } from "../identity/IdentityContext";
-import { formatEventDateTimeLong, toDateTimeAttr } from "../lib/datetime";
+import { formatEventWhen, toDateTimeAttr } from "../lib/datetime";
 
 export function EventDetailPage({ asSheet = false }: { asSheet?: boolean }) {
   const { id = "" } = useParams();
@@ -91,24 +91,22 @@ export function EventDetailPage({ asSheet = false }: { asSheet?: boolean }) {
         </Link>
       )}
 
-      <div className="stack">
+      {/* The same header on both sheets, because it is the same event and the
+          organizer reviewing their own listing is checking exactly what a player
+          would read. Kind, name, when, whose — in that order, because that is
+          the order the questions arrive in. The date sits outside the card and
+          is set large: it used to be the fifth thing on the page, below a map. */}
+      <div className="detail__head">
+        <span className="detail__kind">{gameTypeLabel(detail.gameType)}</span>
         <h1 className="page-title">{detail.title}</h1>
-        <p className="card__meta">
-          <span className="badge">{gameTypeLabel(detail.gameType)}</span> Hosted by {detail.organizerName}
+        <p className="detail__when">
+          <time dateTime={toDateTimeAttr(detail.startsAt)}>{formatEventWhen(detail.startsAt)}</time>
         </p>
+        <p className="detail__host">Hosted by {detail.organizerName}</p>
       </div>
 
       <div className="card">
         <div className="stack">
-          {/* Two elements, not one sentence. "Thursday, September 17, 2026 at
-              7:30 PM · 9 going" is 49 characters and wrapped to two lines on
-              every phone, breaking after the time so "· 9 going" sat alone on a
-              row of its own. The date is long because it is spelled out in
-              full; the count is a fact about the table, so it joins the chips
-              that say the other facts about the table. */}
-          <p className="detail__when">
-            <time dateTime={toDateTimeAttr(detail.startsAt)}>{formatEventDateTimeLong(detail.startsAt)}</time>
-          </p>
           {/* The venue block: the label you can tap, the address Google
               confirmed (only when it adds something the label does not already
               say), the map, and the one button the phone user came for. */}

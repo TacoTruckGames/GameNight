@@ -1296,9 +1296,42 @@ textarea.input {
   }
 }
 
-/* The long date, on its own line and nothing else's. */
+/* Kind, name, when, whose — the sheet's header, outside the card.
+
+   The date used to live *inside* the card, fifth on the page, under a venue and
+   a map. It is the second question anyone has about an event, so it is second
+   now, and set large enough to be read at a glance rather than found. Getting it
+   there meant shortening it: "Saturday, September 19, 2026 at 7:30 PM" is 39
+   characters and wraps on a phone even alone on a line, and a headline that
+   wraps is not a headline. */
+.detail__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* The game type, evicted from under the title by the date. An eyebrow rather
+   than a badge: a category that announces the event reads as a heading, and it
+   keeps the title on a line of its own at every width. */
+.detail__kind {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+
 .detail__when {
   margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.detail__host {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-muted);
 }
 
 .detail__facts {

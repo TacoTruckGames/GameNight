@@ -282,7 +282,15 @@ half-second spinner.
   shared link or a refresh carries no such state and gets the full page, unchanged. One element, one query,
   two frames. The URL is the event's either way, so a sheet is still a link you can send. Escape, a tap
   outside and Back all close it — the same three, and the same absence of a Close button, as the identity
-  switcher — and on a phone you can also **drag it away**, which is the gesture the other two are a keyboard
+  switcher. Its header is **kind, name, when, whose** — in the order the questions arrive — and it is the
+  same header for a player and for the organizer of that event, because reviewing your own listing means
+  reading exactly what a player reads. The date moved out of the card to get there: it used to be fifth on
+  the page, below a venue and a map, and it is the second thing anyone wants. Moving it up meant shortening
+  it — "Saturday, September 19, 2026 at 7:30 PM" is 39 characters and wraps on a phone even alone on a line,
+  and a headline that wraps is not a headline — so it reads "Sat, Sep 19 · 7:30 PM", with the year added
+  only when it is not this one. That evicted the game-type tag, which became the eyebrow above the title: a
+  category that announces the event reads as a heading, and it leaves the title a full line at every width.
+  On a phone you can also **drag the sheet away**, which is the gesture the other two are a keyboard
   and a small target standing in for. **The whole panel is the handle** once you are at the top of it; the
   grip is only the exception that also works mid-scroll, which is what a grip is for, and it lives outside
   the scrolling body so it is never the first thing to scroll away. Taking that gesture needs a native

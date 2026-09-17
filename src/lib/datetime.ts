@@ -56,10 +56,37 @@ export function formatEventTime(iso: string): { hour: string; suffix: string } {
   return { hour, suffix };
 }
 
-/** "Friday, September 18, 2026 at 7:00 PM" — the detail page line. */
+/** "Friday, September 18, 2026 at 7:00 PM" — kept for anywhere with room for it. */
 export function formatEventDateTimeLong(iso: string): string {
   const at = parse(iso);
   return at ? `${dateOnly.format(at)} at ${timeOnly.format(at)}` : iso;
+}
+
+const whenDay = new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric" });
+const whenDayYear = new Intl.DateTimeFormat(undefined, {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
+
+/**
+ * "Sat, Sep 19 · 7:30 PM" — the sheet's headline.
+ *
+ * The spelled-out form was 39 characters and wrapped to two lines on a phone
+ * even with a line to itself. This is the same fact at a size that can be set
+ * large, which is the point: on a sheet about one night, *when* is the second
+ * thing you need after what it is called.
+ *
+ * The year appears only when it is not the current one. Inside this year it is
+ * noise on every row; outside it, leaving it off would be a genuine ambiguity —
+ * the board is upcoming-only, but nothing stops an organizer posting next March.
+ */
+export function formatEventWhen(iso: string, now: Date = new Date()): string {
+  const at = parse(iso);
+  if (!at) return iso;
+  const day = at.getFullYear() === now.getFullYear() ? whenDay.format(at) : whenDayYear.format(at);
+  return `${day} · ${timeOnly.format(at)}`;
 }
 
 /**

@@ -25,7 +25,7 @@ import { MapLink } from "../components/MapLink";
 import { SeatChip } from "../components/SeatChip";
 import { Sheet } from "../components/Sheet";
 import { Skeleton } from "../components/Skeleton";
-import { formatEventDateTime, formatEventDateTimeLong, toDateTimeAttr } from "../lib/datetime";
+import { formatEventDateTime, formatEventWhen, toDateTimeAttr } from "../lib/datetime";
 
 export function AttendeesPage({ asSheet = false }: { asSheet?: boolean }) {
   const { id = "" } = useParams();
@@ -65,22 +65,22 @@ export function AttendeesPage({ asSheet = false }: { asSheet?: boolean }) {
         </Link>
       )}
 
-      {/* The same shape as the player's sheet, because it is the same event —
-          what differs is the last row: a player gets a seat, the organizer gets
-          the people in theirs. "Hosted by" is dropped: this route is owner-only,
-          so the answer is always "you". */}
-      <div className="stack">
+      {/* The same header on both sheets, because it is the same event and the
+          organizer reviewing their own listing is checking exactly what a player
+          would read. Kind, name, when, whose — in that order, because that is
+          the order the questions arrive in. The date sits outside the card and
+          is set large: it used to be the fifth thing on the page, below a map. */}
+      <div className="detail__head">
+        <span className="detail__kind">{gameTypeLabel(event.gameType)}</span>
         <h1 className="page-title">{event.title}</h1>
-        <p className="card__meta">
-          <span className="badge">{gameTypeLabel(event.gameType)}</span>
+        <p className="detail__when">
+          <time dateTime={toDateTimeAttr(event.startsAt)}>{formatEventWhen(event.startsAt)}</time>
         </p>
+        <p className="detail__host">Hosted by {event.organizerName}</p>
       </div>
 
       <div className="card">
         <div className="stack">
-          <p className="detail__when">
-            <time dateTime={toDateTimeAttr(event.startsAt)}>{formatEventDateTimeLong(event.startsAt)}</time>
-          </p>
           <div className="venue">
             <MapLink event={event} className="card__address venue__link" />
             {event.place && event.place.address !== event.location ? (
