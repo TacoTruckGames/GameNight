@@ -22,6 +22,13 @@
  * `aria-pressed` rather than a tablist: these toggle a rendering, they don't
  * switch panels. The identity picker wears the same pill with `aria-selected`
  * because it really is a tablist — same appearance, different promise.
+ *
+ * The caption is **there but not drawn**. "Week | Month | List" says what it is
+ * without a word above it telling you, and the row it was taking is a row of
+ * board. It stays in the DOM because the group still needs a name: a screen
+ * reader announcing three unlabelled buttons in a row has to guess what they
+ * switch, and `visually-hidden` is the difference between not showing a label
+ * and not having one.
  */
 
 import { useId } from "react";
@@ -42,7 +49,7 @@ export function SegmentedControl<T extends string>({
   const labelId = useId();
   return (
     <div className="field">
-      <span className="field__label" id={labelId}>
+      <span className="field__label visually-hidden" id={labelId}>
         {label}
       </span>
       <div className="segmented" role="group" aria-labelledby={labelId}>

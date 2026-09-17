@@ -39,6 +39,7 @@ import { WeekAgenda, weekWindow } from "../components/WeekAgenda";
 import { EventListSkeleton } from "../components/Skeleton";
 import { useIdentity } from "../identity/IdentityContext";
 import { upcomingGroups } from "../lib/datetime";
+import { PHONE_QUERY, useMediaQuery } from "../lib/media";
 import {
   dayKey,
   formatMonthLabel,
@@ -60,6 +61,11 @@ export function EventsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [gameType, setGameType] = useState("");
   const [view, setView] = useState<BoardView>(DEFAULT_BOARD_VIEW);
+  // Sharing its line with the type picker leaves the search box about 200px on a
+  // phone, where the long placeholder is cut off mid-word — which tells the
+  // reader less than the short one does. The label the screen reader hears is
+  // the full sentence either way.
+  const phone = useMediaQuery(PHONE_QUERY);
   const [weekStart, setWeekStart] = useState<DayKey>(() => startOfWeek(dayKey(new Date())!));
   const [month, setMonth] = useState<YearMonth>(() => monthOf(dayKey(new Date())!));
   const [selectedDay, setSelectedDay] = useState<DayKey | null>(null); // the user's explicit tap only
@@ -146,7 +152,7 @@ export function EventsPage() {
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search event title or location"
+              placeholder={phone ? "Search event" : "Search event title or location"}
               maxLength={SEARCH_MAX}
               autoComplete="off"
             />
