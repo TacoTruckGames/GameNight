@@ -243,7 +243,7 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
               ))}
             </select>
             {capped ? (
-              <p className="field__note">
+              <p className="muted text-sm">
                 Only shows the first {PICKER_LIMIT} {tab.noun}s.
               </p>
             ) : null}
