@@ -244,8 +244,7 @@ export function WhoAreYou({ onClose }: { onClose?: () => void }) {
             </select>
             {capped ? (
               <p className="field__note">
-                Showing the first {PICKER_LIMIT} {tab.noun}s — the full list is too long for a menu. Not listed? Join as
-                someone new below.
+                Only shows the first {PICKER_LIMIT} {tab.noun}s.
               </p>
             ) : null}
           </div>

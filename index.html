@@ -6,8 +6,16 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#290D4A" />
     <meta name="description" content="Find a table. Game Night is a community event board for tabletop players." />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- The moon-and-die mark, in every shape a browser asks for. Safari does not
+         use SVG favicons and falls back to /favicon.ico — which used to be the SPA's
+         index.html, so Safari showed whatever icon it had cached for the domain.
+         `?v=2` makes a browser that cached the wrong one fetch these. -->
+    <link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml" />
+    <link rel="icon" href="/icon-32.png?v=2" type="image/png" sizes="32x32" />
+    <link rel="icon" href="/icon-16.png?v=2" type="image/png" sizes="16x16" />
+    <link rel="shortcut icon" href="/favicon.ico?v=2" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <title>Game Night</title>
   </head>
   <body>
