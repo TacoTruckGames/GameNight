@@ -1,8 +1,7 @@
 # Game Night
 
 A community event board for tabletop players. Organizers post events with a fixed number of seats; players
-find them, RSVP in one tap, cancel in one tap, and keep track of what they've joined. An event can never be
-over-booked — not even when two people grab the last seat at the same instant.
+find them, RSVP in one tap, cancel in one tap, and view RSVPs.
 
 **Hosted:** https://gamenight.tacotruckgames.com
 
@@ -11,25 +10,67 @@ over-booked — not even when two people grab the last seat at the same instant.
 Requires Node ≥ 22.18 and pnpm (`corepack enable`). No accounts, no Docker, no environment variables.
 
 ```sh
-pnpm install && pnpm dev        # → http://localhost:5173
-pnpm test                        # 433 tests inside the Workers runtime, incl. the concurrency proofs (~4 s)
-pnpm typecheck && pnpm lint      # tsc on all three projects; ESLint (type-aware) + Prettier --check
-pnpm stress [url]                # real-HTTP race for the last seat against a running server
+# http://localhost:5173
+pnpm install && pnpm dev
 ```
 
-Everything — the React client, the API, the database and the per-event Durable Objects — runs locally inside
-Cloudflare's `workerd`, exactly as in production. `pnpm dev` re-applies the migrations and re-seeds the demo
-board on every start; seed dates are relative to _now_, so the fixtures are always there.
+Everything runs locallys (React client, API, database and the per-event Durable Objects) inside
+Cloudflare's `workerd`, exactly as in production. `pnpm dev` re-applies the migrations and re-seeds the
+demo board on every start; seed dates are relative to _now_, so the fixtures are always there.
+
+Additionally, you can run the tests and validation:
+
+```sh
+# 433 tests inside the Workers runtime, incl. the concurrency proofs (~4 s)
+pnpm test
+
+# tsc on all three projects; ESLint (type-aware) + Prettier --check
+pnpm typecheck && pnpm lint
+
+# real-HTTP race for the last seat against a running server (defaults to local server)
+pnpm stress
+```
 
 The first screen has a tab per role. **Player** (Alice, Bob, …) browses and RSVPs; **Organizer** (Cardboard
 Castle Games, …) posts events and sees who's coming. Pick an existing person or type a name to join as
-someone new. Operator tools live at **/admin**, reached only by typing the URL.
+someone new.
 
-The seed is the brief's launch column: **64 events** across five weeks — 50 upcoming, 8 finished, 6 cancelled,
-with deliberately uneven days — and **2,000 players**, 28 named personas plus 1,972 generated in SQL, so the
-board opens at launch scale offline. **Commander Pod Night** is full, **D&D One-Shot** has one seat left
-(Alice isn't in it, which makes it the hand-run race demo), and Alice holds a seat on a cancelled event.
-Start times are US Pacific evenings, so their UTC dates run a day ahead — the seed file says why.
+### Mock Data Seeding
+
+**64 events** across five weeks, 50 upcoming, 8 finished, 6 cancelled,
+with deliberately uneven days and **2,000 players**, 28 named personas plus 1,972 generated in SQL, so the
+board opens at launch scale offline.
+
+## How it was built, and how long it took
+
+Built with Claude Code over three working days plus a submission morning: about **24 hours** of session time
+and 107 commits. Hours are measured from the Claude Code session logs and the commit timestamps, so they
+include time the agent spent working on its own. Each feature started as a written plan, reviewed before any
+code; every commit is one concern with the _why_ in its message, so `git log` is the design record.
+
+| Day                    | Focus                                              | Time   |
+| ---------------------- | -------------------------------------------------- | ------ |
+| **Day 1** | Initial implementation, first features, bug fixing              | ~7 h   |
+| **Day 2** | Requirements check, board and organizer features, UI polish     | ~8 h   |
+| **Day 3** | performance, security analysis, UI polish, Submission review    | ~9 h   |
+
+
+**Day 1 — initial implementation and bug fixing.** The plan (stack, schema, the exact RSVP SQL, the DO mutex,
+the test matrix), then the whole brief in one commit: the DO/D1 write path, S1–S4, the concurrency suite and
+the client. The rest of the day went beyond it: the WotC-derived look, the role-tabbed
+sign-in, the admin dashboard, the agenda and month calendar, venue search with a map, the first deploy, and a
+screenshot review of every flow at phone and desktop widths with the fixes it turned up.
+
+**Day 2 — requirements check, features and UI polish.** A 64-event seed, then a second pass over the brief that produced
+an exit-criteria list and two fixes (head counts, game types). Descriptions, past events that read as past,
+the week view on all three lists, organizer editing, real Seattle venues through Google Places, and the
+compact event card with the detail sheet that opens over the board. Sheet and desktop layout polish; organizer cancel and delete; a separate admin session.
+
+**Day 3 — performance and security, submission review.**  The 12-month column: populate and load-test scripts, with the launch load
+measured rather than estimated. A full security review and its fixes (CSP, a user picker that is not a
+directory, redaction), a refactor pass that removed duplicated edit and sheet code, ESLint and Prettier in the
+deploy gate, the README cut to a third, and race tests that prove they were races. A run through every command in this README, a quieter test log, the
+favicon, and copy fixes.
 
 ## How it works
 
@@ -65,7 +106,7 @@ worker-configuration.d.ts   generated by `pnpm cf-typegen`; committed so a clone
 
 ### Identity and roles
 
-No real authentication — the brief allows a "who am I" picker. The client sends `X-User-Id`; the server
+No real authentication. The brief allows a "who am I" picker. The client sends `X-User-Id`; the server
 resolves it to a user and a role on every request, and every route declares who may call it:
 
 | Route                                                                                                     | Player | Organizer            |
@@ -81,7 +122,7 @@ resolves it to a user and a role on every request, and every route declares who 
 An unknown id is a 401 everywhere and the client returns you to the picker. Errors are always
 `{ error: { code, message, details? } }`; validation failures list every bad field with a path the form maps
 onto its inputs. Signup letting the caller choose a role would be indefensible in a real product; here there
-is no privilege boundary to protect, only a demo board to get into — and what each role may _do_ is enforced
+is no privilege boundary to protect, only a demo board to get into and what each role may _do_ is enforced
 server-side on every route, and tested.
 
 ### Never over-booking (S1), never double-counting (S2)
@@ -102,9 +143,11 @@ Two layers, deliberately.
    ```
    `PRIMARY KEY (event_id, player_id)` is S2 at the schema level; `CHECK (rsvp_count <= capacity)` is a third
    net. If D1 reports `changes = 0` where the room expected an insert, the room throws its state away and
-   rehydrates — which is also how a new room learns about SQL-seeded RSVPs.
+   rehydrates, which is also how a new room learns about SQL-seeded RSVPs.
 
-Why the DO when the guarded insert alone is correct? Measured: with the mutex, 25 simultaneous RSVPs for 5
+### Why the DO when the guarded insert alone is correct?
+
+Measured: with the mutex, 25 simultaneous RSVPs for 5
 seats cost 6 D1 batches; without it, 13 plus a resync per loser. The room isolates each event's write spike
 from every other event and answers retries for free. `PUT` for RSVP because it is idempotent by contract,
 which is what lets the client retry on a network failure.
@@ -112,9 +155,9 @@ which is what lets the client retry on a network failure.
 ### Counts and freshness (S3)
 
 `events.rsvp_count` is recomputed inside the same batch that inserts or deletes the RSVP, so it cannot drift,
-and every read takes it straight from D1. The only staleness is client-side: lists are fresh for 10 s and
-refetch on focus and after every write, so a count you see is at most ~10 s old. The server's 201/200/409 is
-the only truth — no optimistic updates, because an RSVP is precisely the operation the server may refuse,
+and every read takes it straight from D1. The only staleness is client-side: lists are fresh for 10s and
+refetch on focus and after every write, so a count you see is at most ~10s old. The server's 201/200/409 is
+the only truth, no optimistic updates, because an RSVP is precisely the operation the server may refuse,
 and a 409 ("just filled up") refreshes the card on the spot.
 
 ### The board and the sheet
@@ -134,69 +177,12 @@ and a 409 ("just filled up") refreshes the card on the spot.
 - **Search** is a case-insensitive `LIKE` over title, location and verified address. **Sort** on the API is
   `date` or `popular` (fullest-first by ratio, full tables last); the board itself is always soonest-first.
   `LIMIT 200`, no pagination — fifty live events fit on a screen.
-- **The card is 88px** (was 223): a 50px time rail, then title, seat state and venue on three lines, the
-  action bottom-right. The whole card opens the event; the RSVP button lifts itself above that. The card
-  reads `3/16 Seats Left`, `Going · 3/16 Seats Left` or `Full`; an organizer's reads `5 Going · 3/8 Seats
-Left · Card games`.
-- **The detail is a sheet over the board**, not a page. A card tap passes `state.backgroundLocation`, so
-  `routes.tsx` renders the board _and_ the event on top; a typed URL gets the full page. Its header is kind,
-  name, when; the facts are one chip each — **Going**, **N / M Seats Left**, **N Going** — and the action
-  shares their row on a desktop. Escape, a tap outside, Back and (on a phone) a drag down all close it. The
-  drag needs a native non-passive `touchmove` listener, decides direction once on the first 3px, engages at
-  6px so a tap stays a tap, and releases on distance _or_ speed.
-- **A modal is modal for every input.** The scrim takes the pointer, `useScrollLock` pins `<body>` at
-  `top: -<scrollY>px` (not `overflow: hidden`, which iOS ignores), and Tab cycles inside the panel.
-  `html { scrollbar-gutter: stable }` keeps the page from shifting when a scrollbar appears — between a
-  short view and a long one, or when the body is pinned — and the full-bleed bars extend under the reserved
-  column by its measured width so nothing stops short of the window.
-- **An organizer's board is their own events**, every card opening that event's door list: the same sheet
-  as the player's, plus the guest list (two columns on a desktop) and **Edit Event**. Editing replaces the
-  view, sends **only the fields that changed**, and keeps the head count and seats on screen because every
-  edit is made against them. **Cancel** is a status change (seat-holders see it marked, not vanished) and
-  only an admin can restore; **Delete** exists only while nobody holds a seat (`409 EVENT_HAS_RSVPS`). An
-  open day on the calendar offers **+ New Event** with that evening prefilled.
-- **Switching identity** drops from the name button in the header: press it again, click outside, or Escape.
-  The board and `/admin` are separate sessions with separate stored ids.
 - **Validation runs twice** — the shared zod schema in the browser to skip a round-trip, and on the server,
   which is the one that counts.
 
-### Venues and maps
-
-An organizer can attach a real venue when posting; players get a mini map that is itself the link to
-turn-by-turn. `location` stays a plain required string (the room the organizer knows), and the place is
-separate (the building Google knows); both are searchable. **The client sends only a place id; the Worker
-resolves it** — address and coordinates come from the Worker's own Place Details call, and the browser never
-talks to Google, so the key is a Worker secret and the SPA makes zero cross-origin requests.
-
-**It degrades, always.** With no `GOOGLE_MAPS_API_KEY` — what a fresh clone has — the typeahead is a text
-input, there is no map, and the Maps deep-links still work because they need no key. If Google is down when
-an event is posted, it posts with the address as typed. Turning it on: one key for **Places API (New)** and
-**Maps Static API**, in `.dev.vars` locally and `wrangler secret put` in production.
-
-**Cost is ~$0**: the free tier is 10,000 calls/month per SKU; the map is keyed by event id (never `?lat=&lng=`,
-which would be an open image proxy), rendered images are cached at the edge under one canonical key per
-(event, size, venue), a daily per-SKU counter in D1 fails closed, and the 300 ms autocomplete debounce is the
-real lever. The seeded venues are real public civic facilities around Seattle, resolved once at authoring
-time and written into `seed.sql` by hand, so local reset runs offline.
-
-### Look and feel
-
-The palette is derived from the public design tokens on company.wizards.com — inspiration only, no marks
-used. Every colour is a token in `src/theme/tokens.css` with a full dark set, and `tools/contrast-audit.mjs`
-exits non-zero unless every text pair clears 4.5:1 and the focus ring 3:1, in both themes. The logo and icons
-were generated by `tools/artgen/gen.py`; icons ship as alpha masks painted with `currentColor`. Every tap
-target is 44px; the chrome is compressed around them, not through them.
-
 ### Administration
 
-`/admin` is reached only by typing it, signs itself in as the one provisioned operator account, and is its own
-session — the board stays whoever it was. Every page wears a fixed orange bar. It is small on purpose: an
-overview (counts, 14-day signups and RSVPs, open errors, recent actions), **Users** (suspend/unsuspend),
-**Events** (edit any field, cancel/restore, remove an attendee) and **Errors** (the backend log). Three rules
-keep it honest: a suspension is one `suspended_at` column checked once in the auth middleware; a capacity
-change rotates the event's `room_key` so a hydrated room cannot keep refusing at the old number; removing an
-attendee goes through the room's `cancel()` so its members never drift from D1. Every admin write is audited.
-The operator's edit form is the organizer's `EventForm` with a different mutation.
+`/admin` is reached only by typing it, signs itself in as the one provisioned operator account. Every page wears a fixed orange bar. This was added to maintain and validate the mock data.
 
 ## Reaching the 12-month column
 
@@ -281,20 +267,6 @@ pnpm populate https://gamenight.tacotruckgames.com --players 2000     # tops a s
 pnpm loadtest https://gamenight.tacotruckgames.com --seconds 15 --budget 20000
 ```
 
-## How it was built, and how long it took
-
-With Claude Code: a written plan (stack, schema, the exact RSVP SQL, the DO mutex, the test matrix) reviewed
-before any code, then implementation on disjoint files, then verification. Every S1/S2 claim is backed by a
-test that was checked for vacuity; the DO semantics were cross-checked against Cloudflare's docs and then
-exercised; every route was hit over real HTTP for each status code; the client was walked in a headless
-browser at 390px and 1440px for every flow (ad hoc — the scripts are not in the repo); every commit is one
-concern with the _why_ in its message, so `git log` is the design record.
-
-The core the brief asked for — the DO/D1 write path, S1–S4, the concurrency suite, the client, first deploy —
-was **3–4 hours** (`git checkout 5d98851` to see it). Everything since is beyond the brief, roughly: look and
-feel 1.5 h, admin 3 h, board and calendar 3.5 h, organizer editing 1.5 h, venues 2 h, review pass 2 h, data
-2 h, week agenda 2.5 h, sheets and desktop layout 3 h, scale measurement and the review batch 4 h.
-
 ## What is beyond the brief
 
 The brief says keep the scope small, and about three quarters of the time went past its seven stories. None
@@ -325,14 +297,3 @@ of it touches the write path — S1–S4 are the same code and tests they were a
 6. **CI and browser tests.** Typecheck, lint and tests on every push, plus a committed Playwright smoke.
 7. **Maps.** Per-SKU quota caps and a budget alert in the Google console; refresh stale `place_resolved_at`
    rows; a privacy note that autocomplete sends the organizer's coarse edge location to Google as a bias.
-
-## Deploying
-
-```sh
-cp .env.example .env             # CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
-pnpm run deploy                  # typecheck → lint → build → remote D1 migrations → wrangler deploy
-pnpm db:seed:remote              # load the demo board (destructive: resets it)
-```
-
-The Worker, its D1 binding, the `EventRoom` class and the custom domain are declared in `wrangler.toml`.
-`.env` is only ever read by the deploy script and is never bundled.
