@@ -8,7 +8,7 @@ over-booked — not even when two people grab the last seat at the same instant.
 
 ## Run it
 
-Requires Node ≥ 22 and pnpm (`corepack enable`). No accounts, no Docker, no environment variables.
+Requires Node ≥ 22.18 and pnpm (`corepack enable`). No accounts, no Docker, no environment variables.
 
 ```sh
 pnpm install && pnpm dev        # → http://localhost:5173
@@ -25,8 +25,9 @@ The first screen has a tab per role. **Player** (Alice, Bob, …) browses and RS
 Castle Games, …) posts events and sees who's coming. Pick an existing person or type a name to join as
 someone new. Operator tools live at **/admin**, reached only by typing the URL.
 
-The seed is 64 events across five weeks — 50 upcoming, 8 finished, 6 cancelled, with deliberately uneven days
-— and 2,000 players on the live board. **Commander Pod Night** is full, **D&D One-Shot** has one seat left
+The seed is the brief's launch column: **64 events** across five weeks — 50 upcoming, 8 finished, 6 cancelled,
+with deliberately uneven days — and **2,000 players**, 28 named personas plus 1,972 generated in SQL, so the
+board opens at launch scale offline. **Commander Pod Night** is full, **D&D One-Shot** has one seat left
 (Alice isn't in it, which makes it the hand-run race demo), and Alice holds a seat on a cancelled event.
 Start times are US Pacific evenings, so their UTC dates run a day ahead — the seed file says why.
 
@@ -203,7 +204,7 @@ The brief's table, launch **measured** on production, 12 months **designed**:
 
 | Dimension            | Launch (measured)                                  | 12 months (designed for)                        |
 | -------------------- | -------------------------------------------------- | ----------------------------------------------- |
-| Players (registered) | **2,000** on the live board                        | ~200,000                                        |
+| Players (registered) | **2,000** — seeded, and on the live board          | ~200,000                                        |
 | Events live at once  | 50 upcoming (64 total)                             | ~5,000                                          |
 | Traffic shape        | 16,611 requests, 0 errors, p50 36–77 ms            | read-heavy ~50:1; 10× event-day spikes          |
 | Hot path             | list with live counts: 251 rps at c=20, p95 102 ms | same list at ~100× — must not melt the database |
@@ -276,7 +277,7 @@ profiles and press RSVP on the D&D One-Shot in both.
 
 ```sh
 pnpm stress   https://gamenight.tacotruckgames.com --players 40 --capacity 5
-pnpm populate https://gamenight.tacotruckgames.com --players 2000     # to a target, through the signup API
+pnpm populate https://gamenight.tacotruckgames.com --players 2000     # tops a smaller board up to a target, through the signup API
 pnpm loadtest https://gamenight.tacotruckgames.com --seconds 15 --budget 20000
 ```
 

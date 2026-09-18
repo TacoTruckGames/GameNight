@@ -28,14 +28,19 @@ DELETE FROM events;
 DELETE FROM users;
 
 -- ---------------------------------------------------------------- users ----
--- 28 players + 4 organizers + 1 admin. Organizers are seed-only in spirit and
--- the admin is seed-only by construction: `SIGNUP_ROLES` excludes it, so
--- POST /api/users can never create one.
+-- 2,000 players + 4 organizers + 1 admin. The players are 28 named personas
+-- below and 1,972 generated in SQL after them — the brief's launch column is
+-- ~2,000 registered players, and a reviewer running `pnpm dev` should open the
+-- board at that scale, offline, without a script that talks to the API.
+-- Organizers are seed-only in spirit and the admin is seed-only by
+-- construction: `SIGNUP_ROLES` excludes it, so POST /api/users can never create
+-- one.
 --
--- The player count is the interesting number. Attendance variety is bounded by
--- it: with 8 players no event can be 20/24, every attendee list is the same
--- eight names, and "nearly full" and "empty" look identical at a glance. 28 is
--- enough to fill a 26-seat convention hall and still leave rooms half empty.
+-- The 28 personas are the interesting number for *attendance*. Every RSVP the
+-- generator at the foot of this file writes is drawn from them, never from the
+-- generated players: with 8 people no event can be 20/24 and every attendee
+-- list is the same eight names; 28 fills a 26-seat hall and still leaves rooms
+-- half empty, and it is small enough that Alice's spread can be chosen by hand.
 --
 -- `u_alice`, `org_cardboard`, `org_metro` and `adm_site` are load-bearing ids:
 -- the README, the stress script and the hand-run race demo all name them. They
@@ -74,6 +79,59 @@ INSERT INTO users (id, name, role) VALUES
   ('org_dicegoblin','Dice Goblin Collective',  'organizer'),
   ('org_library',   'Library Games Guild',     'organizer'),
   ('adm_site',      'Site Admin',             'admin');
+
+-- The personas registered long before anyone generated below. `created_at`
+-- is what the picker and the operator's user list order by, so this is what
+-- keeps Alice, Bob and the rest on the first page of 50 rather than buried
+-- under two thousand rows that would otherwise share their timestamp.
+UPDATE users SET created_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-60 days');
+
+-- The other 1,972 players, generated here rather than pasted here.
+--
+-- A recursive CTE counts to 1,972; each n picks a first name by (n*7) mod 62
+-- and a last name by (n*11) mod 57. 62 and 57 are coprime and so are the
+-- multipliers, so the pair is a bijection for n < 3,534 and every name is
+-- distinct without a list of two thousand of them. Ids are `u_p0001`..`u_p1972`;
+-- sign-up dates spread over the last 45 days (~44 a day), which is also what
+-- gives the operator overview's 14-day chart something to draw. Deterministic:
+-- the same n is the same person on every reseed. The lists are the two
+-- `scripts/populate.ts` uses; that script registers players through the API
+-- for a board that started smaller, and on this seed has nothing to do.
+WITH RECURSIVE
+  seq(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM seq WHERE n < 1972),
+  firsts(i, v) AS (VALUES
+    (0,'Ada'),(1,'Amir'),(2,'Anya'),(3,'Beck'),(4,'Bo'),(5,'Cal'),(6,'Cass'),(7,'Chen'),(8,'Dev'),
+    (9,'Dimitri'),(10,'Eden'),(11,'Elif'),(12,'Emeka'),(13,'Esme'),(14,'Farah'),(15,'Finn'),
+    (16,'Gita'),(17,'Hana'),(18,'Hugo'),(19,'Ines'),(20,'Ivo'),(21,'Jae'),(22,'Juno'),(23,'Kai'),
+    (24,'Kira'),(25,'Lars'),(26,'Leila'),(27,'Luca'),(28,'Mabel'),(29,'Malik'),(30,'Mara'),
+    (31,'Mateo'),(32,'Mika'),(33,'Nadia'),(34,'Nico'),(35,'Nia'),(36,'Odile'),(37,'Omar'),
+    (38,'Oren'),(39,'Petra'),(40,'Pilar'),(41,'Quinn'),(42,'Rafael'),(43,'Ravi'),(44,'Remy'),
+    (45,'Rosa'),(46,'Sable'),(47,'Sana'),(48,'Sasha'),(49,'Sol'),(50,'Tamsin'),(51,'Teo'),
+    (52,'Thea'),(53,'Tomas'),(54,'Uma'),(55,'Vera'),(56,'Wes'),(57,'Xan'),(58,'Yara'),(59,'Yusuf'),
+    (60,'Zara'),(61,'Zev')
+  ),
+  lasts(i, v) AS (VALUES
+    (0,'Abara'),(1,'Achebe'),(2,'Adler'),(3,'Alvarez'),(4,'Baptiste'),(5,'Bergström'),(6,'Bianchi'),
+    (7,'Calloway'),(8,'Castillo'),(9,'Chen'),(10,'Dagher'),(11,'Delgado'),(12,'Dubois'),
+    (13,'Eriksen'),(14,'Farouk'),(15,'Ferreira'),(16,'Fischer'),(17,'Gallo'),(18,'Haddad'),
+    (19,'Halvorsen'),(20,'Ibarra'),(21,'Ishikawa'),(22,'Jansen'),(23,'Joshi'),(24,'Kaur'),
+    (25,'Kimura'),(26,'Kowalski'),(27,'Lindqvist'),(28,'Lopes'),(29,'Maalouf'),(30,'Mendes'),
+    (31,'Moreau'),(32,'Nakamura'),(33,'Novak'),(34,'Okafor'),(35,'Oyelaran'),(36,'Park'),
+    (37,'Pereira'),(38,'Quiroga'),(39,'Rahman'),(40,'Reyes'),(41,'Rossi'),(42,'Saito'),
+    (43,'Sandoval'),(44,'Schmidt'),(45,'Silva'),(46,'Tanaka'),(47,'Thorne'),(48,'Uribe'),
+    (49,'Varga'),(50,'Vieira'),(51,'Walsh'),(52,'Weber'),(53,'Yamamoto'),(54,'Yilmaz'),(55,'Zhang'),
+    (56,'Zielinski')
+  )
+INSERT INTO users (id, name, role, created_at)
+SELECT 'u_p' || printf('%04d', seq.n),
+       f.v || ' ' || l.v,
+       'player',
+       strftime('%Y-%m-%dT%H:%M:%SZ', 'now',
+                '-' || ((seq.n * 37) % 45) || ' days',
+                '-' || ((seq.n * 613) % 86400) || ' seconds')
+  FROM seq
+  JOIN firsts f ON f.i = (seq.n * 7) % 62
+  JOIN lasts  l ON l.i = (seq.n * 11) % 57;
 
 -- --------------------------------------------------------------- events ----
 -- rsvp_count is left at 0 here and recomputed by the UPDATE at the bottom.
@@ -826,14 +884,16 @@ INSERT INTO rsvps (event_id, player_id, created_at) VALUES
 --     the same attendee lists, so a screenshot, a test, or a bug report stays
 --     reproducible across reseeds.
 --   * **Capacity-safe.** Every `taken` below is <= that event's capacity and <=
---     the number of players (28). If either were violated the derived
+--     the number of personas (28). If either were violated the derived
 --     `rsvp_count` UPDATE at the foot of this file would fail the
 --     `rsvp_count <= capacity` CHECK — which is the check doing its job, not a
 --     seed bug to work around.
---   * **Alice is a switch.** Players are numbered by `ORDER BY id`, and
---     `u_alice` sorts first (n = 0), so Alice is in an event exactly when
---     `skip < taken`. That is how her spread below is chosen on purpose: about
---     a dozen upcoming events, three past ones, and `evt_cancel_late_pod`.
+--   * **Alice is a switch.** The 28 personas are numbered by `ORDER BY id` —
+--     the generated `u_p…` players are excluded, so the rotation is over 28 and
+--     every `skip` below means what it meant — and `u_alice` sorts first
+--     (n = 0), so Alice is in an event exactly when `skip < taken`. That is how
+--     her spread is chosen on purpose: about a dozen upcoming events, three past
+--     ones, and `evt_cancel_late_pod`.
 --   * **created_at is relative to the event**, not to now, so a signup never
 --     post-dates the game it is for: the earliest lands `taken * 4 + 24` hours
 --     before kick-off and each subsequent one four hours later, giving every
@@ -850,11 +910,12 @@ INSERT INTO rsvps (event_id, player_id, created_at) VALUES
 -- Warhammer, Paint and Play and the past Thursday Draft; the rest run from
 -- 1/16 to 26/40.
 WITH players AS (
+  -- The personas only: `u_p` followed by digits is a generated player.
   SELECT id,
          ROW_NUMBER() OVER (ORDER BY id) - 1 AS n,
-         (SELECT COUNT(*) FROM users WHERE role = 'player') AS total
+         (SELECT COUNT(*) FROM users WHERE role = 'player' AND id NOT GLOB 'u_p[0-9]*') AS total
     FROM users
-   WHERE role = 'player'
+   WHERE role = 'player' AND id NOT GLOB 'u_p[0-9]*'
 ),
 fill (event_id, taken, skip) AS (VALUES
   -- upcoming ----------------------------------------------------------------
