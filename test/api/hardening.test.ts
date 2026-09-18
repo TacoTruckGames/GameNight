@@ -84,7 +84,7 @@ describe("one cache key per rendered map", () => {
     );
     expect(reordered.status).toBe(200);
     expect(reordered.headers.get("X-Map-Cache")).toBe("HIT");
-    expect(await reordered.text()).toBe("png-bytes");
+    expect(new TextDecoder().decode(await reordered.arrayBuffer())).toBe("png-bytes");
   });
 });
 

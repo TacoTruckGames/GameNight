@@ -471,7 +471,7 @@ describe("staticMapUrl", () => {
     expect(calls[0]!.url).toContain("/maps/api/staticmap");
     expect(result.ok).toBe(true);
     expect(result.ok && result.value.headers.get("Content-Type")).toBe("image/png");
-    expect(result.ok && (await result.value.text())).toBe("PNG-BYTES");
+    expect(result.ok && new TextDecoder().decode(await result.value.arrayBuffer())).toBe("PNG-BYTES");
   });
 
   it.each([
